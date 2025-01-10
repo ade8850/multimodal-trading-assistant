@@ -1,0 +1,29 @@
+# config.sample.yaml
+
+# General settings
+interval_minutes: 20  # How often to run the trading cycle
+ai_provider: "anthropic"  # One of: anthropic, gemini, openai
+
+# Trading parameters per symbol
+symbols:
+  BTCUSDT:
+    budget: 500
+    leverage: 1
+    timeframe: "Short (1-7d)"  # One of: "Short (1-7d)", "Medium (1-4w)", "Long (1-6m)"
+    risk_level: "Medium"  # One of: "Low", "Medium", "High"
+    strategy_instructions: |
+      Review active orders and open positions. Take corrective actions if you believe market developments require it.
+      Create new orders if you identify entry opportunities. If you do not create new orders, include the reasons in your analysis.
+      Ensure that the budget is fully allocated overall.
+      We can create orders in both directions
+
+  SOLUSDT:
+    budget: 500
+    leverage: 1
+    timeframe: "Short (1-7d)"  # One of: "Short (1-7d)", "Medium (1-4w)", "Long (1-6m)"
+    risk_level: "Medium"  # One of: "Low", "Medium", "High"
+    strategy_instructions: |
+      Review active orders and open positions. Take corrective actions if you believe market developments require it.
+      Create new orders if you identify entry opportunities. If you do not create new orders, include the reasons in your analysis.
+      Ensure that the budget is fully allocated overall.
+      We can create orders in both directions

@@ -1,0 +1,23 @@
+Trading Plan Parameters:
+Plan ID: {{ plan_id }}
+Session ID: {{ session_id }}
+Current Price: {{ current_price }}
+Symbol: {{ symbol }}
+Budget: {{ budget }} USDT
+Period: {{ timeframe }}
+Risk Level: {{ risk_level }}
+Leverage: {{ leverage }}x
+Valid From: {{ start_time }}
+Valid Until: {{ expiry_time }}
+
+Plan Instructions:
+{{ strategy_instructions }}
+
+You must use the provided Plan ID '{{ plan_id }}' and Session ID '{{ session_id }}' when generating the plan response.
+
+Based on these parameters and market conditions:
+1. Create a trading plan that may include one or more orders
+2. Each order should have its own rationale within the overall plan context
+3. If multiple orders are created, they should work together cohesively
+4. Ensure each order has unique identification
+5. Provide comprehensive analysis of the market context
