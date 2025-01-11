@@ -7,23 +7,25 @@ ai_provider: "anthropic"  # One of: anthropic, gemini, openai
 # Trading parameters per symbol
 symbols:
   BTCUSDT:
-    budget: 500
-    leverage: 1
+    budget: 200
+    leverage: 5
     timeframe: "Short (1-7d)"  # One of: "Short (1-7d)", "Medium (1-4w)", "Long (1-6m)"
     risk_level: "Medium"  # One of: "Low", "Medium", "High"
     strategy_instructions: |
-      Review active orders and open positions. Take corrective actions if you believe market developments require it.
-      Create new orders if you identify entry opportunities. If you do not create new orders, include the reasons in your analysis.
-      Ensure that the budget is fully allocated overall.
-      We can create orders in both directions
+      Review active orders and open positions. 
+      Take corrective actions if you believe market developments require it. 
+      Create new orders ONLY when market conditions show clear and favorable patterns that indicate a high probability of success,
+      if these conditions are not met, wait for better opportunities. 
+      For any decision (both creating new orders or waiting), include detailed analysis of market conditions and reasoning in your report.
 
   SOLUSDT:
-    budget: 500
-    leverage: 1
+    budget: 200
+    leverage: 2
     timeframe: "Short (1-7d)"  # One of: "Short (1-7d)", "Medium (1-4w)", "Long (1-6m)"
     risk_level: "Medium"  # One of: "Low", "Medium", "High"
     strategy_instructions: |
-      Review active orders and open positions. Take corrective actions if you believe market developments require it.
-      Create new orders if you identify entry opportunities. If you do not create new orders, include the reasons in your analysis.
-      Ensure that the budget is fully allocated overall.
-      We can create orders in both directions
+      Review active orders and open positions. 
+      Take corrective actions if you believe market developments require it. 
+      Create new orders ONLY when market conditions show clear and favorable patterns that indicate a high probability of success,
+      if these conditions are not met, wait for better opportunities. 
+      For any decision (both creating new orders or waiting), include detailed analysis of market conditions and reasoning in your report.
