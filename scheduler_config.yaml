@@ -1,7 +1,7 @@
 # config.sample.yaml
 
 # General settings
-interval_minutes: 20  # How often to run the trading cycle
+interval_minutes: 10  # How often to run the trading cycle
 ai_provider: "anthropic"  # One of: anthropic, gemini, openai
 
 # Trading parameters per symbol

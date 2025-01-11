@@ -1,9 +1,11 @@
 # aitrading/tools/bybit/orders/execution.py
 
-from typing import Dict, Any
+from typing import Dict
+
 from rich.console import Console
+
+from .utils import get_current_price
 from .validation import calculate_quantity
-import time
 
 console = Console()
 
