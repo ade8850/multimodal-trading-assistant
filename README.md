@@ -54,7 +54,7 @@ cp .env.example .env
 
 4. Set up scheduler configuration:
 ```bash
-cp scheduler_config.template.yaml config.yaml
+cp scheduler_config.example.yaml config.yaml
 # Edit config.yaml with your trading parameters
 ```
 
@@ -100,7 +100,7 @@ The system can be configured through:
 - Web interface settings
 - YAML configuration files for the scheduler (config.yaml)
 
-See `scheduler_config.template.yaml` for scheduler configuration options.
+See `scheduler_config.example.yaml` for scheduler configuration options.
 
 ## 🤝 Contributing
 
