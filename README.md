@@ -1,8 +1,8 @@
-# SuperBotAI Trading System
+# Multi modal trading assistant
 
 ⚠️ **EXPERIMENTAL PROJECT - USE AT YOUR OWN RISK** ⚠️
 
-SuperBotAI is an experimental AI-powered trading system that leverages multimodal AI capabilities to analyze market charts and create trading strategies. This project demonstrates the potential of AI in automated trading while exploring new approaches to market analysis.
+This is an experimental AI-powered trading system that leverages multimodal AI capabilities to analyze market charts and create trading strategies. This project demonstrates the potential of AI in automated trading while exploring new approaches to market analysis.
 
 ## ⚠️ Important Notice
 
@@ -37,8 +37,8 @@ The system utilizes multimodal AI models to analyze market charts and technical 
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/ade8850/superbot-ai.git
-cd superbot-ai
+git clone https://github.com/ade8850/multimodal-trading-assistant.git
+cd multimodal-trading-assistant
 ```
 
 2. Install dependencies:
