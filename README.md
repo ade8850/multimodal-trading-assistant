@@ -37,8 +37,8 @@ The system utilizes multimodal AI models to analyze market charts and technical 
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/ade8850/superbot-ai-app.git
-cd superbot-ai-app
+git clone https://github.com/ade8850/superbot-ai.git
+cd superbot-ai
 ```
 
 2. Install dependencies:
@@ -54,8 +54,8 @@ cp .env.example .env
 
 4. Set up scheduler configuration:
 ```bash
-cp scheduler_config.example.yaml config.yaml
-# Edit config.yaml with your trading parameters
+cp scheduler_config.example.yaml scheduler_config.yaml
+# Edit scheduler_config.yaml with your trading parameters
 ```
 
 5. Run the application:
@@ -64,19 +64,7 @@ cp scheduler_config.example.yaml config.yaml
 streamlit run app.py
 
 # Scheduler
-python scheduler.py
-```
-
-### Docker Deployment
-
-```bash
-# Build and run the web interface
-docker build -t superbotai .
-docker run -p 8501:8501 superbotai
-
-# Build and run the scheduler
-docker build -f scheduler.Dockerfile -t superbotai-scheduler .
-docker run superbotai-scheduler
+./run_scheduler.sh
 ```
 
 ## 📊 How It Works
@@ -97,8 +85,7 @@ docker run superbotai-scheduler
 
 The system can be configured through:
 - Environment variables (.env file)
-- Web interface settings
-- YAML configuration files for the scheduler (config.yaml)
+- YAML configuration files for the scheduler (scheduler_config.yaml)
 
 See `scheduler_config.example.yaml` for scheduler configuration options.
 
