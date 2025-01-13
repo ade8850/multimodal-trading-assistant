@@ -17,13 +17,13 @@ def execute_order_operations(session, order, instrument_info: Dict) -> Dict:
     try:
         # Prepare base order parameters
         base_params = _prepare_base_order_params(session, order, instrument_info)
-        console.print("\n[yellow]Prepared order parameters:[/yellow]")
-        console.print(base_params)
+        #console.print("\n[yellow]Prepared order parameters:[/yellow]")
+        #console.print(base_params)
 
         # Add TP/SL parameters if present
         order_params = _add_tp_sl_params(base_params, order.order.exit)
-        console.print("\n[yellow]Final order parameters with TP/SL:[/yellow]")
-        console.print(order_params)
+        #console.print("\n[yellow]Final order parameters with TP/SL:[/yellow]")
+        #console.print(order_params)
 
         # Place the order
         console.print("\n[yellow]Placing order...[/yellow]")
@@ -185,16 +185,16 @@ def verify_order_status(session, symbol: str, order_id: str) -> None:
             symbol=symbol,
             orderId=order_id
         )
-        console.print("\n[yellow]Order Status:[/yellow]")
-        console.print(order_status)
+        #console.print("\n[yellow]Order Status:[/yellow]")
+        #console.print(order_status)
 
         # Check updated positions
         positions = session.get_positions(
             category="linear",
             symbol=symbol
         )
-        console.print("\n[yellow]Updated Positions:[/yellow]")
-        console.print(positions)
+        #console.print("\n[yellow]Updated Positions:[/yellow]")
+        #console.print(positions)
 
     except Exception as e:
         console.print(f"[red]Error verifying order status: {str(e)}[/red]")

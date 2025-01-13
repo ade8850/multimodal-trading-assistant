@@ -37,7 +37,6 @@ class AnthropicClient(BaseAIClient):
             # Convert schema for Claude
             try:
                 claude_schema = SchemaConverter.convert(schema, "anthropic")
-                logging.debug(f"Converted Anthropic schema: {claude_schema}")
             except Exception as e:
                 logging.error(f"Error converting schema: {str(e)}")
                 raise
