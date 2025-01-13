@@ -42,7 +42,7 @@ class GeminiClient(BaseAIClient):
             # Convertiamo lo schema per Gemini
             try:
                 gemini_schema = SchemaConverter.convert(schema, "gemini")
-                console.print(gemini_schema)
+                #console.print(gemini_schema)
                 logging.debug(f"Converted Gemini schema: {gemini_schema}")
             except Exception as e:
                 logging.error(f"Error converting schema: {str(e)}")
@@ -66,7 +66,7 @@ class GeminiClient(BaseAIClient):
 
             try:
                 result = json.loads(response.text)
-                logging.debug(f"Parsed JSON result: {json.dumps(result, indent=2)[:500]}...")
+                #logging.debug(f"Parsed JSON result: {json.dumps(result, indent=2)[:500]}...")
             except json.JSONDecodeError as e:
                 logging.error(f"JSON parsing error: {str(e)}")
                 logging.error(f"Failed to parse response text: {response.text}")

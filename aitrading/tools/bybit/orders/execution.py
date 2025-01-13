@@ -17,13 +17,13 @@ def execute_order_operations(session, order, instrument_info: Dict) -> Dict:
     try:
         # Prepare base order parameters
         base_params = _prepare_base_order_params(session, order, instrument_info)
-        console.print("\n[yellow]Prepared order parameters:[/yellow]")
-        console.print(base_params)
+        #console.print("\n[yellow]Prepared order parameters:[/yellow]")
+        #console.print(base_params)
 
         # Add TP/SL parameters if present
         order_params = _add_tp_sl_params(base_params, order.order.exit)
-        console.print("\n[yellow]Final order parameters with TP/SL:[/yellow]")
-        console.print(order_params)
+        #console.print("\n[yellow]Final order parameters with TP/SL:[/yellow]")
+        #console.print(order_params)
 
         # Place the order
         console.print("\n[yellow]Placing order...[/yellow]")
