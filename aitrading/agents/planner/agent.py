@@ -109,11 +109,11 @@ class TradingPlanner:
             system_prompt = self.system_template.render(**template_vars)
             user_prompt = self.user_template.render(**template_vars)
 
-            console.print("== SYSTEM PROMPT ==", style="bold green")
-            console.print(system_prompt, style="grey37")
-            console.print()
-            console.print("== USER PROMPT ==", style="bold green")
-            console.print(user_prompt, style="grey37")
+            #console.print("== SYSTEM PROMPT ==", style="bold green")
+            #console.print(system_prompt, style="grey37")
+            #console.print()
+            #console.print("== USER PROMPT ==", style="bold green")
+            #console.print(user_prompt, style="grey37")
 
             # Get AI response
             response_dict = self.ai_client.generate_strategy(system_prompt, user_prompt, charts)

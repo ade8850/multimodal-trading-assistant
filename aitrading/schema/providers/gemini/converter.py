@@ -13,12 +13,12 @@ class GeminiSchemaConverter:
 
     def convert(self, schema: Dict[str, Any]) -> Dict[str, Any]:
         """Convert Pydantic/OpenAPI schema to Gemini schema format."""
-        logger.debug(f"Converting schema for Gemini: {schema}")
+        #logger.debug(f"Converting schema for Gemini: {schema}")
         try:
             # Flatten schema if it has definitions
             if "$defs" in schema:
                 flattened = flatten_schema(schema)
-                logger.debug(f"Flattened schema: {flattened}")
+                #logger.debug(f"Flattened schema: {flattened}")
                 return self._convert_schema(flattened)
             return self._convert_schema(schema)
         except Exception as e:
