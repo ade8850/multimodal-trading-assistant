@@ -104,16 +104,16 @@ def verify_account_status(session, symbol: str) -> None:
             accountType="UNIFIED",
             coin="USDT"
         )
-        console.print("\n[yellow]Account Balance:[/yellow]")
-        console.print(balance)
+        #console.print("\n[yellow]Account Balance:[/yellow]")
+        #console.print(balance)
 
         # Check existing positions
         positions = session.get_positions(
             category="linear",
             symbol=symbol
         )
-        console.print("\n[yellow]Current Positions:[/yellow]")
-        console.print(positions)
+        #console.print("\n[yellow]Current Positions:[/yellow]")
+        #console.print(positions)
 
     except Exception as e:
         console.print(f"[red]Error verifying account status: {str(e)}[/red]")

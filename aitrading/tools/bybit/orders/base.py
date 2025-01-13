@@ -84,8 +84,8 @@ class OrdersTool:
             verify_account_status(self.session, order.symbol)
 
             instrument_info = get_instrument_info(self.session, order.symbol)
-            console.print(f"\n[yellow]Instrument info for {order.symbol}:[/yellow]")
-            console.print(instrument_info)
+            #console.print(f"\n[yellow]Instrument info for {order.symbol}:[/yellow]")
+            #console.print(instrument_info)
 
             return execute_order_operations(self.session, order, instrument_info)
 
