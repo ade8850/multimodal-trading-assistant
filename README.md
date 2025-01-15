@@ -16,7 +16,7 @@ The system utilizes multimodal AI models to analyze market charts and technical 
 
 - **Backend**: Python with dependency injection architecture
 - **AI Models**: 
-  - Claude (Anthropic)
+  - Claude (Anthropic)- recommended for optimal performance
   - Gemini Pro Vision (Google)
   - GPT-4 Vision (OpenAI)
 - **Trading Interface**: Bybit API (pybit)
