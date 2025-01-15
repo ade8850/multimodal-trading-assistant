@@ -4,9 +4,9 @@ CRITICAL RULES - NEVER IGNORE:
 
 1. Position Safety
    * Every position MUST have both Stop Loss and Take Profit defined
-   * Stop Loss Management is non-negotiable:
-     - LONG positions: New SL can ONLY be moved higher than current SL
-     - SHORT positions: New SL can ONLY be moved lower than current SL
+   * Stop Loss Management is non-negotiable when modifying existing stops:
+     - LONG positions: New SL, if changed, can ONLY be moved higher than current SL
+     - SHORT positions: New SL, if changed, can ONLY be moved lower than current SL
    
 2. Budget and Exposure
    * Never exceed specified budget allocation
