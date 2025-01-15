@@ -64,6 +64,11 @@ IMPORTANT: Position Management Guidelines
 2. Consider total exposure and risk across all positions
 3. Account for unrealized PNL when adjusting risk levels
 4. Consider position age and market development since entry
+5. Stop Loss Management Rules:
+   - For each position update, first check the current stop loss level
+   - For LONG positions: New SL must be >= current SL
+   - For SHORT positions: New SL must be <= current SL
+   - Violation of these rules will invalidate the position update
 {% endif %}
 
 {% if existing_orders %}
@@ -111,19 +116,13 @@ Guidelines for Plan Creation:
 5. Stop losses must be market orders
 6. Set invalidation conditions based on key price levels
 7. Budget Allocation Rules:
-  - The total budget is the maximum allocatable amount per symbol
-  - Currently allocated budget includes:
-    * Open position size * entry price
-    * Active order quantity * order price
-  - Cancelling active orders frees up their allocated budget
-  - New orders can only be placed if:
-    Total Budget ≥ (Allocated in positions + Allocated in remaining active orders + New order allocation)
+  - The total budget is calculated post-leverage
   - Example calculation:
-    * Total Budget: 100 USDT
+    * Total Budget: 100 USDT at 5x leverage = 500 USDT total exposure
     * Open Position: 0.4 SOL @ 215.86 = 86.344 USDT
     * Active Order: 0.4 SOL @ 213.5 = 85.4 USDT
     * If cancelling active order, available budget would be:
-      100 - 86.344 = 13.656 USDT for new orders
+      500 - 86.344 = 413.656 USDT for new orders
 
 Order Cancellation Requirements:
 1. For EACH order to be cancelled, you MUST provide:
@@ -173,41 +172,73 @@ Common Sense Trading Framework:
 
 2. Risk Intelligence:
   - Capital preservation comes first
-  - Evaluate position size based on setup quality:
-    * Perfect setup (all conditions): Full allowed size
-    * Strong setup (>80% conditions): 75% size
-    * Moderate setup (>60% conditions): 50% size
-    * Weak setup (<60% conditions): No trade
-  - With {{ leverage }}x leverage:
-    * Perfect setup: Use full leverage
-    * Strong setup: Reduce leverage by 25%
-    * Moderate setup: Reduce leverage by 50%
+  - Position sizing is determined sequentially:
+    1. First evaluate setup quality:
+       * Perfect setup (all conditions): 100% of allowed size
+       * Strong setup (>80% conditions): 75% of allowed size
+       * Moderate setup (>60% conditions): 50% of allowed size
+       * Weak setup (<60% conditions): No trade
+    2. Then adjust based on market conditions:
+       * High volatility: Consider smaller size
+       * Low volatility: Standard size
+       * Unclear conditions: Reduce size or no trade
+  - Multiple Position Management:
+    * Each position must have independent technical justification
+    * Combined exposure must respect total risk tolerance
+    * Monitor correlation between positions
 
 3. Position Management Principles:
   - Strong trends deserve more room to breathe
   - Ranging markets need tighter management
-  - Scale out when conditions that led to entry start weakening
   - Move to breakeven when market structure supports it
+  - Volume Requirements:
+    * Minimum volume threshold: 2x intended position size
+    * Volume must show consistent trend support
+    * Low volume periods require position size reduction
 
 4. Dynamic Stop Loss Logic:
-  - Base stop distance on recent price behavior
-  - Consider volatility when setting stops:
+  - Base initial stop distance on recent price behavior
+  - Consider volatility when setting initial stops:
     * High volatility: Wider stops, smaller size
     * Low volatility: Tighter stops, normal size
-  - Never risk more than 2% per trade at {{ leverage }}x
+  - Stop distance must consider:
+    * Current market volatility
+    * Key technical levels
+    * Recent price swings amplitude
+    * Impact of leverage on position sizing
+  - Critical Stop Loss Rules:
+    * For LONG positions:
+      - Once a stop loss level is set, it can ONLY be moved higher
+      - Any new SL evaluation must respect the highest level previously set
+      - This applies from position opening, not just in profit
+    * For SHORT positions:
+      - Once a stop loss level is set, it can ONLY be moved lower
+      - Any new SL evaluation must respect the lowest level previously set
+      - This applies from position opening, not just in profit
+    * Emergency Override Conditions (ONLY for these cases):
+      - Exchange technical issues preventing normal operation
+      - Major market manipulation events
+      - Flash crash scenarios
+      - In these cases, document extensively in reason field
 
 5. Take Profit Adaptation:
-  - Strong trend: Multiple targets with runners
-  - Range conditions: Faster profit taking
-  - Consider market structure for final targets
-  - Scale out when reaching significant levels
+  - Strong trend:
+    * Set initial take profit at key resistance/support
+    * Adjust based on trend strength
+    * Consider market structure for target levels
+  - Range conditions:
+    * Set take profit near range extremes
+    * Consider volatility for target placement
+  - TP Adjustment Rules:
+    * Can be modified in both directions
+    * Must maintain minimum 1.5:1 reward/risk ratio
+    * Consider market structure changes
 
 Guidelines for Application:
 1. Current positions evaluation:
   - Review if original entry conditions still valid
   - Assess if market structure has changed
   - Adjust stops/targets based on current context
-  - Consider scaling out if conditions weakening
 
 2. New positions decisions:
   - Evaluate setup quality score (1-10)
