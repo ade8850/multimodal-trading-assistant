@@ -4,7 +4,10 @@ from typing import Dict, List
 from datetime import datetime, timedelta
 from pathlib import Path
 from jinja2 import Template
+import os
 import time
+from rich.console import Console
+import logging
 
 from .anthropic import AnthropicClient
 from .gemini import GeminiClient
@@ -17,11 +20,7 @@ from ...tools.bybit.market_data import MarketDataTool
 from ...tools.bybit.orders import OrdersTool
 from ...tools.charts import ChartGeneratorTool
 
-from rich.console import Console
-
 console = Console()
-
-import logging
 logger = logging.getLogger("trader")
 
 class TradingPlanner:
@@ -67,7 +66,6 @@ class TradingPlanner:
             # Get active orders
             try:
                 active_orders = self.orders.get_active_orders(params.symbol)
-                # Convert to ExistingOrder models for validation
                 existing_orders = [ExistingOrder(**order) for order in active_orders]
             except Exception as e:
                 console.print(f"[yellow]Warning: Error fetching active orders: {str(e)}[/yellow]")
@@ -109,12 +107,6 @@ class TradingPlanner:
             system_prompt = self.system_template.render(**template_vars)
             user_prompt = self.user_template.render(**template_vars)
 
-            #console.print("== SYSTEM PROMPT ==", style="bold green")
-            #console.print(system_prompt, style="grey37")
-            #console.print()
-            #console.print("== USER PROMPT ==", style="bold green")
-            #console.print(user_prompt, style="grey37")
-
             # Get AI response
             response_dict = self.ai_client.generate_strategy(system_prompt, user_prompt, charts)
 
@@ -124,7 +116,6 @@ class TradingPlanner:
 
             # Initialize trading plan
             plan_data = response_dict['plan']
-            # Override IDs to ensure consistency
             plan_data['id'] = plan_id
             plan_data['session_id'] = session_id
             plan_data['parameters'] = params
@@ -135,13 +126,79 @@ class TradingPlanner:
         except Exception as e:
             raise Exception(f"Error creating trading plan: {str(e)}")
 
+    def _generate_analysis_charts(self, symbol: str, timeframes: List[str]) -> List[bytes]:
+        """Generate technical analysis charts for each timeframe."""
+        generated_charts = []
+        dump_charts = os.getenv('DUMP_CHARTS', '').lower() in ('true', '1', 'yes')
+
+        try:
+            # Create .graphs directory if it doesn't exist
+            graphs_dir = Path('.graphs')
+            graphs_dir.mkdir(exist_ok=True)
+
+            # Clean existing files
+            if graphs_dir.exists():
+                for file in graphs_dir.glob('*'):
+                    try:
+                        if file.is_file():
+                            file.unlink()
+                    except Exception as e:
+                        logger.warning(f"Could not remove file {file}: {str(e)}")
+
+            logger.debug("Cleaned/created .graphs directory")
+
+            for timeframe in timeframes:
+                try:
+                    # Fetch historical data
+                    df = self.market_data.fetch_historical_data(symbol, timeframe)
+                    
+                    # Generate multiple charts for this timeframe
+                    timeframe_charts = self.chart_generator.create_charts_for_timeframe(df, timeframe)
+                    if timeframe_charts:
+                        generated_charts.extend(timeframe_charts)
+
+                        # Save charts if DUMP_CHARTS is enabled
+                        if dump_charts:
+                            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                            for i, chart in enumerate(timeframe_charts):
+                                filename = f"{symbol}_{timeframe}_view{i}_{timestamp}.png"
+                                filepath = graphs_dir / filename
+                                try:
+                                    with open(filepath, 'wb') as f:
+                                        f.write(chart)
+                                    logger.debug(f"Saved chart: {filename}")
+                                except Exception as e:
+                                    logger.warning(f"Could not save chart {filename}: {str(e)}")
+
+                except Exception as e:
+                    logger.error(f"Error generating charts for {timeframe}: {str(e)}")
+
+            return generated_charts
+
+        except Exception as e:
+            logger.error(f"Error in chart generation: {str(e)}")
+            return generated_charts  # Return any charts we managed to generate
+
+    def _calculate_validity_period(self, timeframe: str) -> tuple[datetime, datetime]:
+        """Calculate plan validity period based on timeframe."""
+        start_time = datetime.utcnow()
+
+        if timeframe == "Short (1-7d)":
+            expiry_time = start_time + timedelta(days=7)
+        elif timeframe == "Medium (1-4w)":
+            expiry_time = start_time + timedelta(weeks=4)
+        else:  # "Long (1-6m)"
+            expiry_time = start_time + timedelta(weeks=26)
+
+        return start_time, expiry_time
+
     def execute_plan(self, plan: TradingPlan) -> Dict:
         """Execute all operations in the trading plan on the exchange."""
         try:
             results = {
                 "plan_id": plan.id,
                 "cancellations": [],
-                "position_updates": [],  # New result section
+                "position_updates": [],
                 "orders": []
             }
 
@@ -150,8 +207,6 @@ class TradingPlanner:
                 console.print("\n[yellow]Executing order cancellations...[/yellow]")
                 cancellation_results = self._execute_cancellations(plan.cancellations)
                 results["cancellations"] = cancellation_results
-
-                # Short delay after cancellations
                 time.sleep(1)
 
             # Execute position updates if any
@@ -176,8 +231,6 @@ class TradingPlanner:
                             "success": False,
                             "error": str(e)
                         })
-
-                # Short delay after updates
                 time.sleep(1)
 
             # Then execute new orders if any
@@ -185,17 +238,14 @@ class TradingPlanner:
                 console.print("\n[yellow]Executing new orders...[/yellow]")
                 for order in plan.orders:
                     try:
-                        # Verify order is still valid
                         if not self.orders.check_strategy_validity(order):
                             raise ValueError(f"Order {order.id} in plan {plan.id} is no longer valid")
 
-                        # Configure position settings
                         self.orders.set_position_settings(
                             symbol=order.symbol,
                             leverage=order.order.entry.leverage
                         )
 
-                        # Place the order
                         result = self.orders.place_strategy_orders(order)
                         if result.get("errors"):
                             raise ValueError(f"Order execution failed for {order.id}: {result['errors']}")
@@ -218,7 +268,6 @@ class TradingPlanner:
 
         except Exception as e:
             raise Exception(f"Error executing trading plan: {str(e)}")
-
 
     def _execute_cancellations(self, cancellations: List[OrderCancellation]) -> List[Dict]:
         """Execute a list of order cancellations."""
@@ -248,69 +297,3 @@ class TradingPlanner:
                 })
 
         return results
-
-    def _generate_analysis_charts(self, symbol: str, timeframes: List[str]) -> List[bytes]:
-        """Generate technical analysis charts for each timeframe."""
-        import os
-        import shutil
-        from pathlib import Path
-
-        generated_charts = []
-        dump_charts = os.getenv('DUMP_CHARTS', '').lower() in ('true', '1', 'yes')
-
-        try:
-            # Create .graphs directory if it doesn't exist
-            graphs_dir = Path('.graphs')
-            graphs_dir.mkdir(exist_ok=True)
-
-            # Clean existing files instead of removing directory
-            if graphs_dir.exists():
-                for file in graphs_dir.glob('*'):
-                    try:
-                        if file.is_file():
-                            file.unlink()
-                    except Exception as e:
-                        logger.warning(f"Could not remove file {file}: {str(e)}")
-
-            logger.debug("Cleaned/created .graphs directory")
-
-            for timeframe in timeframes:
-                try:
-                    df = self.market_data.fetch_historical_data(symbol, timeframe)
-                    chart = self.chart_generator.create_chart(df, timeframe)
-                    if chart:
-                        generated_charts.append(chart)
-
-                        # Save chart if DUMP_CHARTS is enabled
-                        if dump_charts:
-                            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                            filename = f"{symbol}_{timeframe}_{timestamp}.png"
-                            filepath = graphs_dir / filename
-                            try:
-                                with open(filepath, 'wb') as f:
-                                    f.write(chart)
-                                logger.debug(f"Saved chart: {filename}")
-                            except Exception as e:
-                                logger.warning(f"Could not save chart {filename}: {str(e)}")
-
-                except Exception as e:
-                    logger.error(f"Error generating chart for {timeframe}: {str(e)}")
-
-            return generated_charts
-
-        except Exception as e:
-            logger.error(f"Error in chart generation: {str(e)}")
-            return generated_charts  # Return any charts we managed to generate
-
-    def _calculate_validity_period(self, timeframe: str) -> tuple[datetime, datetime]:
-        """Calculate plan validity period based on timeframe."""
-        start_time = datetime.utcnow()
-
-        if timeframe == "Short (1-7d)":
-            expiry_time = start_time + timedelta(days=7)
-        elif timeframe == "Medium (1-4w)":
-            expiry_time = start_time + timedelta(weeks=4)
-        else:  # "Long (1-6m)"
-            expiry_time = start_time + timedelta(weeks=26)
-
-        return start_time, expiry_time
