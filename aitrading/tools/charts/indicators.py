@@ -63,8 +63,9 @@ class IndicatorCalculator:
     def calculate_indicator(self, config: IndicatorConfig) -> Dict[str, pd.Series]:
         """Calculate a single indicator based on its configuration."""
         if config.type == "ema":
-            # Nome compatibile con il vecchio sistema
-            return {f"EMA{config.parameters.period}": self.calculate_ema(config.parameters)}
+            # Usa il periodo nel nome della colonna
+            period = config.parameters.period
+            return {f"EMA{period}": self.calculate_ema(config.parameters)}
         elif config.type == "bollinger":
             return self.calculate_bollinger(config.parameters)
         elif config.type == "rsi":

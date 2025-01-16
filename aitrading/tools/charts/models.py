@@ -130,69 +130,28 @@ class IndicatorConfig(BaseModel):
         return values
 
 
+class ChartView(BaseModel):
+    """Configuration for a single chart view."""
+    name: str
+    title: str
+    height_ratio: float = Field(
+        default=1.0,
+        gt=0,
+        description="Relative height of this view compared to others"
+    )
+    indicators: List[IndicatorConfig]
+
+
 class TimeframeConfig(BaseModel):
     """Configuration for a single timeframe."""
     timeframe: str
-    interval: str  # Valore per l'exchange (es: "W", "D", "240", ecc.)
+    interval: str
     candles: int = Field(ge=1, description="Number of candles to fetch")
     minutes: int = Field(ge=1, description="Minutes per candle")
-    indicators: List[IndicatorConfig]
+    views: List[ChartView]
 
 
 class ChartConfig(BaseModel):
     """Complete configuration for chart generation."""
     symbol: str
     timeframes: List[TimeframeConfig]
-
-    @classmethod
-    def get_default_config(cls, symbol: str, timeframes: List[str]) -> "ChartConfig":
-        """Create default configuration for given symbol and timeframes."""
-        # TODO: This should be updated to use configuration from YAML
-        return cls(
-            symbol=symbol,
-            timeframes=[
-                TimeframeConfig(
-                    timeframe=tf,
-                    interval="",  # Questo andrà preso dalla configurazione
-                    candles=1000,  # Valore di default temporaneo
-                    minutes=60,    # Valore di default temporaneo
-                    indicators=[
-                        IndicatorConfig(
-                            type="ema",
-                            parameters=EmaParameters(period=20),
-                            overlay=True
-                        ),
-                        IndicatorConfig(
-                            type="ema",
-                            parameters=EmaParameters(period=50),
-                            overlay=True
-                        ),
-                        IndicatorConfig(
-                            type="ema",
-                            parameters=EmaParameters(period=200),
-                            overlay=True
-                        ),
-                        IndicatorConfig(
-                            type="bollinger",
-                            parameters=BollingerParameters(),
-                            overlay=True
-                        ),
-                        IndicatorConfig(
-                            type="volume",
-                            parameters=VolumeParameters(),
-                            subplot=True
-                        ),
-                        IndicatorConfig(
-                            type="rsi",
-                            parameters=RsiParameters(),
-                            subplot=True
-                        ),
-                        IndicatorConfig(
-                            type="macd",
-                            parameters=MacdParameters(),
-                            subplot=True
-                        ),
-                    ]
-                ) for tf in timeframes
-            ]
-        )

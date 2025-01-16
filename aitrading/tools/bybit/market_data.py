@@ -6,6 +6,9 @@ from datetime import datetime, timedelta
 from pybit.unified_trading import HTTP
 from ..charts.config import TimeframesConfiguration
 
+import logging
+logger = logging.getLogger("trader")
+
 
 class MarketDataTool:
     """Tool for fetching market data from Bybit."""
@@ -16,7 +19,14 @@ class MarketDataTool:
 
     def get_analysis_timeframes(self, strategy_timeframe: str) -> List[str]:
         """Get relevant analysis timeframes for given strategy period."""
-        return self.config.get_strategy_timeframes(strategy_timeframe)
+        logger.info(f"Getting timeframes for strategy: {strategy_timeframe}")
+        try:
+            timeframes = self.config.get_strategy_timeframes(strategy_timeframe)
+            logger.info(f"Retrieved timeframes: {timeframes}")
+            return timeframes
+        except Exception as e:
+            logger.error(f"Error getting strategy timeframes: {str(e)}")
+            raise
 
     def get_current_price(self, symbol: str) -> float:
         """Get current market price."""
@@ -28,9 +38,11 @@ class MarketDataTool:
 
     def fetch_historical_data(self, symbol: str, timeframe: str) -> pd.DataFrame:
         """Fetch historical market data for specified timeframe."""
+        logger.info(f"Fetching data for {symbol} on {timeframe} timeframe")
         try:
             # Get timeframe configuration
             tf_config = self.config.get_timeframe_config(timeframe)
+            logger.info(f"Using interval: {tf_config.interval} for timeframe: {timeframe}")
 
             # Get data from Bybit
             response = self.session.get_kline(
@@ -44,9 +56,12 @@ class MarketDataTool:
             if response["retCode"] != 0:
                 raise ValueError(f"API error: {response['retMsg']}")
 
-            return self._process_kline_data(response["result"]["list"])
+            data = self._process_kline_data(response["result"]["list"])
+            logger.info(f"Retrieved {len(data)} candles for {timeframe}")
+            return data
 
         except Exception as e:
+            logger.error(f"Error fetching historical data for {timeframe}: {str(e)}")
             raise Exception(f"Error fetching historical data: {str(e)}")
 
     def _get_start_timestamp(self, tf_config: Dict) -> int:
