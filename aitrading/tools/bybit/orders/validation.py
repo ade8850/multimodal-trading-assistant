@@ -8,29 +8,6 @@ from .utils import get_current_price
 
 console = Console()
 
-
-def check_strategy_validity(order_tool, order) -> bool:
-    """Verify if order is still valid based on conditions."""
-    try:
-        # Check time validity
-        current_time = datetime.now(timezone.utc).isoformat()
-        if current_time > order.validity.timeframe.expiry:
-            return False
-
-        # Check price validity
-        current_price = order_tool.get_current_price(order.symbol)
-        for level in order.validity.invalidation_conditions.price_levels:
-            if level.direction == "above" and current_price > level.price:
-                return False
-            elif level.direction == "below" and current_price < level.price:
-                return False
-
-        return True
-
-    except Exception as e:
-        raise Exception(f"Error checking validity for order {order.id}: {str(e)}")
-
-
 def calculate_quantity(budget: float, leverage: float, price: float, instrument_info: Dict) -> str:
     """Calculate order quantity considering lot size filters."""
     try:

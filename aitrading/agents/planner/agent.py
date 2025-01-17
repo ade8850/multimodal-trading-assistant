@@ -218,9 +218,6 @@ class TradingPlanner:
                 console.print("\n[yellow]Executing new orders...[/yellow]")
                 for order in plan.orders:
                     try:
-                        if not self.orders.check_strategy_validity(order):
-                            raise ValueError(f"Order {order.id} in plan {plan.id} is no longer valid")
-
                         self.orders.set_position_settings(
                             symbol=order.symbol,
                             leverage=order.order.entry.leverage
