@@ -59,7 +59,7 @@ class TradingPlanner:
 
             # Get current market data
             current_price = self.market_data.get_current_price(params.symbol)
-            timeframes = self.market_data.get_analysis_timeframes(params.timeframe)
+            timeframes = self.market_data.get_analysis_timeframes()  # Rimosso il parametro timeframe
 
             console.print(">> timeframes: ", timeframes, style="bold green")
 
@@ -83,9 +83,6 @@ class TradingPlanner:
             if not charts:
                 raise ValueError("Failed to generate analysis charts")
 
-            # Calculate validity period
-            start_time, expiry_time = self._calculate_validity_period(params.timeframe)
-
             # Prepare template variables
             template_vars = {
                 "plan_id": plan_id,
@@ -93,11 +90,7 @@ class TradingPlanner:
                 "current_price": current_price,
                 "symbol": params.symbol,
                 "budget": params.budget,
-                "timeframe": params.timeframe,
-                "risk_level": params.risk_level,
                 "leverage": params.leverage,
-                "start_time": start_time.isoformat(),
-                "expiry_time": expiry_time.isoformat(),
                 "strategy_instructions": params.strategy_instructions,
                 "existing_orders": existing_orders,
                 "current_positions": current_positions
@@ -178,19 +171,6 @@ class TradingPlanner:
         except Exception as e:
             logger.error(f"Error in chart generation: {str(e)}")
             return generated_charts  # Return any charts we managed to generate
-
-    def _calculate_validity_period(self, timeframe: str) -> tuple[datetime, datetime]:
-        """Calculate plan validity period based on timeframe."""
-        start_time = datetime.utcnow()
-
-        if timeframe == "Short (1-7d)":
-            expiry_time = start_time + timedelta(days=7)
-        elif timeframe == "Medium (1-4w)":
-            expiry_time = start_time + timedelta(weeks=4)
-        else:  # "Long (1-6m)"
-            expiry_time = start_time + timedelta(weeks=26)
-
-        return start_time, expiry_time
 
     def execute_plan(self, plan: TradingPlan) -> Dict:
         """Execute all operations in the trading plan on the exchange."""

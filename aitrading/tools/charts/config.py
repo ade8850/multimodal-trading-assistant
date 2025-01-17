@@ -45,16 +45,12 @@ class TimeframesConfiguration:
                 f"Invalid configuration for timeframe {timeframe}: {str(e)}"
             )
     
-    def get_strategy_timeframes(self, strategy: str) -> List[str]:
-        """Get timeframes list for a strategy period (backward compatibility)."""
-        if not self._config or "strategy_timeframes" not in self._config:
-            raise TimeframesConfigurationError("Strategy timeframes configuration not found")
+    def get_base_timeframes(self) -> List[str]:
+        """Get list of all available timeframes."""
+        if not self._config or "timeframes" not in self._config:
+            raise TimeframesConfigurationError("Configuration not loaded or invalid")
             
-        timeframes = self._config["strategy_timeframes"].get(strategy)
-        if not timeframes:
-            raise TimeframesConfigurationError(f"Timeframes not found for strategy: {strategy}")
-            
-        return timeframes
+        return list(self._config["timeframes"].keys())
     
     def create_chart_config(self, symbol: str, timeframes: List[str]) -> ChartConfig:
         """Create chart configuration for given symbol and timeframes."""

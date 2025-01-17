@@ -9,8 +9,6 @@ symbols:
   BTCUSDT:
     budget: 200
     leverage: 5
-    timeframe: "Short (1-7d)"  # One of: "Short (1-7d)", "Medium (1-4w)", "Long (1-6m)"
-    risk_level: "Medium"  # One of: "Low", "Medium", "High"
     strategy_instructions: |
       Review active orders and open positions. 
       Take corrective actions if you believe market developments require it. 
@@ -21,8 +19,6 @@ symbols:
   SOLUSDT:
     budget: 200
     leverage: 5
-    timeframe: "Short (1-7d)"  # One of: "Short (1-7d)", "Medium (1-4w)", "Long (1-6m)"
-    risk_level: "Medium"  # One of: "Low", "Medium", "High"
     strategy_instructions: |
       Review active orders and open positions. 
       Take corrective actions if you believe market developments require it. 

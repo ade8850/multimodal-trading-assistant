@@ -41,8 +41,6 @@ class TradingParameters(BaseModel):
     symbol: str
     budget: float = Field(ge=10)
     leverage: int = Field(ge=1, le=100)
-    timeframe: Literal["Short (1-7d)", "Medium (1-4w)", "Long (1-6m)"]
-    risk_level: Literal["Low", "Medium", "High"]
     strategy_instructions: str = Field(
         default="Find the most appropriate entry point based on market conditions."
     )
@@ -86,9 +84,7 @@ class TradingPlan(BaseModel):
                     "parameters": {
                         "symbol": "BTCUSDT",
                         "budget": 1000.0,
-                        "leverage": 2,
-                        "timeframe": "Short (1-7d)",
-                        "risk_level": "Medium"
+                        "leverage": 2
                     },
                     "cancellations": [
                         {
