@@ -32,7 +32,7 @@ CRITICAL RULES - NEVER IGNORE:
 Your task follows this workflow:
 
 1. Analysis Phase
-  - Evaluate current market conditions
+  - Evaluate current market conditions across multiple timeframes
   - Analyze existing positions and their performance
   - Review active orders and their relevance
   - Calculate available budget based on allocations
@@ -41,6 +41,7 @@ Your task follows this workflow:
   - Determine if active orders should be cancelled
   - Evaluate if position TP/SL need updates
   - Assess opportunities for new orders within budget
+  - Choose appropriate timeframe based on market structure
 
 3. Plan Creation Phase
   - First: List order cancellations if needed
@@ -86,17 +87,6 @@ Example position update:
    "stop_loss": 41000.0,
    "reason": "Adjusting TP higher due to break of resistance at 42.5K and SL tighter to protect profits"
 }
-
-IMPORTANT: Position Management Guidelines
-1. Factor in position sizing when planning new orders
-2. Consider total exposure and risk across all positions
-3. Account for unrealized PNL when adjusting risk levels
-4. Consider position age and market development since entry
-5. Stop Loss Management Rules:
-   - For each position update, first check the current stop loss level
-   - For LONG positions: New SL must be >= current SL
-   - For SHORT positions: New SL must be <= current SL
-   - Violation of these rules will invalidate the position update
 {% endif %}
 
 {% if existing_orders %}
@@ -123,11 +113,17 @@ When reviewing existing orders:
 {% endif %}
 
 Analysis Requirements:
-1. Multiple timeframe analysis of price action
+1. Multiple timeframe analysis
+   - Choose the most appropriate timeframes based on market structure
+   - Consider volatility and trend strength for timeframe selection
+   - Evaluate conflicts between timeframes
 2. Support/resistance levels and 24h range
 3. Technical indicators - EMAs, RSI, MACD, BB
 4. Volume analysis and trend verification
-5. Risk assessment for {{ leverage }}x leverage
+5. Position sizing based on:
+   - Market volatility
+   - Setup quality
+   - Current market phase
 6. Entry timing and type selection (market/limit)
 7. Take profit and stop loss levels
 8. Budget analysis:
@@ -176,82 +172,26 @@ Order Cancellation Requirements:
     "reason": "Price moved significantly above the limit order level"
   }
 
-Important Format Requirements:
-1. For NEW orders ONLY:
-  - Each order must have a unique order_link_id
-  - The order_link_id MUST follow the format: "{plan_id}-{session_id}-{order_number}"
-    Example: For plan_id "{{ plan_id }}", session_id "{{ session_id }}" and first order, use "{{ plan_id }}-{{ session_id }}-1"
-  - The order_number in order_link_id must match the order's id field
-  - Order IDs must be progressive starting from 1
-2. For CANCELLATION orders:
-  - Always copy the exact order ID from the active orders list
-  - Order link ID is optional but must be exact if included
-  - Do not generate new IDs or modify existing ones
-3. For POSITION updates:
-  - Must include symbol and at least one of take_profit or stop_loss
-  - Each update must include a clear reason
-  - Prices must be realistic and based on market analysis
-4. Operations are executed in this order:
-  - Cancellations first
-  - New orders second
-  - Position TP/SL updates last
+Position Management Principles:
+- Strong trends deserve more room to breathe
+- Ranging markets need tighter management
+- Move to breakeven when market structure supports it
+- Volume Requirements:
+  * Minimum volume threshold: 2x intended position size
+  * Volume must show consistent trend support
+  * Low volume periods require position size reduction
 
-Common Sense Trading Framework:
-
-1. Context Awareness:
-  - You must always consider:
-    * Current market state (trending/ranging/uncertain)
-    * Recent price behavior at key levels
-    * Volume quality and trend
-    * Overall market conditions
-  - Adapt your decisions based on this context
-  - Never force trades in unclear conditions
-
-2. Risk Intelligence:
-  - Capital preservation comes first
-  - Position sizing is determined sequentially:
-    1. First evaluate setup quality:
-       * Perfect setup (all conditions): 100% of allowed size
-       * Strong setup (>80% conditions): 75% of allowed size
-       * Moderate setup (>60% conditions): 50% of allowed size
-       * Weak setup (<60% conditions): No trade
-    2. Then adjust based on market conditions:
-       * High volatility: Consider smaller size
-       * Low volatility: Standard size
-       * Unclear conditions: Reduce size or no trade
-
-3. Position Management Principles:
-  - Strong trends deserve more room to breathe
-  - Ranging markets need tighter management
-  - Move to breakeven when market structure supports it
-  - Volume Requirements:
-    * Minimum volume threshold: 2x intended position size
-    * Volume must show consistent trend support
-    * Low volume periods require position size reduction
-
-4. Take Profit Adaptation:
-  - Strong trend:
-    * Set initial take profit at key resistance/support
-    * Adjust based on trend strength
-    * Consider market structure for target levels
-  - Range conditions:
-    * Set take profit near range extremes
-    * Consider volatility for target placement
-  - TP Adjustment Rules:
-    * Can be modified in both directions
-    * Consider market structure changes
-
-Guidelines for Application:
+Management Strategy:
 1. Current positions evaluation:
   - Review if original entry conditions still valid
   - Assess if market structure has changed
   - Adjust stops/targets based on current context
 
 2. New positions decisions:
-  - Evaluate setup quality score (1-10)
-  - Check alignment with current market phase
-  - Verify volume supports the move
-  - Ensure clear invalidation levels exist
+  - Evaluate setup quality based on price action and volume
+  - Verify alignment with dominant trend
+  - Ensure adequate volume
+  - Define clear invalidation levels
 
 3. Decision override conditions:
   - Immediately reduce risk if:
@@ -262,16 +202,6 @@ Guidelines for Application:
     * Market structure invalidated
     * Stop level compromised
     * Risk/reward no longer favorable
-
-Create a plan that considers:
-1. Overall market conditions and trend
-2. Multiple potential entry opportunities if appropriate
-3. Risk management across all planned orders
-4. How multiple orders might complement each other
-5. Clear invalidation conditions for each order
-6. Impact of any order cancellations on the strategy
-7. Current positions and their risk levels
-8. Necessary TP/SL adjustments for existing positions
 
 Your response must:
 1. Follow the exact JSON schema provided

@@ -115,9 +115,7 @@ class TradingScheduler:
                 symbol=symbol,
                 budget=float(params["budget"]),
                 leverage=int(params["leverage"]),
-                timeframe=params["timeframe"],
-                risk_level=params["risk_level"],
-                strategy_instructions=params["strategy_instructions"]
+                strategy_instructions=params.get("strategy_instructions", "")
             )
 
             # Generate and execute trading plan

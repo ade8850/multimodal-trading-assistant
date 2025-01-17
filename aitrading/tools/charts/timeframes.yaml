@@ -188,9 +188,3 @@ timeframes:
               period: 20
               std_dev: 2.0
             overlay: true
-
-# Temporary mapping for backward compatibility
-strategy_timeframes:
-  "Short (1-7d)": ["1m", "5m", "15m", "1H", "4H"]
-  "Medium (1-4w)": ["1H", "4H", "1D"]
-  "Long (1-6m)": ["4H", "1D", "1W"]

@@ -100,21 +100,16 @@ def render_strategy_ui(container: Container = Provide[Container]):
     )
 
     # Trading parameters
+    symbol = st.text_input("Symbol", value="BTCUSDT")
+    if not symbol:
+        st.error("Symbol is required")
+
     col1, col2 = st.columns(2)
-
     with col1:
-        symbol = st.text_input("Symbol", value="BTCUSDT")
-        if not symbol:
-            st.error("Symbol is required")
-
         budget = st.number_input("Budget USDT", min_value=10, value=100)
-        leverage = st.number_input("Leverage", min_value=1, max_value=100, value=1)
 
     with col2:
-        timeframe = st.selectbox(
-            "Period", ["Short (1-7d)", "Medium (1-4w)", "Long (1-6m)"]
-        )
-        risk_level = st.select_slider("Risk", ["Low", "Medium", "High"], value="Medium")
+        leverage = st.number_input("Leverage", min_value=1, max_value=100, value=1)
 
     # Plan Instructions
     st.header("Plan Instructions")
@@ -145,8 +140,6 @@ def render_strategy_ui(container: Container = Provide[Container]):
                     symbol=symbol,
                     budget=budget,
                     leverage=leverage,
-                    timeframe=timeframe,
-                    risk_level=risk_level,
                     strategy_instructions=plan_instructions
                 )
 

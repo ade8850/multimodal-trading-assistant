@@ -17,15 +17,15 @@ class MarketDataTool:
         self.session = HTTP(testnet=testnet, api_key=api_key, api_secret=api_secret)
         self.config = TimeframesConfiguration()
 
-    def get_analysis_timeframes(self, strategy_timeframe: str) -> List[str]:
-        """Get relevant analysis timeframes for given strategy period."""
-        logger.info(f"Getting timeframes for strategy: {strategy_timeframe}")
+    def get_analysis_timeframes(self) -> List[str]:
+        """Get all available analysis timeframes."""
+        logger.info("Getting available timeframes")
         try:
-            timeframes = self.config.get_strategy_timeframes(strategy_timeframe)
+            timeframes = self.config.get_base_timeframes()
             logger.info(f"Retrieved timeframes: {timeframes}")
             return timeframes
         except Exception as e:
-            logger.error(f"Error getting strategy timeframes: {str(e)}")
+            logger.error(f"Error getting timeframes: {str(e)}")
             raise
 
     def get_current_price(self, symbol: str) -> float:
