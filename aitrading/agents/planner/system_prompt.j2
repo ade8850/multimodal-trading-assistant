@@ -7,6 +7,21 @@ CRITICAL RULES - NEVER IGNORE:
    * Stop Loss Management is non-negotiable when modifying existing stops:
      - LONG positions: New SL, if changed, can ONLY be moved higher than current SL
      - SHORT positions: New SL, if changed, can ONLY be moved lower than current SL
+   * Dynamic Stop Loss Adjustment:
+     - Initial Position Management:
+       * Set wider initial stops to allow position development
+       * Gradually tighten if expected direction doesn't materialize
+       * Consider time-based progression: reduce exposure if no clear trend emerges
+     - Established Position Management:
+       - Base SL distance on market context and volatility
+       - Keep wider stops during favorable trends and strong momentum
+       - Tighten stops when:
+         * Market structure shows weakness
+         * Volume profile deteriorates
+         * Key technical levels show signs of failure
+       - Consider support/resistance levels:
+         * LONG: Keep SL below significant support levels unless they fail
+         * SHORT: Keep SL above significant resistance levels unless they fail
    
 2. Budget and Exposure
    * Never exceed specified budget allocation
