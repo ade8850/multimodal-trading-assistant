@@ -4,7 +4,6 @@ from typing import Dict, List, Any, Optional
 from pybit.unified_trading import HTTP
 from rich.console import Console
 from .execution import execute_order_operations, set_trading_stops, cancel_order
-from .validation import check_strategy_validity, verify_order_status, calculate_quantity
 from .utils import get_current_price, get_active_orders, get_positions, verify_account_status, get_instrument_info
 
 console = Console()
@@ -23,10 +22,6 @@ class OrdersTool:
     def get_positions(self, symbol: str) -> List[Dict]:
         """Get current positions for a symbol."""
         return get_positions(self.session, symbol)
-
-    def check_strategy_validity(self, order) -> bool:
-        """Verify if order is still valid based on conditions."""
-        return check_strategy_validity(self, order)
 
     def cancel_order(self, symbol: str, order_id: str = None, order_link_id: str = None) -> Dict:
         """Cancel an order by order_id or order_link_id."""
