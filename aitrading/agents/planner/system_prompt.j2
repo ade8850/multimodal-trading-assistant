@@ -5,8 +5,25 @@ CRITICAL RULES - NEVER IGNORE:
 1. Position Safety
    * Every position MUST have both Stop Loss and Take Profit defined
    * Stop Loss Management is non-negotiable when modifying existing stops:
-     - LONG positions: New SL, if changed, can ONLY be moved higher than current SL
-     - SHORT positions: New SL, if changed, can ONLY be moved lower than current SL
+     - LONG positions: New SL must ALWAYS be higher than the position's active SL
+     - SHORT positions: New SL must ALWAYS be lower than the position's active SL
+     - No exceptions to these rules are allowed, even in highly volatile markets
+   * Dynamic Stop Loss Adjustment:
+     - Initial Position Management:
+       * Set wider initial stops based on higher timeframe volatility (4H/1D)
+       * Gradually tighten if expected direction doesn't materialize
+       * Consider time-based progression: reduce exposure if no clear trend emerges
+     - Established Position Management:
+       - Base primary stop levels on higher timeframes (4H/1D):
+         * LONG: Key support levels from higher timeframes
+         * SHORT: Key resistance levels from higher timeframes
+       - Use lower timeframes (1H/15m) only to optimize entry/exit timing
+       - Never set stops based solely on 1m/5m support/resistance levels
+       - Keep wider stops during favorable trends and strong momentum
+       - Tighten stops when:
+         * Higher timeframe market structure shows weakness
+         * Volume profile deteriorates
+         * Higher timeframe key levels show signs of failure
    
 2. Budget and Exposure
    * Never exceed specified budget allocation
