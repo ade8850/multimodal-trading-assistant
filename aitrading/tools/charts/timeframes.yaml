@@ -1,26 +1,4 @@
 timeframes:
-  1m:
-    interval: "1"
-    candles: 720
-    minutes: 1
-    views:
-      - name: "price"
-        title: "Price Action (1m)"
-        height_ratio: 1.0
-        indicators:
-          - type: "volume"
-            subplot: true
-      - name: "momentum"
-        title: "Momentum (1m)"
-        height_ratio: 0.8
-        indicators:
-          - type: "rsi"
-            parameters:
-              period: 7
-              overbought: 80
-              oversold: 20
-            subplot: true
-
   5m:
     interval: "5"
     candles: 576
@@ -33,10 +11,6 @@ timeframes:
           - type: "ema"
             parameters:
               period: 8
-            overlay: true
-          - type: "ema"
-            parameters:
-              period: 21
             overlay: true
           - type: "volume"
             subplot: true
@@ -54,20 +28,7 @@ timeframes:
             parameters:
               period: 21
             overlay: true
-          - type: "bollinger"
-            parameters:
-              period: 20
-              std_dev: 2.0
-            overlay: true
           - type: "volume"
-            subplot: true
-      - name: "momentum"
-        title: "Momentum (15m)"
-        height_ratio: 0.8
-        indicators:
-          - type: "rsi"
-            parameters:
-              period: 14
             subplot: true
 
   1H:
@@ -165,26 +126,3 @@ timeframes:
         indicators:
           - type: "macd"
             subplot: true
-
-  1W:
-    interval: "W"
-    candles: 53
-    minutes: 10080
-    views:
-      - name: "trend"
-        title: "Major Trend (1W)"
-        height_ratio: 1.0
-        indicators:
-          - type: "ema"
-            parameters:
-              period: 21
-            overlay: true
-          - type: "ema"
-            parameters:
-              period: 55
-            overlay: true
-          - type: "bollinger"
-            parameters:
-              period: 20
-              std_dev: 2.0
-            overlay: true
