@@ -19,10 +19,10 @@ class MarketDataTool:
 
     def get_analysis_timeframes(self) -> List[str]:
         """Get all available analysis timeframes."""
-        logger.info("Getting available timeframes")
+        logger.debug("Getting available timeframes")
         try:
             timeframes = self.config.get_base_timeframes()
-            logger.info(f"Retrieved timeframes: {timeframes}")
+            logger.debug(f"Retrieved timeframes: {timeframes}")
             return timeframes
         except Exception as e:
             logger.error(f"Error getting timeframes: {str(e)}")
@@ -38,11 +38,11 @@ class MarketDataTool:
 
     def fetch_historical_data(self, symbol: str, timeframe: str) -> pd.DataFrame:
         """Fetch historical market data for specified timeframe."""
-        logger.info(f"Fetching data for {symbol} on {timeframe} timeframe")
+        logger.debug(f"Fetching data for {symbol} on {timeframe} timeframe")
         try:
             # Get timeframe configuration
             tf_config = self.config.get_timeframe_config(timeframe)
-            logger.info(f"Using interval: {tf_config.interval} for timeframe: {timeframe}")
+            logger.debug(f"Using interval: {tf_config.interval} for timeframe: {timeframe}")
 
             # Get data from Bybit
             response = self.session.get_kline(
@@ -57,7 +57,7 @@ class MarketDataTool:
                 raise ValueError(f"API error: {response['retMsg']}")
 
             data = self._process_kline_data(response["result"]["list"])
-            logger.info(f"Retrieved {len(data)} candles for {timeframe}")
+            logger.debug(f"Retrieved {len(data)} candles for {timeframe}")
             return data
 
         except Exception as e:
