@@ -135,7 +135,7 @@ def _prepare_base_order_params(session, order, instrument_info: Dict) -> Dict:
             "orderLinkId": order.order_link_id
         }
 
-        # Add price for limit orders
+        # Add price for limit orders only
         if order.order.type == "limit":
             params["price"] = str(order.order.entry.price)
 
