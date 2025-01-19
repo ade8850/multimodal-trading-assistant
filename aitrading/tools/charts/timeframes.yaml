@@ -1,4 +1,4 @@
-timeframes
+timeframes:
   5m:
     interval: "5"
     candles: 576
