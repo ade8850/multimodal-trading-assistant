@@ -44,10 +44,14 @@ timeframes:
             parameters:
               period: 21
             overlay: true
-          - type: "ema"
-            parameters:
-              period: 55
-            overlay: true
+#          - type: "ema"
+#            parameters:
+#              period: 55
+#            overlay: true
+#          - type: "ema"
+#            parameters:
+#              period: 200
+#            overlay: true
           - type: "bollinger"
             parameters:
               period: 20
@@ -73,15 +77,15 @@ timeframes:
         indicators:
           - type: "ema"
             parameters:
+              period: 8
+            overlay: true
+          - type: "ema"
+            parameters:
               period: 21
             overlay: true
           - type: "ema"
             parameters:
               period: 55
-            overlay: true
-          - type: "ema"
-            parameters:
-              period: 200
             overlay: true
       - name: "momentum"
         title: "Momentum Analysis (4H)"
