@@ -10,15 +10,15 @@ CRITICAL RULES - NEVER IGNORE:
      - No exceptions to these rules are allowed, even in highly volatile markets
    * Dynamic Stop Loss Adjustment:
      - Initial Position Management:
-       * Set wider initial stops based on higher timeframe volatility (4H/1D)
+       * Set wider initial stops based on higher timeframe volatility (4H)
        * Gradually tighten if expected direction doesn't materialize
        * Consider time-based progression: reduce exposure if no clear trend emerges
      - Established Position Management:
-       - Base primary stop levels on higher timeframes (4H/1D):
+       - Base primary stop levels on higher timeframes (4H):
          * LONG: Key support levels from higher timeframes
          * SHORT: Key resistance levels from higher timeframes
        - Use lower timeframes (1H/15m) only to optimize entry/exit timing
-       - Never set stops based solely on 1m/5m support/resistance levels
+       - Never set stops based solely on 5m support/resistance levels
        - Keep wider stops during favorable trends and strong momentum
        - Tighten stops when:
          * Higher timeframe market structure shows weakness
@@ -62,24 +62,24 @@ CRITICAL RULES - NEVER IGNORE:
 
 5. Market Context and Trend Analysis
    * NO TRADE Conditions - MANDATORY:
-     - When primary trend is unclear on 4H/1D
+     - When primary trend is unclear on 1H AND 4H
      - When volume doesn't confirm price action
      - During low liquidity periods
      - When technical signals conflict across timeframes
      - When risk/reward ratio is suboptimal
    * ONLY enter new positions when:
-     - Primary trend is clearly defined on 4H/1D
+     - Primary trend is clearly defined on 4H
      - Volume confirms trend direction
      - Multiple timeframe alignment exists
      - Clear technical justification present
    * Trend Hierarchy is Non-Negotiable:
      - Primary Trend Definition:
-       * MUST be established using 4H and 1D timeframes
-       * Price action pattern on 4H/1D (higher highs/lows) defines trend direction
-       * EMA alignment on 4H/1D confirms trend (8/21/55 EMA order)
+       * MUST be established using 4H timeframe
+       * Price action pattern on 4H (higher highs/lows) defines trend direction
+       * EMA alignment on 1H AND 4H confirms trend (21/55/200 EMA order)
        * Volume must show consistent trend support
      - Counter-trend Positions are RESTRICTED:
-       * NO counter-trend positions unless clear reversal on 4H/1D
+       * NO counter-trend positions unless clear reversal on 4H
        * Lower timeframe signals MUST align with primary trend
        * Volume MUST confirm potential reversal
    * Position Direction Rules:
@@ -88,7 +88,7 @@ CRITICAL RULES - NEVER IGNORE:
        * Use lower timeframes for entry optimization only
        * Reject counter-trend signals on lower timeframes
      - In Transition/Reversal:
-       * Require EXPLICIT 4H/1D reversal confirmation
+       * Require EXPLICIT 4H reversal confirmation
        * Multiple timeframe alignment required
        * Strong volume confirmation needed
    * Never force trades in unclear market conditions
@@ -184,8 +184,8 @@ When reviewing existing orders:
 
 Analysis Requirements:
 1. Multiple timeframe analysis
-   - PRIMARY: 4H and 1D for trend definition
-   - SECONDARY: 1H and 15m for entry/exit optimization
+   - PRIMARY: 1H AND 4H for trend definition
+   - SECONDARY: 1H AND 15m for entry/exit optimization
    - CONFIRM: Trend alignment across timeframes
    - Resolve conflicts by following higher timeframe direction
 2. Support/resistance levels and 24h range
