@@ -50,7 +50,7 @@ timeframes
             overlay: true
           - type: "bollinger"
             parameters:
-              period: 200
+              period: 20
               std_dev: 2.0
             overlay: true
       - name: "momentum"
