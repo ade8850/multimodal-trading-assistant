@@ -129,22 +129,23 @@ class TradingPlanner:
             graphs_dir = Path('.graphs')
             graphs_dir.mkdir(exist_ok=True)
 
-            # Clean existing files
+            # Clean only files related to the current symbol
             if graphs_dir.exists():
-                for file in graphs_dir.glob('*'):
+                symbol_pattern = f"{symbol}_*"
+                for file in graphs_dir.glob(symbol_pattern):
                     try:
                         if file.is_file():
                             file.unlink()
                     except Exception as e:
                         logger.warning(f"Could not remove file {file}: {str(e)}")
 
-            logger.debug("Cleaned/created .graphs directory")
+            logger.debug(f"Cleaned charts for symbol {symbol} in .graphs directory")
 
             for timeframe in timeframes:
                 try:
                     # Fetch historical data
                     df = self.market_data.fetch_historical_data(symbol, timeframe)
-                    
+
                     # Generate multiple charts for this timeframe
                     timeframe_charts = self.chart_generator.create_charts_for_timeframe(df, timeframe)
                     if timeframe_charts:
