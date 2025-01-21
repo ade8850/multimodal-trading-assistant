@@ -117,7 +117,7 @@ class TradingPlanner:
             system_prompt = self.system_template.render(**template_vars)
             user_prompt = self.user_template.render(**template_vars)
 
-            console.print(system_prompt, style="yellow")
+            #console.print(system_prompt, style="yellow")
 
             # Get AI response
             response_dict = self.ai_client.generate_strategy(system_prompt, user_prompt, charts)
