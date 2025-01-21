@@ -79,6 +79,11 @@ timeframes:
             parameters:
               period: 8
             overlay: true
+          - type: "bollinger"
+            parameters:
+              period: 20
+              std_dev: 2.0
+            overlay: true
 #          - type: "ema"
 #            parameters:
 #              period: 21
