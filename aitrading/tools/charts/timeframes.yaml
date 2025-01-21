@@ -10,7 +10,11 @@ timeframes:
         indicators:
           - type: "ema"
             parameters:
-              period: 8
+              period: 55
+            overlay: true
+          - type: "ema"
+            parameters:
+              period: 100
             overlay: true
           - type: "volume"
             subplot: true
@@ -26,7 +30,11 @@ timeframes:
         indicators:
           - type: "ema"
             parameters:
-              period: 21
+              period: 55
+            overlay: true
+          - type: "ema"
+            parameters:
+              period: 100
             overlay: true
           - type: "volume"
             subplot: true
@@ -42,16 +50,16 @@ timeframes:
         indicators:
           - type: "ema"
             parameters:
-              period: 21
+              period: 9
             overlay: true
-#          - type: "ema"
-#            parameters:
-#              period: 55
-#            overlay: true
-#          - type: "ema"
-#            parameters:
-#              period: 200
-#            overlay: true
+          - type: "ema"
+            parameters:
+              period: 55
+            overlay: true
+          - type: "ema"
+            parameters:
+              period: 100
+            overlay: true
           - type: "bollinger"
             parameters:
               period: 20
@@ -77,21 +85,21 @@ timeframes:
         indicators:
           - type: "ema"
             parameters:
-              period: 8
+              period: 9
+            overlay: true
+          - type: "ema"
+            parameters:
+              period: 55
+            overlay: true
+          - type: "ema"
+            parameters:
+              period: 100
             overlay: true
           - type: "bollinger"
             parameters:
               period: 20
               std_dev: 2.0
             overlay: true
-#          - type: "ema"
-#            parameters:
-#              period: 21
-#            overlay: true
-#          - type: "ema"
-#            parameters:
-#              period: 55
-#            overlay: true
       - name: "momentum"
         title: "Momentum Analysis (4H)"
         height_ratio: 0.8
