@@ -2,9 +2,11 @@
 
 from typing import Dict, Any
 import pandas as pd
+import numpy as np
 from .models import (
     EmaParameters, BollingerParameters, RsiParameters,
-    MacdParameters, VolumeParameters, IndicatorConfig
+    MacdParameters, VolumeParameters, AtrParameters,
+    IndicatorConfig
 )
 
 class IndicatorCalculator:
@@ -19,15 +21,31 @@ class IndicatorCalculator:
         return self.df["close"].ewm(span=params.period, adjust=False).mean()
         
     def calculate_bollinger(self, params: BollingerParameters) -> Dict[str, pd.Series]:
-        """Calculate Bollinger Bands."""
+        """Calculate Bollinger Bands and optionally bandwidth."""
         middle_band = self.df["close"].rolling(window=params.period).mean()
         std = self.df["close"].rolling(window=params.period).std()
+        upper_band = middle_band + (params.std_dev * std)
+        lower_band = middle_band - (params.std_dev * std)
         
-        return {
-            "BB_upper": middle_band + (params.std_dev * std),
+        result = {
+            "BB_upper": upper_band,
             "BB_middle": middle_band,
-            "BB_lower": middle_band - (params.std_dev * std)
+            "BB_lower": lower_band
         }
+
+        if params.calculate_width:
+            # Calculate Bollinger Bandwidth: (Upper - Lower) / Middle
+            bb_width = (upper_band - lower_band) / middle_band
+            result["BB_width"] = bb_width
+
+            if params.store_percentile:
+                # Calculate historical percentile of bandwidth
+                bb_width_pct = bb_width.rolling(window=len(bb_width), min_periods=1).apply(
+                    lambda x: pd.Series(x).rank(pct=True).iloc[-1]
+                )
+                result["BB_width_percentile"] = bb_width_pct
+
+        return result
         
     def calculate_rsi(self, params: RsiParameters) -> pd.Series:
         """Calculate Relative Strength Index."""
@@ -60,6 +78,43 @@ class IndicatorCalculator:
             
         return result
 
+    def calculate_atr(self, params: AtrParameters) -> Dict[str, pd.Series]:
+        """Calculate Average True Range and related metrics."""
+        high = self.df["high"]
+        low = self.df["low"]
+        close = self.df["close"]
+        
+        # Calculate True Range
+        tr1 = high - low
+        tr2 = abs(high - close.shift())
+        tr3 = abs(low - close.shift())
+        tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+        
+        # Calculate ATR
+        atr = tr.rolling(window=params.period).mean()
+        result = {"ATR": atr}
+
+        if params.normalize:
+            # Calculate Normalized ATR (ATR/Close Price * 100)
+            natr = (atr / close) * 100
+            result["NATR"] = natr
+
+        if params.store_percentile:
+            # Calculate historical percentile of ATR
+            atr_pct = atr.rolling(window=len(atr), min_periods=1).apply(
+                lambda x: pd.Series(x).rank(pct=True).iloc[-1]
+            )
+            result["ATR_percentile"] = atr_pct
+            
+            if params.normalize:
+                # Calculate historical percentile of NATR
+                natr_pct = natr.rolling(window=len(natr), min_periods=1).apply(
+                    lambda x: pd.Series(x).rank(pct=True).iloc[-1]
+                )
+                result["NATR_percentile"] = natr_pct
+
+        return result
+
     def calculate_indicator(self, config: IndicatorConfig) -> Dict[str, pd.Series]:
         """Calculate a single indicator based on its configuration."""
         if config.type == "ema":
@@ -74,6 +129,8 @@ class IndicatorCalculator:
             return self.calculate_macd(config.parameters)
         elif config.type == "volume":
             return self.calculate_volume(config.parameters)
+        elif config.type == "atr":
+            return self.calculate_atr(config.parameters)
         else:
             raise ValueError(f"Unsupported indicator type: {config.type}")
 

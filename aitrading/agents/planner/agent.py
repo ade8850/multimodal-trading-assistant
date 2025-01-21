@@ -19,6 +19,7 @@ from ...models import (
 from ...tools.bybit.market_data import MarketDataTool
 from ...tools.bybit.orders import OrdersTool
 from ...tools.charts import ChartGeneratorTool
+from ...tools.volatility import VolatilityCalculator
 
 console = Console()
 logger = logging.getLogger("trader")
@@ -35,6 +36,7 @@ class TradingPlanner:
         self.market_data = market_data
         self.orders = orders
         self.chart_generator = chart_generator
+        self.volatility_calculator = VolatilityCalculator()
 
         # Select appropriate client based on provider name
         if provider_name == "anthropic":
@@ -59,9 +61,23 @@ class TradingPlanner:
 
             # Get current market data
             current_price = self.market_data.get_current_price(params.symbol)
-            timeframes = self.market_data.get_analysis_timeframes()  # Rimosso il parametro timeframe
+            timeframes = self.market_data.get_analysis_timeframes()
 
             console.print(">> timeframes: ", timeframes, style="bold green")
+
+            # Fetch market data and calculate volatility metrics
+            timeframe_data = {}
+            for timeframe in timeframes:
+                df = self.market_data.fetch_historical_data(params.symbol, timeframe)
+                timeframe_data[timeframe] = df
+
+            # Calculate volatility metrics
+            try:
+                volatility_metrics = self.volatility_calculator.calculate_for_timeframes(timeframe_data)
+                console.print("\n[green]Volatility metrics calculated successfully[/green]")
+            except Exception as e:
+                console.print(f"[yellow]Warning: Error calculating volatility metrics: {str(e)}[/yellow]")
+                volatility_metrics = None
 
             # Get active orders
             try:
@@ -93,12 +109,15 @@ class TradingPlanner:
                 "leverage": params.leverage,
                 "strategy_instructions": params.strategy_instructions,
                 "existing_orders": existing_orders,
-                "current_positions": current_positions
+                "current_positions": current_positions,
+                "volatility_metrics": volatility_metrics
             }
 
             # Generate prompts
             system_prompt = self.system_template.render(**template_vars)
             user_prompt = self.user_template.render(**template_vars)
+
+            console.print(system_prompt, style="yellow")
 
             # Get AI response
             response_dict = self.ai_client.generate_strategy(system_prompt, user_prompt, charts)

@@ -21,6 +21,37 @@ Priority Hierarchy:
    - Maintain proper ID formatting and documentation
    - Provide clear reasoning for all actions
 
+{% if volatility_metrics %}
+Current volatility metrics for each significant timeframe:
+
+4H Timeframe:
+- ATR: {{ volatility_metrics.metrics['4H'].atr }}
+- ATR Percentile: {{ volatility_metrics.metrics['4H'].atr_percentile }}
+- Normalized ATR: {{ volatility_metrics.metrics['4H'].normalized_atr }}
+- BB Width: {{ volatility_metrics.metrics['4H'].bb_width }}
+- BB Width Percentile: {{ volatility_metrics.metrics['4H'].bb_width_percentile }}
+- Volatility Change 24h: {{ volatility_metrics.metrics['4H'].volatility_change_24h }}
+- Current Regime: {{ volatility_metrics.metrics['4H'].regime }}
+
+1H Timeframe:
+- ATR: {{ volatility_metrics.metrics['1H'].atr }}
+- ATR Percentile: {{ volatility_metrics.metrics['1H'].atr_percentile }}
+- Normalized ATR: {{ volatility_metrics.metrics['1H'].normalized_atr }}
+- BB Width: {{ volatility_metrics.metrics['1H'].bb_width }}
+- BB Width Percentile: {{ volatility_metrics.metrics['1H'].bb_width_percentile }}
+- Volatility Change 24h: {{ volatility_metrics.metrics['1H'].volatility_change_24h }}
+- Current Regime: {{ volatility_metrics.metrics['1H'].regime }}
+
+15m Timeframe:
+- ATR: {{ volatility_metrics.metrics['15m'].atr }}
+- ATR Percentile: {{ volatility_metrics.metrics['15m'].atr_percentile }}
+- Normalized ATR: {{ volatility_metrics.metrics['15m'].normalized_atr }}
+- BB Width: {{ volatility_metrics.metrics['15m'].bb_width }}
+- BB Width Percentile: {{ volatility_metrics.metrics['15m'].bb_width_percentile }}
+- Volatility Change 24h: {{ volatility_metrics.metrics['15m'].volatility_change_24h }}
+- Current Regime: {{ volatility_metrics.metrics['15m'].regime }}
+{% endif %}
+
 CRITICAL RULES - NEVER IGNORE:
 
 1. Position Safety

@@ -28,6 +28,14 @@ class BollingerParameters(BaseIndicatorParameters):
         ge=0,
         description="Number of standard deviations"
     )
+    calculate_width: bool = Field(
+        default=False,
+        description="Calculate Bollinger Bandwidth"
+    )
+    store_percentile: bool = Field(
+        default=False,
+        description="Store historical percentile of bandwidth"
+    )
 
 
 class RsiParameters(BaseIndicatorParameters):
@@ -86,13 +94,31 @@ class VolumeParameters(BaseIndicatorParameters):
     )
 
 
+class AtrParameters(BaseIndicatorParameters):
+    """Parameters for Average True Range."""
+    period: int = Field(
+        default=14,
+        ge=1,
+        description="Number of periods for ATR calculation"
+    )
+    store_percentile: bool = Field(
+        default=False,
+        description="Store historical percentile of ATR"
+    )
+    normalize: bool = Field(
+        default=False,
+        description="Calculate normalized ATR (ATR/Close Price)"
+    )
+
+
 # Mapping between indicator type and its parameter class
 INDICATOR_PARAMS_MAP = {
     "ema": EmaParameters,
     "bollinger": BollingerParameters,
     "rsi": RsiParameters,
     "macd": MacdParameters,
-    "volume": VolumeParameters
+    "volume": VolumeParameters,
+    "atr": AtrParameters
 }
 
 
@@ -100,7 +126,7 @@ class IndicatorConfig(BaseModel):
     """Configuration for a single indicator."""
     type: str
     parameters: Union[EmaParameters, BollingerParameters, RsiParameters,
-                     MacdParameters, VolumeParameters]
+                     MacdParameters, VolumeParameters, AtrParameters]
     subplot: bool = False
     overlay: bool = False
 
