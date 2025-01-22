@@ -3,7 +3,7 @@
 from typing import Dict, List
 from datetime import datetime, timedelta
 from pathlib import Path
-from jinja2 import Template
+from jinja2 import Template, Environment, FileSystemLoader
 import os
 import time
 from rich.console import Console
@@ -48,9 +48,15 @@ class TradingPlanner:
         else:
             raise ValueError(f"Unsupported AI provider: {provider_name}")
 
-        template_dir = Path(__file__).parent
-        self.system_template = Template((template_dir / "system_prompt.j2").read_text())
-        self.user_template = Template((template_dir / "user_prompt.j2").read_text())
+        # Initialize Jinja2 environment
+        template_dir = Path(__file__).parent / "prompts"
+        self.env = Environment(
+            loader=FileSystemLoader(template_dir),
+            trim_blocks=True,
+            lstrip_blocks=True,
+        )
+        self.system_template = self.env.get_template("system_prompt.j2")
+        self.user_template = self.env.get_template("user_prompt.j2")
 
     def create_trading_plan(self, params: TradingParameters) -> TradingPlan:
         """Create a new trading plan with analysis and planned orders."""
@@ -113,11 +119,9 @@ class TradingPlanner:
                 "volatility_metrics": volatility_metrics
             }
 
-            # Generate prompts
+            # Generate prompts using Jinja2 templates
             system_prompt = self.system_template.render(**template_vars)
             user_prompt = self.user_template.render(**template_vars)
-
-            #console.print(system_prompt, style="yellow")
 
             # Get AI response
             response_dict = self.ai_client.generate_strategy(system_prompt, user_prompt, charts)

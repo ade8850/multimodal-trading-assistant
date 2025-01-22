@@ -1,0 +1,74 @@
+Your response must:
+1. Follow the exact JSON schema provided
+2. Start and end with curly braces
+3. Have properly quoted strings
+4. Use ISO format for dates
+5. Contain no explanatory text outside the JSON
+6. Include cancellations only when necessary
+7. Order cancellations must be executed before new orders
+
+Order ID and Link ID Requirements:
+- For NEW orders:
+  * Each order must have a unique order_link_id
+  * Format MUST be: "{plan_id}-{session_id}-{order_number}"
+  * Example: For plan_id "{{ plan_id }}", session_id "{{ session_id }}" and first order: "{{ plan_id }}-{{ session_id }}-1"
+  * The order_number must match the order's id field
+  * Order IDs must be progressive starting from 1
+- For CANCELLATIONS:
+  * Always copy the exact order ID from the active orders list
+  * Order link ID is optional but must be exact if included
+  * Do not generate new IDs or modify existing ones
+
+Management Strategy:
+1. Current positions evaluation:
+  - Review if original entry conditions still valid
+  - Assess if market structure has changed
+  - Adjust stops/targets based on current context
+
+2. New positions decisions:
+  - Evaluate setup quality based on price action and volume
+  - Verify alignment with dominant trend
+  - Ensure adequate volume
+  - Define clear invalidation levels
+
+3. Decision override conditions:
+  - Immediately reduce risk if:
+    * Volume shows significant contrary pressure
+    * Multiple timeframe trend breaking down
+    * Key level failing with momentum
+  - Exit full position if:
+    * Market structure invalidated
+    * Stop level compromised
+    * Risk/reward no longer favorable
+
+Analysis Requirements:
+1. Support/resistance levels and 24h range
+2. Technical indicators - EMAs, RSI, MACD, BB
+3. Position sizing based on:
+   - Market volatility
+   - Setup quality
+   - Current market phase
+4. Entry timing and type selection (market/limit)
+5. Take profit and stop loss levels
+6. Budget analysis:
+  - Calculate current budget allocation across positions and orders
+  - Consider budget freed by any planned order cancellations
+  - Ensure new orders respect remaining available budget
+
+Guidelines for Plan Creation:
+1. Each plan must have a unique ID
+2. Each new order must have a unique progressive ID starting from 1
+3. Each order must be self-contained with its own rationale
+4. Order Type Selection:
+   - Market Orders (preferred when):
+     * Price is within target entry range (±0.1% of current price)
+     * Quick entry is needed to capture momentum
+     * Volume supports immediate execution
+     * Risk/reward remains favorable at current price
+   - Limit Orders (preferred when):
+     * Targeting specific support/resistance levels
+     * Building positions at predefined levels
+     * Price expected to reach target in future
+   Note: Don't avoid market orders if conditions support immediate entry
+5. Stop losses must be market orders
+6. Set invalidation conditions based on key price levels

@@ -1,0 +1,105 @@
+Trading Parameters:
+Symbol: {{ symbol }}
+Current Price: {{ current_price }}
+Budget: {{ budget }} USDT
+Leverage: {{ leverage }}x
+
+{% if volatility_metrics %}
+Current volatility metrics for each significant timeframe:
+
+4H Timeframe:
+- ATR: {{ volatility_metrics.metrics['4H'].atr }}
+- ATR Percentile: {{ volatility_metrics.metrics['4H'].atr_percentile }}
+- Normalized ATR: {{ volatility_metrics.metrics['4H'].normalized_atr }}
+- BB Width: {{ volatility_metrics.metrics['4H'].bb_width }}
+- BB Width Percentile: {{ volatility_metrics.metrics['4H'].bb_width_percentile }}
+- Volatility Change 24h: {{ volatility_metrics.metrics['4H'].volatility_change_24h }}
+- Current Regime: {{ volatility_metrics.metrics['4H'].regime }}
+
+1H Timeframe:
+- ATR: {{ volatility_metrics.metrics['1H'].atr }}
+- ATR Percentile: {{ volatility_metrics.metrics['1H'].atr_percentile }}
+- Normalized ATR: {{ volatility_metrics.metrics['1H'].normalized_atr }}
+- BB Width: {{ volatility_metrics.metrics['1H'].bb_width }}
+- BB Width Percentile: {{ volatility_metrics.metrics['1H'].bb_width_percentile }}
+- Volatility Change 24h: {{ volatility_metrics.metrics['1H'].volatility_change_24h }}
+- Current Regime: {{ volatility_metrics.metrics['1H'].regime }}
+
+15m Timeframe:
+- ATR: {{ volatility_metrics.metrics['15m'].atr }}
+- ATR Percentile: {{ volatility_metrics.metrics['15m'].atr_percentile }}
+- Normalized ATR: {{ volatility_metrics.metrics['15m'].normalized_atr }}
+- BB Width: {{ volatility_metrics.metrics['15m'].bb_width }}
+- BB Width Percentile: {{ volatility_metrics.metrics['15m'].bb_width_percentile }}
+- Volatility Change 24h: {{ volatility_metrics.metrics['15m'].volatility_change_24h }}
+- Current Regime: {{ volatility_metrics.metrics['15m'].regime }}
+{% endif %}
+
+{% if current_positions %}
+Current Positions:
+{% for position in current_positions %}
+- Symbol: {{ position.symbol }}
+ Side: {{ position.side }}
+ Size: {{ position.size }}
+ Entry Price: {{ position.entry_price }}
+ Leverage: {{ position.leverage }}
+ Unrealized PNL: {{ position.unrealized_pnl }}
+ Take Profit: {{ position.take_profit }}
+ Stop Loss: {{ position.stop_loss }}
+ Created: {{ position.created_time }}
+{% endfor %}
+
+Position Analysis Guidelines (unless strategy instructions specify different criteria):
+1. Evaluate each position's alignment with strategy conditions
+2. Consider if TP/SL levels need adjustment based on:
+  - Current market conditions
+  - Technical levels
+  - Given strategy rules
+3. Any TP/SL modifications must be included in the plan as position_updates
+4. Each position update must include clear reasoning
+
+Example position update:
+{
+   "symbol": "BTCUSDT",
+   "take_profit": 43000.0,
+   "stop_loss": 41000.0,
+   "reason": "Adjusting TP higher due to break of resistance at 42.5K and SL tighter to protect profits"
+}
+{% endif %}
+
+{% if existing_orders %}
+Current Active Orders:
+{% for order in existing_orders %}
+- Order ID: {{ order.id }}
+ Link ID: {{ order.order_link_id }}
+ Type: {{ order.type }}
+ Side: {{ order.side }}
+ Price: {{ order.price }}
+ Quantity: {{ order.qty }}
+ Status: {{ order.status }}
+ Created: {{ order.created_time }}
+ Take Profit: {{ order.take_profit }}
+ Stop Loss: {{ order.stop_loss }}
+{% endfor %}
+
+Order Review Guidelines (unless strategy specifies different criteria):
+1. Evaluate each order's alignment with strategy conditions
+2. Consider their entry points, take profits, and stop losses
+3. If an order does not align with strategy conditions, include it in the cancellations list
+4. Provide clear reasoning for any cancellation decision
+
+Order Cancellation Requirements:
+1. For EACH order to be cancelled, you MUST provide:
+  - The exchange's order ID as the 'id' field (from 'Order ID' in active orders)
+  - Optionally include the order_link_id (from 'Link ID' in active orders)
+  - Both IDs must be copied EXACTLY as shown in the active orders list
+2. The 'symbol' field must match the order being cancelled
+3. The 'reason' field must clearly explain the cancellation rationale
+4. Example of a valid cancellation:
+  {
+    "id": "1234567890",        // Exact Order ID from active orders
+    "order_link_id": "abc123", // Optional, exact Link ID from active orders
+    "symbol": "BTCUSDT",       // Must match the order's symbol
+    "reason": "Price moved significantly above the limit order level"
+  }
+{% endif %}
