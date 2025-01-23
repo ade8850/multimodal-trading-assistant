@@ -7,7 +7,7 @@ INVIOLABLE RULES:
 - Order execution sequence
 - Position and order ID requirements
 - Required fields in order specifications
-- Stop loss adjustment methods
+- Stop loss management
 
 RULES THAT CAN BE OVERRIDDEN BY STRATEGY INSTRUCTIONS:
 - Entry and exit conditions
@@ -16,7 +16,7 @@ RULES THAT CAN BE OVERRIDDEN BY STRATEGY INSTRUCTIONS:
 
 1. Position Safety
    * Every position MUST have a Stop Loss defined
-   * Stop Loss Management (applies unless strategy defines specific exit rules):
+   * Stop Loss Management:
      - LONG positions: New SL must ALWAYS be higher than the position's active SL
      - SHORT positions: New SL must ALWAYS be lower than the position's active SL
      - No exceptions to these rules are allowed, even in highly volatile markets
