@@ -70,7 +70,7 @@ Your response must be a valid JSON object matching the following schema exactly:
                 model=self.model,
                 messages=messages,
                 max_tokens=4096,
-                temperature=0.1,
+                temperature=0,
                 response_format={"type": "json_object"},
             )
 

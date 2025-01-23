@@ -57,7 +57,7 @@ class GeminiClient(BaseAIClient):
                     response_mime_type='application/json',
                     response_schema=gemini_schema,
                     system_instruction=system_prompt,
-                    temperature=0.1
+                    temperature=0
                 )
             )
 

@@ -54,7 +54,7 @@ Your response must be a valid JSON object matching the following schema exactly:
             message = self.client.messages.create(
                 model=self.model,
                 max_tokens=2000,
-                temperature=0.1,
+                temperature=0,
                 system=final_system_prompt,
                 messages=[{
                     "role": "user",
