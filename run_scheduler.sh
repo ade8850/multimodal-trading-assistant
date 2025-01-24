@@ -83,6 +83,7 @@ docker run -d \
     -e OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
     -e DUMP_CHARTS="${DUMP_CHARTS:-False}" \
     -e CONFIG_PATH="/app/config.yaml" \
+    -e LOGFIRE_TOKEN="${LOGFIRE_TOKEN:-}" \
     trading-scheduler
 
 # Wait a moment for the container to start

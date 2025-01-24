@@ -5,6 +5,7 @@ import logging
 from typing import Dict, List, Any
 from google import genai
 from google.genai import types
+import os
 
 from ..base import BaseAIClient
 from ....schema import SchemaConverter
@@ -23,6 +24,14 @@ class GeminiClient(BaseAIClient):
         self.model = 'gemini-2.0-flash-exp'
         logging.info("Gemini client initialized")
 
+        # Gemini-specific logfire instrumentation
+        if os.getenv('LOGFIRE_TOKEN'):
+            import logfire
+            try:
+                logfire.instrument_gemini(self.client)
+            except Exception as e:
+                logging.error(f"Failed to instrument Gemini with Logfire: {str(e)}")
+
     def generate_strategy(self, system_prompt: str, user_prompt: str, images: List[bytes]) -> Dict[str, Any]:
         """Generate trading plan using Gemini."""
         try:
@@ -39,15 +48,12 @@ class GeminiClient(BaseAIClient):
             from ....models import PlanResponse
             schema = PlanResponse.model_json_schema()
 
-            # Convertiamo lo schema per Gemini
             try:
                 gemini_schema = SchemaConverter.convert(schema, "gemini")
-                #console.print(gemini_schema)
                 logging.debug(f"Converted Gemini schema: {gemini_schema}")
             except Exception as e:
                 logging.error(f"Error converting schema: {str(e)}")
                 raise
-
 
             # Generate content
             response = self.client.models.generate_content(
@@ -66,16 +72,13 @@ class GeminiClient(BaseAIClient):
 
             try:
                 result = json.loads(response.text)
-                #logging.debug(f"Parsed JSON result: {json.dumps(result, indent=2)[:500]}...")
             except json.JSONDecodeError as e:
                 logging.error(f"JSON parsing error: {str(e)}")
                 logging.error(f"Failed to parse response text: {response.text}")
                 raise ValueError(f"Invalid JSON response from Gemini: {str(e)}")
 
-            # Ensure IDs match
             if not self._validate_response(result):
                 raise ValueError("Response validation failed")
-
 
             # Ensure order IDs are progressive
             orders = result["plan"].get("orders", [])
@@ -89,7 +92,6 @@ class GeminiClient(BaseAIClient):
 
         except Exception as e:
             logging.error(f"Error in generate_strategy: {str(e)}", exc_info=True)
-            console.print("[red]Error in generate_strategy:[/red]", style="bold red")
-            console.print(f"[red]Error details: {str(e)}[/red]")
+            console.print("Error in generate_strategy:", style="bold red")
+            console.print(f"Error details: {str(e)}")
             raise Exception(f"Error generating strategy with Gemini: {str(e)}")
-

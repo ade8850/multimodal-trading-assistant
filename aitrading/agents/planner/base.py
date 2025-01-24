@@ -1,22 +1,12 @@
 # aitrading/agents/planner/base.py
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Any, Optional
 from datetime import datetime
-from rich.console import Console
-
-console = Console()
+from typing import Dict, List, Any
 
 
 class BaseAIClient(ABC):
-    """Base interface for AI model clients.
-
-    Handles communication with AI models for trading plan generation.
-    Each implementation (Anthropic, Gemini) must provide methods to:
-    1. Generate a complete trading plan with one or more orders
-    2. Validate the response structure
-    3. Ensure unique identification of plans and orders
-    """
+    """Base interface for AI model clients."""
 
     def __init__(self, api_key: str):
         """Initialize the AI client with API key."""
@@ -24,12 +14,9 @@ class BaseAIClient(ABC):
         self._active_orders: List[Dict[str, Any]] = []
         self.trading_parameters = None
 
-    def set_trading_parameters(self, parameters: Any) -> None:
-        """Set the trading parameters used for validation.
 
-        Args:
-            parameters: The trading parameters to store
-        """
+    def set_trading_parameters(self, parameters: Any) -> None:
+        """Set the trading parameters used for validation."""
         self.trading_parameters = parameters
 
     @abstractmethod
@@ -133,9 +120,5 @@ class BaseAIClient(ABC):
                 raise ValueError(f"Cancellation {i} order link ID must be a string")
 
     def set_active_orders(self, orders: List[Dict[str, Any]]) -> None:
-        """Set the list of active orders for validation.
-
-        Args:
-            orders: List of active orders from the exchange
-        """
+        """Set the list of active orders for validation."""
         self._active_orders = orders

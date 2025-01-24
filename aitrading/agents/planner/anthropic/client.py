@@ -10,7 +10,6 @@ from rich.console import Console
 
 console = Console()
 
-
 class AnthropicClient(BaseAIClient):
     """Client for interacting with Anthropic's Claude model."""
 
@@ -41,7 +40,6 @@ class AnthropicClient(BaseAIClient):
                 logging.error(f"Error converting schema: {str(e)}")
                 raise
 
-
             # Add schema and ID requirements to the system prompt
             schema_requirements = f"""
 Your response must be a valid JSON object matching the following schema exactly:
@@ -71,7 +69,6 @@ Your response must be a valid JSON object matching the following schema exactly:
             try:
                 response_text = message.content[0].text.replace('\n', ' ').replace('    ', ' ')
                 result = json.loads(response_text)
-                logging.debug(f"Parsed JSON result: {json.dumps(result, indent=2)[:500]}...")
             except json.JSONDecodeError as e:
                 logging.error(f"JSON parsing error: {str(e)}")
                 logging.error(f"Failed to parse response text: {message.content[0].text}")
@@ -88,7 +85,6 @@ Your response must be a valid JSON object matching the following schema exactly:
                     console.print(f"[yellow]Fixing order ID from {order.get('id')} to {i}[/yellow]")
                     order["id"] = i
 
-            logging.info("Successfully generated and validated plan")
             return result
 
         except Exception as e:
@@ -112,4 +108,3 @@ Your response must be a valid JSON object matching the following schema exactly:
         """Encode image bytes to base64 string."""
         import base64
         return base64.b64encode(image_bytes).decode('utf-8')
-

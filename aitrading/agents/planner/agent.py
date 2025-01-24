@@ -6,8 +6,9 @@ from pathlib import Path
 from jinja2 import Template, Environment, FileSystemLoader
 import os
 import time
-from rich.console import Console
-import logging
+from contextlib import nullcontext
+
+import logfire
 
 from .anthropic import AnthropicClient
 from .gemini import GeminiClient
@@ -21,24 +22,14 @@ from ...tools.bybit.orders import OrdersTool
 from ...tools.charts import ChartGeneratorTool
 from ...tools.volatility import VolatilityCalculator
 
-console = Console()
-logger = logging.getLogger("trader")
-
 class TradingPlanner:
-    def __init__(
-            self,
-            market_data: MarketDataTool,
-            orders: OrdersTool,
-            chart_generator: ChartGeneratorTool,
-            provider_name: str,
-            api_key: str
-    ):
+    def __init__(self, market_data: MarketDataTool, orders: OrdersTool, 
+                chart_generator: ChartGeneratorTool, provider_name: str, api_key: str):
         self.market_data = market_data
         self.orders = orders
         self.chart_generator = chart_generator
         self.volatility_calculator = VolatilityCalculator()
 
-        # Select appropriate client based on provider name
         if provider_name == "anthropic":
             self.ai_client = AnthropicClient(api_key)
         elif provider_name == "openai":
@@ -48,7 +39,6 @@ class TradingPlanner:
         else:
             raise ValueError(f"Unsupported AI provider: {provider_name}")
 
-        # Initialize Jinja2 environment
         template_dir = Path(__file__).parent / "prompts"
         self.env = Environment(
             loader=FileSystemLoader(template_dir),
@@ -58,88 +48,111 @@ class TradingPlanner:
         self.system_template = self.env.get_template("system_prompt.j2")
         self.user_template = self.env.get_template("user_prompt.j2")
 
+        try:
+            logfire.info("Trading planner initialized", extra={
+                "ai_provider": provider_name,
+            })
+        except Exception as e:
+            logfire.exception(f"Failed to initialize Logfire: {str(e)}")
+
     def create_trading_plan(self, params: TradingParameters) -> TradingPlan:
         """Create a new trading plan with analysis and planned orders."""
         try:
-            # Generate plan and session IDs
-            plan_id = generate_uuid_short(8)
-            session_id = generate_uuid_short(4)
+            with logfire.span("create_trading_plan") as span:
+                span.set_attributes({
+                    "symbol": params.symbol,
+                    "budget": params.budget,
+                    "leverage": params.leverage,
+                })
 
-            # Get current market data
-            current_price = self.market_data.get_current_price(params.symbol)
-            timeframes = self.market_data.get_analysis_timeframes()
+                plan_id = generate_uuid_short(8)
+                session_id = generate_uuid_short(4)
 
-            console.print(">> timeframes: ", timeframes, style="bold green")
+                # Get market data and volatility metrics
+                with logfire.span("fetch_market_data"):
+                    current_price = self.market_data.get_current_price(params.symbol)
+                    timeframes = self.market_data.get_analysis_timeframes()
 
-            # Fetch market data and calculate volatility metrics
-            timeframe_data = {}
-            for timeframe in timeframes:
-                df = self.market_data.fetch_historical_data(params.symbol, timeframe)
-                timeframe_data[timeframe] = df
+                    timeframe_data = {}
+                    for timeframe in timeframes:
+                        df = self.market_data.fetch_historical_data(params.symbol, timeframe)
+                        timeframe_data[timeframe] = df
 
-            # Calculate volatility metrics
-            try:
-                volatility_metrics = self.volatility_calculator.calculate_for_timeframes(timeframe_data)
-                console.print("\n[green]Volatility metrics calculated successfully[/green]")
-            except Exception as e:
-                console.print(f"[yellow]Warning: Error calculating volatility metrics: {str(e)}[/yellow]")
-                volatility_metrics = None
+                # Calculate volatility metrics
+                try:
+                    with logfire.span("calculate_volatility"):
+                        volatility_metrics = self.volatility_calculator.calculate_for_timeframes(timeframe_data)
+                except Exception as e:
+                    volatility_metrics = None
+                    logfire.error("Volatility calculation failed", extra={"error": str(e)})
 
-            # Get active orders
-            try:
-                active_orders = self.orders.get_active_orders(params.symbol)
-                existing_orders = [ExistingOrder(**order) for order in active_orders]
-            except Exception as e:
-                console.print(f"[yellow]Warning: Error fetching active orders: {str(e)}[/yellow]")
-                existing_orders = []
+                # Get active orders
+                try:
+                    with logfire.span("fetch_active_orders"):
+                        active_orders = self.orders.get_active_orders(params.symbol)
+                        existing_orders = [ExistingOrder(**order) for order in active_orders]
+                        logfire.info("Active orders fetched", extra={"count": len(existing_orders)})
+                except Exception as e:
+                    existing_orders = []
+                    logfire.error("Failed to fetch active orders", extra={"error": str(e)})
 
-            # Get current positions
-            try:
-                current_positions = self.orders.get_positions(params.symbol)
-            except Exception as e:
-                console.print(f"[yellow]Warning: Error fetching positions: {str(e)}[/yellow]")
-                current_positions = []
+                # Get current positions
+                try:
+                    with logfire.span("fetch_positions"):
+                        current_positions = self.orders.get_positions(params.symbol)
+                        logfire.info("Current positions fetched", extra={"count": len(current_positions)})
+                except Exception as e:
+                    current_positions = []
+                    logfire.error("Failed to fetch positions", extra={"error": str(e)})
 
-            # Generate analysis charts
-            charts = self._generate_analysis_charts(params.symbol, timeframes)
-            if not charts:
-                raise ValueError("Failed to generate analysis charts")
+                # Generate analysis charts
+                with logfire.span("generate_charts"):
+                    charts = self._generate_analysis_charts(params.symbol, timeframes)
+                    if not charts:
+                        raise ValueError("Failed to generate analysis charts")
 
-            # Prepare template variables
-            template_vars = {
-                "plan_id": plan_id,
-                "session_id": session_id,
-                "current_price": current_price,
-                "symbol": params.symbol,
-                "budget": params.budget,
-                "leverage": params.leverage,
-                "strategy_instructions": params.strategy_instructions,
-                "existing_orders": existing_orders,
-                "current_positions": current_positions,
-                "volatility_metrics": volatility_metrics
-            }
+                # Prepare template variables and generate prompts
+                template_vars = {
+                    "plan_id": plan_id,
+                    "session_id": session_id,
+                    "current_price": current_price,
+                    "symbol": params.symbol,
+                    "budget": params.budget,
+                    "leverage": params.leverage,
+                    "strategy_instructions": params.strategy_instructions,
+                    "existing_orders": existing_orders,
+                    "current_positions": current_positions,
+                    "volatility_metrics": volatility_metrics
+                }
 
-            # Generate prompts using Jinja2 templates
-            system_prompt = self.system_template.render(**template_vars)
-            user_prompt = self.user_template.render(**template_vars)
+                system_prompt = self.system_template.render(**template_vars)
+                user_prompt = self.user_template.render(**template_vars)
 
-            # Get AI response
-            response_dict = self.ai_client.generate_strategy(system_prompt, user_prompt, charts)
+                # Get AI response
+                with logfire.span("generate_strategy") as strategy_span:
+                    strategy_span.set_attributes({
+                        "ai_provider": self.ai_client.__class__.__name__,
+                        "charts_count": len(charts)
+                    })
+                    response_dict = self.ai_client.generate_strategy(system_prompt, user_prompt, charts)
 
-            # Create plan from response
-            if 'plan' not in response_dict:
-                raise ValueError("AI response missing plan data")
+                # Create plan from response
+                if 'plan' not in response_dict:
+                    raise ValueError("AI response missing plan data")
 
-            # Initialize trading plan
-            plan_data = response_dict['plan']
-            plan_data['id'] = plan_id
-            plan_data['session_id'] = session_id
-            plan_data['parameters'] = params
-            trading_plan = TradingPlan(**plan_data)
+                # Initialize trading plan
+                plan_data = response_dict['plan']
+                plan_data['id'] = plan_id
+                plan_data['session_id'] = session_id
+                plan_data['parameters'] = params
+                trading_plan = TradingPlan(**plan_data)
 
-            return trading_plan
+                logfire.info("Trading plan created", extra=trading_plan.dict())
+
+                return trading_plan
 
         except Exception as e:
+            logfire.error("Error creating trading plan", extra={"error": str(e)})
             raise Exception(f"Error creating trading plan: {str(e)}")
 
     def _generate_analysis_charts(self, symbol: str, timeframes: List[str]) -> List[bytes]:
@@ -160,141 +173,201 @@ class TradingPlanner:
                         if file.is_file():
                             file.unlink()
                     except Exception as e:
-                        logger.warning(f"Could not remove file {file}: {str(e)}")
+                        logfire.warning(f"Could not remove file {file}: {str(e)}")
 
-            logger.debug(f"Cleaned charts for symbol {symbol} in .graphs directory")
+            logfire.debug(f"Cleaned charts for symbol {symbol} in .graphs directory")
 
             for timeframe in timeframes:
                 try:
-                    # Fetch historical data
-                    df = self.market_data.fetch_historical_data(symbol, timeframe)
+                    with logfire.span(f"generate_chart_{timeframe}"):
+                        # Fetch historical data
+                        df = self.market_data.fetch_historical_data(symbol, timeframe)
 
-                    # Generate multiple charts for this timeframe
-                    timeframe_charts = self.chart_generator.create_charts_for_timeframe(df, timeframe)
-                    if timeframe_charts:
-                        generated_charts.extend(timeframe_charts)
+                        # Generate multiple charts for this timeframe
+                        timeframe_charts = self.chart_generator.create_charts_for_timeframe(df, timeframe)
+                        if timeframe_charts:
+                            generated_charts.extend(timeframe_charts)
 
-                        # Save charts if DUMP_CHARTS is enabled
-                        if dump_charts:
-                            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                            for i, chart in enumerate(timeframe_charts):
-                                filename = f"{symbol}_{timeframe}_view{i}_{timestamp}.png"
-                                filepath = graphs_dir / filename
-                                try:
-                                    with open(filepath, 'wb') as f:
-                                        f.write(chart)
-                                    logger.debug(f"Saved chart: {filename}")
-                                except Exception as e:
-                                    logger.warning(f"Could not save chart {filename}: {str(e)}")
+                            # Save charts if DUMP_CHARTS is enabled
+                            if dump_charts:
+                                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                                for i, chart in enumerate(timeframe_charts):
+                                    filename = f"{symbol}_{timeframe}_view{i}_{timestamp}.png"
+                                    filepath = graphs_dir / filename
+                                    try:
+                                        with open(filepath, 'wb') as f:
+                                            f.write(chart)
+                                        logfire.debug(f"Saved chart: {filename}")
+                                    except Exception as e:
+                                        logfire.warning(f"Could not save chart {filename}: {str(e)}")
 
                 except Exception as e:
-                    logger.error(f"Error generating charts for {timeframe}: {str(e)}")
+                    logfire.exception(f"Error generating charts for {timeframe}: {str(e)}")
+
+            logfire.info("Charts generated", extra={
+                "charts_count": len(generated_charts),
+                "symbol": symbol,
+                "timeframes": timeframes
+            })
 
             return generated_charts
 
         except Exception as e:
-            logger.error(f"Error in chart generation: {str(e)}")
+            logfire.exception(f"Error in chart generation: {str(e)}")
             return generated_charts  # Return any charts we managed to generate
 
     def execute_plan(self, plan: TradingPlan) -> Dict:
         """Execute all operations in the trading plan on the exchange."""
         try:
-            results = {
-                "plan_id": plan.id,
-                "cancellations": [],
-                "position_updates": [],
-                "orders": []
-            }
+            with logfire.span("execute_trading_plan") as span:
+                span.set_attributes({
+                    "plan_id": plan.id,
+                    "symbol": plan.parameters.symbol,
+                    "orders_count": len(plan.orders),
+                    "cancellations_count": len(plan.cancellations or []),
+                    "updates_count": len(plan.position_updates or [])
+                })
 
-            # Execute cancellations first if any
-            if plan.cancellations:
-                console.print("\n[yellow]Executing order cancellations...[/yellow]")
-                cancellation_results = self._execute_cancellations(plan.cancellations)
-                results["cancellations"] = cancellation_results
-                time.sleep(1)
+                results = {
+                    "plan_id": plan.id,
+                    "cancellations": [],
+                    "position_updates": [],
+                    "orders": []
+                }
 
-            # Execute position updates if any
-            if plan.position_updates:
-                console.print("\n[yellow]Updating position TP/SL levels...[/yellow]")
-                for update in plan.position_updates:
-                    try:
-                        result = self.orders.set_trading_stops(
-                            symbol=update.symbol,
-                            takeProfit=update.take_profit,
-                            stopLoss=update.stop_loss
-                        )
-                        results["position_updates"].append({
-                            "symbol": update.symbol,
-                            "success": True,
-                            "result": result
-                        })
-                    except Exception as e:
-                        console.print(f"[red]Error updating {update.symbol}: {str(e)}[/red]")
-                        results["position_updates"].append({
-                            "symbol": update.symbol,
-                            "success": False,
-                            "error": str(e)
-                        })
-                time.sleep(1)
+                # Execute cancellations first
+                if plan.cancellations:
+                    with logfire.span("execute_cancellations"):
+                        cancellation_results = self._execute_cancellations(plan.cancellations)
+                        results["cancellations"] = cancellation_results
+                    time.sleep(1)
 
-            # Then execute new orders if any
-            if plan.orders:
-                console.print("\n[yellow]Executing new orders...[/yellow]")
-                for order in plan.orders:
-                    try:
-                        self.orders.set_position_settings(
-                            symbol=order.symbol,
-                            leverage=order.order.entry.leverage
-                        )
+                # Execute position updates
+                if plan.position_updates:
+                    with logfire.span("execute_position_updates"):
+                        for update in plan.position_updates:
+                            try:
+                                result = self.orders.set_trading_stops(
+                                    symbol=update.symbol,
+                                    takeProfit=update.take_profit,
+                                    stopLoss=update.stop_loss
+                                )
+                                results["position_updates"].append({
+                                    "symbol": update.symbol,
+                                    "success": True,
+                                    "result": result
+                                })
+                                logfire.info("Position updated", extra={
+                                    "symbol": update.symbol,
+                                    "take_profit": update.take_profit,
+                                    "stop_loss": update.stop_loss
+                                })
+                            except Exception as e:
+                                results["position_updates"].append({
+                                    "symbol": update.symbol,
+                                    "success": False,
+                                    "error": str(e)
+                                })
+                                logfire.exception("Position update failed", extra={
+                                    "symbol": update.symbol,
+                                    "error": str(e)
+                                })
+                    time.sleep(1)
 
-                        result = self.orders.place_strategy_orders(order)
-                        if result.get("errors"):
-                            raise ValueError(f"Order execution failed for {order.id}: {result['errors']}")
+                # Execute new orders
+                if plan.orders:
+                    with logfire.span("execute_orders"):
+                        for order in plan.orders:
+                            try:
+                                self.orders.set_position_settings(
+                                    symbol=order.symbol,
+                                    leverage=order.order.entry.leverage
+                                )
 
-                        results["orders"].append({
-                            "order_id": order.id,
-                            "order_link_id": order.order_link_id,
-                            "result": result
-                        })
+                                result = self.orders.place_strategy_orders(order)
+                                if result.get("errors"):
+                                    raise ValueError(f"Order execution failed for {order.id}: {result['errors']}")
 
-                    except Exception as e:
-                        console.print(f"[red]Error executing order {order.id}: {str(e)}[/red]")
-                        results["orders"].append({
-                            "order_id": order.id,
-                            "order_link_id": order.order_link_id,
-                            "error": str(e)
-                        })
+                                results["orders"].append({
+                                    "order_id": order.id,
+                                    "order_link_id": order.order_link_id,
+                                    "result": result
+                                })
 
-            return results
+                                logfire.info("Order placed", extra={
+                                    "order_id": order.id,
+                                    "symbol": order.symbol,
+                                    "type": order.type,
+                                    "leverage": order.order.entry.leverage
+                                })
+
+                            except Exception as e:
+                                results["orders"].append({
+                                    "order_id": order.id,
+                                    "order_link_id": order.order_link_id,
+                                    "error": str(e)
+                                })
+                                logfire.error("Order placement failed", extra={
+                                    "order_id": order.id,
+                                    "symbol": order.symbol,
+                                    "error": str(e)
+                                })
+
+                logfire.info("Plan execution complete", extra={
+                    "plan_id": plan.id,
+                    "successful_cancellations": sum(1 for c in results["cancellations"] if c.get("status") == "success"),
+                    "successful_updates": sum(1 for u in results["position_updates"] if u.get("success")),
+                    "successful_orders": sum(1 for o in results["orders"] if "error" not in o)
+                })
+
+                return results
 
         except Exception as e:
+            logfire.exception("Plan execution failed", extra={"error": str(e), "plan_id": plan.id})
             raise Exception(f"Error executing trading plan: {str(e)}")
 
     def _execute_cancellations(self, cancellations: List[OrderCancellation]) -> List[Dict]:
         """Execute a list of order cancellations."""
         results = []
-
         for cancel in cancellations:
             try:
-                console.print(f"Cancelling order {cancel.order_link_id} - Reason: {cancel.reason}")
-                result = self.orders.cancel_order(
-                    symbol=cancel.symbol,
-                    order_id=cancel.id,
-                    order_link_id=cancel.order_link_id
-                )
-                results.append({
-                    "order_id": cancel.id,
-                    "order_link_id": cancel.order_link_id,
-                    "result": result,
-                    "status": "success"
-                })
+                with logfire.span("cancel_order") as span:
+                    span.set_attributes({
+                        "order_id": cancel.id,
+                        "order_link_id": cancel.order_link_id,
+                        "symbol": cancel.symbol
+                    })
+                    
+                    result = self.orders.cancel_order(
+                        symbol=cancel.symbol,
+                        order_id=cancel.id,
+                        order_link_id=cancel.order_link_id
+                    )
+
+                    results.append({
+                        "order_id": cancel.id,
+                        "order_link_id": cancel.order_link_id,
+                        "result": result,
+                        "status": "success"
+                    })
+
+                    logfire.info("Order cancelled", extra={
+                        "order_id": cancel.id,
+                        "symbol": cancel.symbol,
+                        "reason": cancel.reason
+                    })
+
             except Exception as e:
-                console.print(f"[red]Error cancelling order {cancel.order_link_id}: {str(e)}[/red]")
                 results.append({
                     "order_id": cancel.id,
                     "order_link_id": cancel.order_link_id,
                     "error": str(e),
                     "status": "failed"
+                })
+                logfire.error("Order cancellation failed", extra={
+                    "order_id": cancel.id,
+                    "symbol": cancel.symbol,
+                    "error": str(e)
                 })
 
         return results

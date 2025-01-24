@@ -9,8 +9,16 @@ from dependency_injector.wiring import inject, Provide
 from aitrading.models import TradingParameters
 from aitrading.container import Container
 
+import logfire
+
 # Load environment variables
 load_dotenv()
+
+logfire.configure(
+    environment="local",
+    send_to_logfire="if-token-present",
+    scrubbing=False,
+)
 
 # Provider display mapping
 PROVIDER_DISPLAY_NAMES = {
@@ -78,6 +86,9 @@ def init_container(llm_provider: str) -> Container:
             else os.getenv("OPENAI_API_KEY"))
         }
     })
+
+
+    logfire.info("Container initialized")
 
     container.wire(modules=["__main__"])
     return container

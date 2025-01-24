@@ -10,7 +10,6 @@ from rich.console import Console
 
 console = Console()
 
-
 class OpenAIClient(BaseAIClient):
     """Client for interacting with OpenAI's GPT-4V model."""
 
@@ -37,7 +36,6 @@ class OpenAIClient(BaseAIClient):
             # Convert schema for OpenAI
             try:
                 openai_schema = SchemaConverter.convert(schema, "openai")
-                logging.debug(f"Converted OpenAI schema: {openai_schema}")
             except Exception as e:
                 logging.error(f"Error converting schema: {str(e)}")
                 raise
@@ -80,7 +78,6 @@ Your response must be a valid JSON object matching the following schema exactly:
 
             try:
                 result = json.loads(response_text)
-                logging.debug(f"Parsed JSON result: {json.dumps(result, indent=2)[:500]}...")
             except json.JSONDecodeError as e:
                 logging.error(f"JSON parsing error: {str(e)}")
                 logging.error(f"Failed to parse response text: {response_text}")
@@ -97,7 +94,6 @@ Your response must be a valid JSON object matching the following schema exactly:
                     console.print(f"[yellow]Fixing order ID from {order.get('id')} to {i}[/yellow]")
                     order["id"] = i
 
-            logging.info("Successfully generated and validated plan")
             return result
 
         except Exception as e:
