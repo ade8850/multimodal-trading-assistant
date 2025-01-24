@@ -49,9 +49,7 @@ class TradingPlanner:
         self.user_template = self.env.get_template("user_prompt.j2")
 
         try:
-            logfire.info("Trading planner initialized", extra={
-                "ai_provider": provider_name,
-            })
+            logfire.info("Trading planner initialized", ai_provider=provider_name)
         except Exception as e:
             logfire.exception(f"Failed to initialize Logfire: {str(e)}")
 
@@ -91,19 +89,19 @@ class TradingPlanner:
                     with logfire.span("fetch_active_orders"):
                         active_orders = self.orders.get_active_orders(params.symbol)
                         existing_orders = [ExistingOrder(**order) for order in active_orders]
-                        logfire.info("Active orders fetched", extra={"count": len(existing_orders)})
+                        logfire.info("Active orders fetched", count=len(existing_orders))
                 except Exception as e:
                     existing_orders = []
-                    logfire.error("Failed to fetch active orders", extra={"error": str(e)})
+                    logfire.error("Failed to fetch active orders", error= str(e))
 
                 # Get current positions
                 try:
                     with logfire.span("fetch_positions"):
                         current_positions = self.orders.get_positions(params.symbol)
-                        logfire.info("Current positions fetched", extra={"count": len(current_positions)})
+                        logfire.info("Current positions fetched", count=len(current_positions))
                 except Exception as e:
                     current_positions = []
-                    logfire.error("Failed to fetch positions", extra={"error": str(e)})
+                    logfire.error("Failed to fetch positions", error=str(e))
 
                 # Generate analysis charts
                 with logfire.span("generate_charts"):
@@ -152,7 +150,7 @@ class TradingPlanner:
                 return trading_plan
 
         except Exception as e:
-            logfire.error("Error creating trading plan", extra={"error": str(e)})
+            logfire.error("Error creating trading plan", error=str(e))
             raise Exception(f"Error creating trading plan: {str(e)}")
 
     def _generate_analysis_charts(self, symbol: str, timeframes: List[str]) -> List[bytes]:
@@ -204,7 +202,7 @@ class TradingPlanner:
                 except Exception as e:
                     logfire.exception(f"Error generating charts for {timeframe}: {str(e)}")
 
-            logfire.info("Charts generated", extra={
+            logfire.info("Charts generated", **{
                 "charts_count": len(generated_charts),
                 "symbol": symbol,
                 "timeframes": timeframes
@@ -257,7 +255,7 @@ class TradingPlanner:
                                     "success": True,
                                     "result": result
                                 })
-                                logfire.info("Position updated", extra={
+                                logfire.info("Position updated", **{
                                     "symbol": update.symbol,
                                     "take_profit": update.take_profit,
                                     "stop_loss": update.stop_loss
@@ -268,7 +266,7 @@ class TradingPlanner:
                                     "success": False,
                                     "error": str(e)
                                 })
-                                logfire.exception("Position update failed", extra={
+                                logfire.exception("Position update failed", **{
                                     "symbol": update.symbol,
                                     "error": str(e)
                                 })
@@ -294,7 +292,7 @@ class TradingPlanner:
                                     "result": result
                                 })
 
-                                logfire.info("Order placed", extra={
+                                logfire.info("Order placed", **{
                                     "order_id": order.id,
                                     "symbol": order.symbol,
                                     "type": order.type,
@@ -307,13 +305,13 @@ class TradingPlanner:
                                     "order_link_id": order.order_link_id,
                                     "error": str(e)
                                 })
-                                logfire.error("Order placement failed", extra={
+                                logfire.error("Order placement failed", **{
                                     "order_id": order.id,
                                     "symbol": order.symbol,
                                     "error": str(e)
                                 })
 
-                logfire.info("Plan execution complete", extra={
+                logfire.info("Plan execution complete", **{
                     "plan_id": plan.id,
                     "successful_cancellations": sum(1 for c in results["cancellations"] if c.get("status") == "success"),
                     "successful_updates": sum(1 for u in results["position_updates"] if u.get("success")),
@@ -323,7 +321,7 @@ class TradingPlanner:
                 return results
 
         except Exception as e:
-            logfire.exception("Plan execution failed", extra={"error": str(e), "plan_id": plan.id})
+            logfire.exception("Plan execution failed", **{"error": str(e), "plan_id": plan.id})
             raise Exception(f"Error executing trading plan: {str(e)}")
 
     def _execute_cancellations(self, cancellations: List[OrderCancellation]) -> List[Dict]:
@@ -351,7 +349,7 @@ class TradingPlanner:
                         "status": "success"
                     })
 
-                    logfire.info("Order cancelled", extra={
+                    logfire.info("Order cancelled", **{
                         "order_id": cancel.id,
                         "symbol": cancel.symbol,
                         "reason": cancel.reason
@@ -364,7 +362,7 @@ class TradingPlanner:
                     "error": str(e),
                     "status": "failed"
                 })
-                logfire.error("Order cancellation failed", extra={
+                logfire.error("Order cancellation failed", **{
                     "order_id": cancel.id,
                     "symbol": cancel.symbol,
                     "error": str(e)
