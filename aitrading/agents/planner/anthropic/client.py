@@ -1,5 +1,3 @@
-# aitrading/agents/planner/anthropic/client.py
-
 import json
 import logging
 from typing import Dict, List, Any
@@ -20,7 +18,7 @@ class AnthropicClient(BaseAIClient):
         self.model = "claude-3-5-sonnet-20241022"
         logging.info("Anthropic client initialized")
 
-    def generate_strategy(self, system_prompt: str, user_prompt: str, images: List[bytes]) -> Dict[str, Any]:
+    def generate_strategy(self, system_prompt: str, images: List[bytes]) -> Dict[str, Any]:
         """Generate trading plan using Claude."""
         try:
             console.print()
@@ -40,7 +38,7 @@ class AnthropicClient(BaseAIClient):
                 logging.error(f"Error converting schema: {str(e)}")
                 raise
 
-            # Add schema and ID requirements to the system prompt
+            # Add schema requirements to the system prompt
             schema_requirements = f"""
 Your response must be a valid JSON object matching the following schema exactly:
 {json.dumps(claude_schema, indent=2)}
@@ -56,10 +54,7 @@ Your response must be a valid JSON object matching the following schema exactly:
                 system=final_system_prompt,
                 messages=[{
                     "role": "user",
-                    "content": [
-                        *formatted_images,
-                        {"type": "text", "text": user_prompt}
-                    ]
+                    "content": formatted_images
                 }]
             )
 

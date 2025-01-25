@@ -5,7 +5,6 @@ plotly>=4.14.3
 pandas>=2.0.0
 numpy>=1.24.0
 python-dotenv>=1.0.0
-redis>=5.0.1
 dependency-injector>=4.41.0
 jinja2>=3.1.0
 kaleido>=0.2.1
@@ -16,7 +15,6 @@ gitpython>=3.1.44
 
 rich>=13.9.4
 
-
 # Type hints
 typing-extensions>=4.9.0
 
@@ -24,9 +22,7 @@ typing-extensions>=4.9.0
 dependency-injector>=4.41.0
 
 # AI Providers
-#google-generativeai>=0.8.3
 google-genai>=0.3.0
-#google-cloud-ai-generativelanguage>=0.3.0
 
 # Pydantic for model validation
 pydantic>=2.0.0

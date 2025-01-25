@@ -4,24 +4,21 @@
 interval_minutes: 10  # How often to run the trading cycle
 ai_provider: "anthropic"  # One of: anthropic, gemini, openai
 
+# Stop Loss Management Configuration
+stop_loss:
+  timeframe: "1H"  # Timeframe for ATR calculation
+  initial_multiplier: 1.5  # ATR multiplier for initial positions
+  first_profit_multiplier: 2.0  # ATR multiplier when position reaches first profit threshold
+  second_profit_multiplier: 2.5  # ATR multiplier when position reaches second profit threshold
+  first_profit_threshold: 1.0  # Percentage threshold for first profit band
+  second_profit_threshold: 2.0  # Percentage threshold for second profit band
+
 # Trading parameters per symbol
 symbols:
   BTCUSDT:
     budget: 200
     leverage: 5
-    strategy_instructions: |
-      Review active orders and open positions. 
-      Take corrective actions if you believe market developments require it. 
-      Create new orders ONLY when market conditions show clear and favorable patterns that indicate a high probability of success,
-      if these conditions are not met, wait for better opportunities. 
-      For any decision (both creating new orders or waiting), include detailed analysis of market conditions and reasoning in your report.
 
   SOLUSDT:
     budget: 200
     leverage: 5
-    strategy_instructions: |
-      Review active orders and open positions. 
-      Take corrective actions if you believe market developments require it. 
-      Create new orders ONLY when market conditions show clear and favorable patterns that indicate a high probability of success,
-      if these conditions are not met, wait for better opportunities. 
-      For any decision (both creating new orders or waiting), include detailed analysis of market conditions and reasoning in your report.

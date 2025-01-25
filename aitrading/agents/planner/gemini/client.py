@@ -1,5 +1,3 @@
-# aitrading/agents/planner/gemini/client.py
-
 import json
 import logging
 from typing import Dict, List, Any
@@ -13,7 +11,6 @@ from rich.console import Console
 
 console = Console()
 
-
 class GeminiClient(BaseAIClient):
     """Client for interacting with Google's Gemini model."""
 
@@ -24,7 +21,7 @@ class GeminiClient(BaseAIClient):
         self.model = 'gemini-2.0-flash-exp'
         logging.info("Gemini client initialized")
 
-        # Gemini-specific logfire instrumentation
+        # Configure Gemini-specific Logfire instrumentation
         if os.getenv('LOGFIRE_TOKEN'):
             import logfire
             try:
@@ -32,7 +29,7 @@ class GeminiClient(BaseAIClient):
             except Exception as e:
                 logging.error(f"Failed to instrument Gemini with Logfire: {str(e)}")
 
-    def generate_strategy(self, system_prompt: str, user_prompt: str, images: List[bytes]) -> Dict[str, Any]:
+    def generate_strategy(self, system_prompt: str, images: List[bytes]) -> Dict[str, Any]:
         """Generate trading plan using Gemini."""
         try:
             console.print()
@@ -56,9 +53,11 @@ class GeminiClient(BaseAIClient):
                 raise
 
             # Generate content
+            content_parts = [*gemini_images]
+            
             response = self.client.models.generate_content(
                 model=self.model,
-                contents=[*gemini_images, types.Part.from_text(user_prompt)],
+                contents=content_parts,
                 config=types.GenerateContentConfig(
                     response_mime_type='application/json',
                     response_schema=gemini_schema,

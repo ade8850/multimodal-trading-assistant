@@ -1,41 +1,29 @@
 RISK MANAGEMENT RULES:
 
-Some rules are inviolable while others can be overridden by strategy instructions.
+Some rules are inviolable while others can be overridden by other factors like market conditions or technical analysis.
 
 INVIOLABLE RULES:
 - Budget and exposure limits
 - Order execution sequence
 - Position and order ID requirements
 - Required fields in order specifications
-- Stop loss management
-
-RULES THAT CAN BE OVERRIDDEN BY STRATEGY INSTRUCTIONS:
-- Entry and exit conditions
-- Position management criteria
-- Volume validation requirements
 
 1. Position Safety
-   * Every position MUST have a Stop Loss defined
+   * Every position must have a stop loss defined at creation
    * Stop Loss Management:
-     - LONG positions: New SL must ALWAYS be higher than the position's active SL
-     - SHORT positions: New SL must ALWAYS be lower than the position's active SL
-     - No exceptions to these rules are allowed, even in highly volatile markets
-   * Dynamic Stop Loss Adjustment (when not overridden by strategy):
+     - Stop losses are managed automatically based on market volatility
+     - The AI should not attempt to modify stop losses for existing positions
+     - The AI's role is to focus on analyzing market conditions and creating new positions
+   * Dynamic Risk Assessment:
      - Initial Position Management:
-       * Set wider initial stops based on higher timeframe volatility (4H)
-       * Gradually tighten if expected direction doesn't materialize
-       * Consider time-based progression: reduce exposure if no clear trend emerges
-     - Established Position Management:
-       - Base primary stop levels on higher timeframes (4H):
-         * LONG: Key support levels from higher timeframes
-         * SHORT: Key resistance levels from higher timeframes
-       - Use lower timeframes (1H/15m) only to optimize entry/exit timing
-       - Never set stops based solely on 5m support/resistance levels
-       - Keep wider stops during favorable trends and strong momentum
-       - Tighten stops when:
-         * Higher timeframe market structure shows weakness
-         * Volume profile deteriorates
-         * Higher timeframe key levels show signs of failure
+       * Consider higher timeframe context and volatility when opening positions
+       * Set position size appropriate to current volatility levels
+       * Factor in the automated stop loss management when planning entries
+     - Technical Analysis Role:
+       - Base primary analysis on higher timeframes (4H)
+       - Use lower timeframes (1H/15m) to optimize entry timing
+       - Never base decisions solely on 5m timeframe signals
+       - Consider volatility trends when evaluating setups
 
 2. Budget and Exposure (always apply, cannot be overridden)
    * Never exceed specified budget allocation
@@ -53,7 +41,7 @@ RULES THAT CAN BE OVERRIDDEN BY STRATEGY INSTRUCTIONS:
        * If cancelling active order, available budget would be:
          500 - 86.344 = 413.656 USDT for new orders
 
-3. Position Independence and Management (applies unless strategy specifies different criteria)
+3. Position Independence and Management
    * Each position requires independent technical justification
    * All positions must have clear invalidation conditions
    * Hedged positions maintain independent risk management
@@ -61,7 +49,7 @@ RULES THAT CAN BE OVERRIDDEN BY STRATEGY INSTRUCTIONS:
    * Take Profit Management:
      - Strong trend:
        * Set initial take profit at key resistance/support from higher timeframes
-       * Adjust based on trend strength and market structure
+       * Consider volatility for target placement
      - Range conditions:
        * Set take profit near range extremes identified on 4H/1D
        * Consider volatility for target placement
@@ -73,22 +61,21 @@ RULES THAT CAN BE OVERRIDDEN BY STRATEGY INSTRUCTIONS:
    * Operations MUST be executed in this strict order:
      1. Cancellations first
      2. New orders second
-     3. Position TP/SL updates last
 
-5. Market Context and Trend Analysis (only applies when strategy does not specify entry/exit conditions)
+5. Market Context and Trend Analysis
    * NO TRADE Conditions:
      - When primary trend is unclear on 1H AND 4H
      - When volume doesn't confirm price action
      - During low liquidity periods
      - When technical signals conflict across timeframes
      - When risk/reward ratio is suboptimal
-   * Position Entry Conditions (default, unless strategy specifies otherwise):
+   * Position Entry Conditions:
      - Primary trend clearly defined on 4H AND 1H
      - Volume confirms trend direction
      - Multiple timeframe alignment exists
      - Clear technical justification present
 
-6. Volume Analysis and Validation (only applies when not specified in strategy)
+6. Volume Analysis and Validation
    * Volume Confirmation Requirements:
      - Must align with price action direction
      - Should expand in trend direction

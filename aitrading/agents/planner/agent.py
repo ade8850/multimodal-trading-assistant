@@ -1,5 +1,3 @@
-# aitrading/agents/planner/agent.py
-
 from typing import Dict, List
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -21,6 +19,7 @@ from ...tools.bybit.market_data import MarketDataTool
 from ...tools.bybit.orders import OrdersTool
 from ...tools.charts import ChartGeneratorTool
 from ...tools.volatility import VolatilityCalculator
+from ...tools.stop_loss import StopLossManager, StopLossConfig
 
 class TradingPlanner:
     def __init__(self, market_data: MarketDataTool, orders: OrdersTool, 
@@ -46,7 +45,6 @@ class TradingPlanner:
             lstrip_blocks=True,
         )
         self.system_template = self.env.get_template("system_prompt.j2")
-        self.user_template = self.env.get_template("user_prompt.j2")
 
         try:
             logfire.info("Trading planner initialized", ai_provider=provider_name)
@@ -82,7 +80,7 @@ class TradingPlanner:
                         volatility_metrics = self.volatility_calculator.calculate_for_timeframes(timeframe_data)
                 except Exception as e:
                     volatility_metrics = None
-                    logfire.error("Volatility calculation failed", extra={"error": str(e)})
+                    logfire.error("Volatility calculation failed", error=str(e))
 
                 # Get active orders
                 try:
@@ -92,7 +90,7 @@ class TradingPlanner:
                         logfire.info("Active orders fetched", count=len(existing_orders))
                 except Exception as e:
                     existing_orders = []
-                    logfire.error("Failed to fetch active orders", error= str(e))
+                    logfire.error("Failed to fetch active orders", error=str(e))
 
                 # Get current positions
                 try:
@@ -109,7 +107,7 @@ class TradingPlanner:
                     if not charts:
                         raise ValueError("Failed to generate analysis charts")
 
-                # Prepare template variables and generate prompts
+                # Prepare template variables and generate system prompt
                 template_vars = {
                     "plan_id": plan_id,
                     "session_id": session_id,
@@ -117,14 +115,12 @@ class TradingPlanner:
                     "symbol": params.symbol,
                     "budget": params.budget,
                     "leverage": params.leverage,
-                    "strategy_instructions": params.strategy_instructions,
                     "existing_orders": existing_orders,
                     "current_positions": current_positions,
                     "volatility_metrics": volatility_metrics
                 }
 
                 system_prompt = self.system_template.render(**template_vars)
-                user_prompt = self.user_template.render(**template_vars)
 
                 # Get AI response
                 with logfire.span("generate_strategy") as strategy_span:
@@ -132,7 +128,7 @@ class TradingPlanner:
                         "ai_provider": self.ai_client.__class__.__name__,
                         "charts_count": len(charts)
                     })
-                    response_dict = self.ai_client.generate_strategy(system_prompt, user_prompt, charts)
+                    response_dict = self.ai_client.generate_strategy(system_prompt, charts)
 
                 # Create plan from response
                 if 'plan' not in response_dict:
@@ -222,14 +218,12 @@ class TradingPlanner:
                     "plan_id": plan.id,
                     "symbol": plan.parameters.symbol,
                     "orders_count": len(plan.orders),
-                    "cancellations_count": len(plan.cancellations or []),
-                    "updates_count": len(plan.position_updates or [])
+                    "cancellations_count": len(plan.cancellations or [])
                 })
 
                 results = {
                     "plan_id": plan.id,
                     "cancellations": [],
-                    "position_updates": [],
                     "orders": []
                 }
 
@@ -240,37 +234,15 @@ class TradingPlanner:
                         results["cancellations"] = cancellation_results
                     time.sleep(1)
 
-                # Execute position updates
-                if plan.position_updates:
-                    with logfire.span("execute_position_updates"):
-                        for update in plan.position_updates:
-                            try:
-                                result = self.orders.set_trading_stops(
-                                    symbol=update.symbol,
-                                    takeProfit=update.take_profit,
-                                    stopLoss=update.stop_loss
-                                )
-                                results["position_updates"].append({
-                                    "symbol": update.symbol,
-                                    "success": True,
-                                    "result": result
-                                })
-                                logfire.info("Position updated", **{
-                                    "symbol": update.symbol,
-                                    "take_profit": update.take_profit,
-                                    "stop_loss": update.stop_loss
-                                })
-                            except Exception as e:
-                                results["position_updates"].append({
-                                    "symbol": update.symbol,
-                                    "success": False,
-                                    "error": str(e)
-                                })
-                                logfire.exception("Position update failed", **{
-                                    "symbol": update.symbol,
-                                    "error": str(e)
-                                })
-                    time.sleep(1)
+                # Initialize StopLossManager if configuration is provided
+                stop_loss_manager = None
+                if plan.parameters.stop_loss_config:
+                    stop_loss_config = StopLossConfig(**plan.parameters.stop_loss_config)
+                    stop_loss_manager = StopLossManager(
+                        market_data=self.market_data,
+                        orders=self.orders,
+                        config=stop_loss_config
+                    )
 
                 # Execute new orders
                 if plan.orders:
@@ -311,10 +283,18 @@ class TradingPlanner:
                                     "error": str(e)
                                 })
 
+                # Update stop losses if manager is initialized
+                if stop_loss_manager:
+                    with logfire.span("update_stop_losses"):
+                        try:
+                            stop_loss_results = stop_loss_manager.update_position_stops(plan.parameters.symbol)
+                            results["stop_loss_updates"] = stop_loss_results
+                        except Exception as e:
+                            logfire.error("Stop loss update failed", error=str(e))
+
                 logfire.info("Plan execution complete", **{
                     "plan_id": plan.id,
                     "successful_cancellations": sum(1 for c in results["cancellations"] if c.get("status") == "success"),
-                    "successful_updates": sum(1 for u in results["position_updates"] if u.get("success")),
                     "successful_orders": sum(1 for o in results["orders"] if "error" not in o)
                 })
 

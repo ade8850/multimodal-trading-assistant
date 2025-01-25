@@ -39,67 +39,67 @@ Current volatility metrics for each significant timeframe:
 Current Positions:
 {% for position in current_positions %}
 - Symbol: {{ position.symbol }}
- Side: {{ position.side }}
- Size: {{ position.size }}
- Entry Price: {{ position.entry_price }}
- Leverage: {{ position.leverage }}
- Unrealized PNL: {{ position.unrealized_pnl }}
- Take Profit: {{ position.take_profit }}
- Stop Loss: {{ position.stop_loss }}
- Created: {{ position.created_time }}
+  Side: {{ position.side }}
+  Size: {{ position.size }}
+  Entry Price: {{ position.entry_price }}
+  Leverage: {{ position.leverage }}
+  Unrealized PNL: {{ position.unrealized_pnl }}
+  Take Profit: {{ position.take_profit }}
+  Created: {{ position.created_time }}
+
+Note: Stop losses are managed automatically by the system based on market volatility.
 {% endfor %}
 
-Position Analysis Guidelines (unless strategy instructions specify different criteria):
-1. Evaluate each position's alignment with strategy conditions
-2. Consider if TP/SL levels need adjustment based on:
-  - Current market conditions
-  - Technical levels
-  - Given strategy rules
-3. Any TP/SL modifications must be included in the plan as position_updates
-4. Each position update must include clear reasoning
-
-Example position update:
-{
-   "symbol": "BTCUSDT",
-   "take_profit": 43000.0,
-   "stop_loss": 41000.0,
-   "reason": "Adjusting TP higher due to break of resistance at 42.5K and SL tighter to protect profits"
-}
+Position Analysis Guidelines:
+1. Evaluate each position's alignment with current market conditions
+2. Consider these factors:
+   - Price action relative to entry level
+   - Volume profile since entry
+   - Technical indicator readings
+   - Current volatility regime
+   - Trend strength and direction
+3. Focus on identifying take profit adjustments if needed
+4. Each position analysis must include clear technical reasoning
 {% endif %}
 
 {% if existing_orders %}
 Current Active Orders:
 {% for order in existing_orders %}
 - Order ID: {{ order.id }}
- Link ID: {{ order.order_link_id }}
- Type: {{ order.type }}
- Side: {{ order.side }}
- Price: {{ order.price }}
- Quantity: {{ order.qty }}
- Status: {{ order.status }}
- Created: {{ order.created_time }}
- Take Profit: {{ order.take_profit }}
- Stop Loss: {{ order.stop_loss }}
+  Link ID: {{ order.order_link_id }}
+  Type: {{ order.type }}
+  Side: {{ order.side }}
+  Price: {{ order.price }}
+  Quantity: {{ order.qty }}
+  Status: {{ order.status }}
+  Created: {{ order.created_time }}
+  Take Profit: {{ order.take_profit }}
 {% endfor %}
 
-Order Review Guidelines (unless strategy specifies different criteria):
-1. Evaluate each order's alignment with strategy conditions
-2. Consider their entry points, take profits, and stop losses
-3. If an order does not align with strategy conditions, include it in the cancellations list
-4. Provide clear reasoning for any cancellation decision
+Order Review Guidelines:
+1. Evaluate each order's alignment with:
+   - Current market structure
+   - Volume profile
+   - Technical indicators
+   - Volatility conditions
+2. Consider order placement relative to key price levels
+3. For each order that requires cancellation, provide:
+   - The exact Order ID from the active orders list
+   - The Order Link ID if available
+   - A clear technical explanation for the cancellation
 
 Order Cancellation Requirements:
 1. For EACH order to be cancelled, you MUST provide:
-  - The exchange's order ID as the 'id' field (from 'Order ID' in active orders)
-  - Optionally include the order_link_id (from 'Link ID' in active orders)
-  - Both IDs must be copied EXACTLY as shown in the active orders list
+   - The exchange's order ID as the 'id' field (from 'Order ID' in active orders)
+   - Optionally include the order_link_id (from 'Link ID' in active orders)
+   - Both IDs must be copied EXACTLY as shown in the active orders list
 2. The 'symbol' field must match the order being cancelled
-3. The 'reason' field must clearly explain the cancellation rationale
+3. The 'reason' field must explain the technical justification for cancellation
 4. Example of a valid cancellation:
   {
     "id": "1234567890",        // Exact Order ID from active orders
     "order_link_id": "abc123", // Optional, exact Link ID from active orders
     "symbol": "BTCUSDT",       // Must match the order's symbol
-    "reason": "Price moved significantly above the limit order level"
+    "reason": "Order level no longer aligns with current support/resistance structure"
   }
 {% endif %}

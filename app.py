@@ -1,13 +1,11 @@
-# aitrading/streamlit/app.py
-
 import streamlit as st
 import os
-import redis
 from dotenv import load_dotenv
 from dependency_injector.wiring import inject, Provide
 
 from aitrading.models import TradingParameters
 from aitrading.container import Container
+from aitrading.tools.stop_loss import StopLossConfig
 
 import logfire
 
@@ -30,44 +28,6 @@ PROVIDER_DISPLAY_NAMES = {
 # Available AI providers
 AI_PROVIDERS = list(PROVIDER_DISPLAY_NAMES.keys())
 
-# Redis configuration
-REDIS_KEY_PLAN = "default_plan_instructions"
-DEFAULT_PLAN = """Find the most appropriate trading opportunities based on market conditions.
-If the current market condition is too uncertain, place orders in safe areas while waiting for a favorable trend.
-Maximize the probability of profit rather than the profit itself."""
-
-
-def get_redis_client():
-    """Initialize Redis client with configuration from environment."""
-    return redis.Redis(
-        host=os.getenv("REDIS_HOST", "localhost"),
-        port=int(os.getenv("REDIS_PORT", 6379)),
-        db=int(os.getenv("REDIS_DB", 0)),
-        password=os.getenv("REDIS_PASSWORD", ""),
-        decode_responses=True
-    )
-
-
-def get_plan_instructions():
-    """Retrieve plan instructions from Redis or return default."""
-    try:
-        redis_client = get_redis_client()
-        stored_instructions = redis_client.get(REDIS_KEY_PLAN)
-        return stored_instructions if stored_instructions else DEFAULT_PLAN
-    except Exception as e:
-        st.warning(f"Could not retrieve stored instructions: {str(e)}")
-        return DEFAULT_PLAN
-
-
-def save_plan_instructions(instructions):
-    """Save plan instructions to Redis."""
-    try:
-        redis_client = get_redis_client()
-        redis_client.set(REDIS_KEY_PLAN, instructions)
-    except Exception as e:
-        st.warning(f"Could not save instructions: {str(e)}")
-
-
 def init_container(llm_provider: str) -> Container:
     """Initialize the dependency injection container."""
     container = Container()
@@ -82,17 +42,14 @@ def init_container(llm_provider: str) -> Container:
         "llm": {
             "provider": llm_provider,
             "api_key": (os.getenv("ANTHROPIC_API_KEY") if llm_provider == "anthropic"
-                        else os.getenv("GEMINI_API_KEY") if llm_provider == "gemini"
-            else os.getenv("OPENAI_API_KEY"))
+                       else os.getenv("GEMINI_API_KEY") if llm_provider == "gemini"
+                       else os.getenv("OPENAI_API_KEY"))
         }
     })
 
-
     logfire.info("Container initialized")
-
     container.wire(modules=["__main__"])
     return container
-
 
 @inject
 def render_strategy_ui(container: Container = Provide[Container]):
@@ -122,23 +79,61 @@ def render_strategy_ui(container: Container = Provide[Container]):
     with col2:
         leverage = st.number_input("Leverage", min_value=1, max_value=100, value=1)
 
-    # Plan Instructions
-    st.header("Plan Instructions")
-    plan_instructions = st.text_area(
-        "Trading Plan Instructions",
-        help="Enter specific instructions or constraints for the trading plan",
-        value=get_plan_instructions(),
-        height=150,
-        key="ui:last_plan_instructions"
-    )
+    # Stop Loss Configuration
+    st.header("Stop Loss Management")
+    stop_loss_enabled = st.checkbox("Enable Automatic Stop Loss Management", value=True)
 
-    # Save instructions if changed
-    if "last_instructions" not in st.session_state:
-        st.session_state.last_instructions = plan_instructions
+    if stop_loss_enabled:
+        sl_col1, sl_col2 = st.columns(2)
+        with sl_col1:
+            timeframe = st.selectbox(
+                "ATR Timeframe",
+                options=["15m", "1H", "4H"],
+                index=1,
+                help="Timeframe used for ATR calculation"
+            )
+            initial_multiplier = st.number_input(
+                "Initial ATR Multiplier",
+                min_value=0.5,
+                max_value=5.0,
+                value=1.5,
+                step=0.1,
+                help="ATR multiplier for initial position"
+            )
+            first_profit_multiplier = st.number_input(
+                "First Profit Band Multiplier",
+                min_value=0.5,
+                max_value=5.0,
+                value=2.0,
+                step=0.1,
+                help="ATR multiplier when first profit threshold is reached"
+            )
 
-    if st.session_state.last_instructions != plan_instructions:
-        save_plan_instructions(plan_instructions)
-        st.session_state.last_instructions = plan_instructions
+        with sl_col2:
+            first_profit_threshold = st.number_input(
+                "First Profit Threshold (%)",
+                min_value=0.1,
+                max_value=10.0,
+                value=1.0,
+                step=0.1,
+                help="Profit percentage to enter first band"
+            )
+            second_profit_multiplier = st.number_input(
+                "Second Profit Band Multiplier",
+                min_value=0.5,
+                max_value=5.0,
+                value=2.5,
+                step=0.1,
+                help="ATR multiplier when second profit threshold is reached"
+            )
+            second_profit_threshold = st.number_input(
+                "Second Profit Threshold (%)",
+                min_value=0.1,
+                max_value=20.0,
+                value=2.0,
+                step=0.1,
+                help="Profit percentage to enter second band"
+            )
 
     if st.button("Create Plan") and symbol:
         with st.spinner("Generating trading plan..."):
@@ -146,12 +141,24 @@ def render_strategy_ui(container: Container = Provide[Container]):
                 # Initialize container with selected model
                 container = init_container(llm_provider)
 
+                # Prepare stop loss configuration if enabled
+                stop_loss_config = None
+                if stop_loss_enabled:
+                    stop_loss_config = {
+                        "timeframe": timeframe,
+                        "initial_multiplier": initial_multiplier,
+                        "first_profit_multiplier": first_profit_multiplier,
+                        "second_profit_multiplier": second_profit_multiplier,
+                        "first_profit_threshold": first_profit_threshold,
+                        "second_profit_threshold": second_profit_threshold
+                    }
+
                 # Create trading parameters
                 params = TradingParameters(
                     symbol=symbol,
                     budget=budget,
                     leverage=leverage,
-                    strategy_instructions=plan_instructions
+                    stop_loss_config=stop_loss_config
                 )
 
                 # Generate plan
@@ -182,21 +189,6 @@ def render_strategy_ui(container: Container = Provide[Container]):
                 with st.expander(f"Cancel Order {cancel.order_link_id}", expanded=False):
                     st.write(f"**Reason:** {cancel.reason}")
                     st.json(cancel.model_dump(exclude={'reason'}))
-
-        # Display position updates if any
-        if plan.position_updates:
-            st.subheader("Position Updates")
-            st.info(f"{len(plan.position_updates)} positions will have TP/SL levels updated")
-            for update in plan.position_updates:
-                with st.expander(f"Update Position {update.symbol}", expanded=True):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        if update.take_profit:
-                            st.write(f"**New Take Profit:** {update.take_profit}")
-                    with col2:
-                        if update.stop_loss:
-                            st.write(f"**New Stop Loss:** {update.stop_loss}")
-                    st.write(f"**Reason:** {update.reason}")
 
         # Display new orders
         st.subheader(f"New Orders ({len(plan.orders)})")
@@ -248,16 +240,6 @@ def render_strategy_ui(container: Container = Provide[Container]):
                                 if cancel_result.get("error"):
                                     st.error(cancel_result["error"])
 
-                    # Show position update results if any
-                    if result.get("position_updates"):
-                        with st.expander("Position Update Results", expanded=True):
-                            st.write(f"**{len(result['position_updates'])} position updates executed**")
-                            for update_result in result["position_updates"]:
-                                if update_result["success"]:
-                                    st.success(f"Position {update_result['symbol']} updated successfully")
-                                else:
-                                    st.error(f"Position {update_result['symbol']}: {update_result['error']}")
-
                     # Show new order results
                     with st.expander("Order Execution Results", expanded=True):
                         st.write(f"**{len(result['orders'])} orders placed**")
@@ -267,9 +249,22 @@ def render_strategy_ui(container: Container = Provide[Container]):
                             else:
                                 st.success(f"Order {order_result['order_link_id']} placed successfully")
 
+                    # Show stop loss update results if any
+                    if "stop_loss_updates" in result:
+                        with st.expander("Stop Loss Updates", expanded=True):
+                            updates = result["stop_loss_updates"]
+                            st.write(f"**{len(updates.get('updates', []))} stop loss updates executed**")
+                            for update in updates.get("updates", []):
+                                st.success(f"Position {update['position_id']} stop loss updated")
+                                st.write(f"New stop loss: {update['update']['new_stop_loss']}")
+                                st.write(f"Reason: {update['update']['reason']}")
+
+                            if updates.get("errors"):
+                                for error in updates["errors"]:
+                                    st.error(f"Error updating position {error['position_id']}: {error['error']}")
+
                 except Exception as e:
                     st.error(f"Error executing trading plan: {str(e)}")
-
 
 if __name__ == "__main__":
     render_strategy_ui()

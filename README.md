@@ -2,7 +2,7 @@
 
 ⚠️ **EXPERIMENTAL PROJECT - USE AT YOUR OWN RISK** ⚠️
 
-This is an experimental AI-powered trading system that leverages multimodal AI capabilities to analyze market charts and create trading strategies. This project demonstrates the potential of AI in automated trading while exploring new approaches to market analysis.
+This is an experimental AI-powered trading system that combines multimodal artificial intelligence with automated risk management. The system analyzes market charts using advanced visual AI capabilities while implementing systematic risk controls through dynamic stop loss management.
 
 ## ⚠️ Important Notice
 
@@ -10,24 +10,56 @@ This is an **experimental project** and should not be used for actual trading wi
 
 ## 🔍 Key Features
 
-The system utilizes multimodal AI models to analyze market charts and technical patterns, integrating visual analysis capabilities with automated trading execution. It supports multiple AI providers and includes both a web-based interface for creating individual trading strategies and a scheduler for continuous automated execution.
+The system combines AI-driven analysis with automated risk management to create a comprehensive trading solution. At its core, the system processes market data in two distinct ways: visual analysis for trade opportunities and systematic risk management for position protection.
+
+The multimodal AI component analyzes market charts and technical patterns to identify potential trading opportunities. This analysis considers multiple timeframes and various technical indicators to form a complete market view.
+
+The automated risk management system implements a dynamic stop loss strategy based on market volatility and position performance. This system adapts protection levels as positions evolve, providing tighter risk control in volatile conditions while allowing profitable trades room to develop.
+
+Additional features include:
+- Integration with multiple AI providers (Anthropic Claude, Google Gemini, OpenAI GPT-4)
+- Support for multiple trading pairs and timeframes
+- Comprehensive logging and monitoring through Logfire
+- Web-based interface for strategy creation and monitoring
+- Automated trading scheduler for continuous operation
+
+## 📊 Risk Management
+
+The system implements an advanced automated risk management strategy that adapts to market conditions and position performance:
+
+Position Protection:
+- Stop losses are calculated using Average True Range (ATR) to account for market volatility
+- Protection levels automatically adjust based on position performance
+- Three-tiered system provides progressively more room for profitable trades to develop
+
+Risk Bands:
+1. Initial Protection Band: Conservative stop loss placement for new positions
+2. First Profit Band: Adjusted protection when initial profit targets are met
+3. Second Profit Band: Maximum room for trend continuation in strongly profitable positions
+
+All risk parameters are fully configurable through the web interface or configuration files, allowing for customization while maintaining systematic risk control.
 
 ## 🛠 Technology Stack
 
-- **Backend**: Python with dependency injection architecture
-- **AI Models**: 
-  - Claude (Anthropic)- recommended for optimal performance
-  - Gemini Pro Vision (Google)
-  - GPT-4 Vision (OpenAI)
-- **Trading Interface**: Bybit API (pybit)
-- **Web Interface**: Streamlit
+The system is built using modern Python technologies:
+
+Core Components:
+- Python 3.12
+- Pydantic for data validation
+- Streamlit for web interface
+- Plotly for technical analysis charts
+
+Integration Points:
+- Bybit API through pybit
+- Multiple AI providers supported (Anthropic, Google, OpenAI)
+- Primary testing and optimization conducted with **Anthropic's Claude**
+- Logfire for structured logging
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
 - Python 3.12 (not tested with other versions)
-- Redis server (required for Streamlit interface only)
 - Docker (optional)
 - API keys for:
   - Bybit
@@ -69,25 +101,29 @@ streamlit run app.py
 
 ## 📊 How It Works
 
-1. **Market Analysis**:
-   - The system uses multimodal AI capabilities to analyze market charts
-   - Visual patterns and market context are evaluated using natural language processing
+The system operates through three main phases:
 
-2. **Strategy Generation**:
-   - AI models process the visual analysis and market context
-   - Trading strategies are generated based on identified patterns
+1. Technical Analysis
+   - AI models analyze market charts across multiple timeframes
+   - Technical patterns and market context are evaluated
+   - Key support and resistance levels are identified
 
-3. **Order Execution**:
-   - Strategies are converted into concrete trading orders
-   - Orders are executed through the Bybit API
+2. Decision Making
+   - Entry opportunities are identified based on technical analysis
+   - Position sizing considers current market volatility
+   - Stop loss levels are calculated using ATR-based algorithm
+
+3. Risk Management
+   - Positions are continuously monitored
+   - Stop losses adjust automatically based on market conditions
+   - Protection levels adapt to position performance
 
 ## ⚙️ Configuration
 
 The system can be configured through:
 - Environment variables (.env file)
-- YAML configuration files for the scheduler (scheduler_config.yaml)
-
-See `scheduler_config.example.yaml` for scheduler configuration options.
+- YAML configuration files (scheduler_config.yaml)
+Both trading parameters and risk management settings are fully customizable through these files.
 
 ## 🤝 Contributing
 

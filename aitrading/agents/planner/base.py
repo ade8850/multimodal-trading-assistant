@@ -1,9 +1,6 @@
-# aitrading/agents/planner/base.py
-
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Dict, List, Any
-
 
 class BaseAIClient(ABC):
     """Base interface for AI model clients."""
@@ -14,18 +11,16 @@ class BaseAIClient(ABC):
         self._active_orders: List[Dict[str, Any]] = []
         self.trading_parameters = None
 
-
     def set_trading_parameters(self, parameters: Any) -> None:
         """Set the trading parameters used for validation."""
         self.trading_parameters = parameters
 
     @abstractmethod
-    def generate_strategy(self, system_prompt: str, user_prompt: str, images: List[bytes]) -> Dict[str, Any]:
+    def generate_strategy(self, system_prompt: str, images: List[bytes]) -> Dict[str, Any]:
         """Generate trading plan using the AI model.
 
         Args:
             system_prompt (str): Framework and rules for analysis
-            user_prompt (str): Specific trading parameters and requirements
             images (List[bytes]): Chart images in PNG format
 
         Returns:
@@ -96,7 +91,7 @@ class BaseAIClient(ABC):
             used_ids.add(order_id)
 
     def _validate_cancellations(self, cancellations: List[Dict[str, Any]]) -> None:
-        """Validate order cancellations structure and format only."""
+        """Validate order cancellations structure and format."""
         if not isinstance(cancellations, list):
             raise ValueError("Cancellations must be a list")
 

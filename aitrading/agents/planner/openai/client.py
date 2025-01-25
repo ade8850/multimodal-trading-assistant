@@ -1,5 +1,3 @@
-# aitrading/agents/planner/openai/client.py
-
 import json
 import logging
 from typing import Dict, List, Any
@@ -20,13 +18,24 @@ class OpenAIClient(BaseAIClient):
         self.model = "gpt-4o-mini"
         logging.info("OpenAI client initialized")
 
-    def generate_strategy(self, system_prompt: str, user_prompt: str, images: List[bytes]) -> Dict[str, Any]:
-        """Generate trading plan using GPT-4V."""
+    def generate_strategy(self, system_prompt: str, images: List[bytes]) -> Dict[str, Any]:
+        """Generate trading plan using GPT-4V.
+        
+        This implementation processes market charts through GPT-4V's vision capabilities
+        and generates a structured trading plan based on technical analysis.
+        
+        Args:
+            system_prompt: Framework and rules for analysis
+            images: Technical analysis charts in PNG format
+            
+        Returns:
+            Complete trading plan with analysis and orders
+        """
         try:
             console.print()
             console.print("Starting plan generation with GPT-4V", style="bold green")
 
-            # Process images
+            # Process images for OpenAI's format
             formatted_images = self._format_images(images)
 
             # Generate schema
@@ -40,7 +49,7 @@ class OpenAIClient(BaseAIClient):
                 logging.error(f"Error converting schema: {str(e)}")
                 raise
 
-            # Add schema and ID requirements to the system prompt
+            # Add schema requirements to system prompt
             schema_requirements = f"""
 Your response must be a valid JSON object matching the following schema exactly:
 {json.dumps(openai_schema, indent=2)}
@@ -48,22 +57,18 @@ Your response must be a valid JSON object matching the following schema exactly:
 
             final_system_prompt = f"{system_prompt}\n\n{schema_requirements}"
 
-            # Prepare messages
+            # Prepare messages for GPT-4V
             messages = [
                 {"role": "system", "content": final_system_prompt},
                 {
                     "role": "user",
                     "content": [
-                        {
-                            "type": "text",
-                            "text": user_prompt
-                        },
                         *formatted_images
                     ]
                 }
             ]
 
-            # Generate content
+            # Generate content with structured output
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
@@ -83,7 +88,7 @@ Your response must be a valid JSON object matching the following schema exactly:
                 logging.error(f"Failed to parse response text: {response_text}")
                 raise ValueError(f"Invalid JSON response from OpenAI: {str(e)}")
 
-            # Ensure IDs match
+            # Validate response structure and content
             if not self._validate_response(result):
                 raise ValueError("Response validation failed")
 
@@ -103,7 +108,14 @@ Your response must be a valid JSON object matching the following schema exactly:
             raise Exception(f"Error generating strategy with OpenAI: {str(e)}")
 
     def _format_images(self, images: List[bytes]) -> List[Dict]:
-        """Convert images to OpenAI's expected format."""
+        """Convert images to OpenAI's expected format.
+        
+        Args:
+            images: List of image bytes
+            
+        Returns:
+            List of formatted image objects for OpenAI's API
+        """
         import base64
         return [{
             "type": "image_url",
