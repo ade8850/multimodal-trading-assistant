@@ -1,5 +1,3 @@
-# aitrading/agents/models/trading.py
-
 from typing import List, Optional, Dict, Literal
 from datetime import datetime
 from pydantic import BaseModel, Field
@@ -29,20 +27,14 @@ class PlannedOrder(BaseModel):
             self.order_link_id = f"{plan_id}-{session_id}-{order_num}"
             self.id = order_num
 
-class PositionUpdate(BaseModel):
-    """Specification for updating an existing position's TP/SL."""
-    symbol: str = Field(..., description="Trading pair symbol")
-    take_profit: Optional[float] = None
-    stop_loss: Optional[float] = None
-    reason: str = Field(..., description="Explanation for the modification")
-
 class TradingParameters(BaseModel):
-    """Input parameters for the trading plan."""
+    """Input parameters for trading plan generation."""
     symbol: str
     budget: float = Field(ge=10)
     leverage: int = Field(ge=1, le=100)
-    strategy_instructions: str = Field(
-        default="Find the most appropriate entry point based on market conditions."
+    stop_loss_config: Optional[Dict] = Field(
+        default=None,
+        description="Optional configuration for automatic stop loss management"
     )
 
 class TradingPlan(BaseModel):
@@ -65,7 +57,6 @@ class TradingPlan(BaseModel):
         default_factory=list,
         description="List of new orders to be placed after any cancellations"
     )
-    position_updates: Optional[List[PositionUpdate]] = None
     analysis: str = Field(..., description="Detailed analysis explaining the plan")
 
     def __init__(self, **data):
@@ -84,7 +75,13 @@ class TradingPlan(BaseModel):
                     "parameters": {
                         "symbol": "BTCUSDT",
                         "budget": 1000.0,
-                        "leverage": 2
+                        "leverage": 2,
+                        "stop_loss_config": {
+                            "timeframe": "1H",
+                            "initial_multiplier": 1.5,
+                            "first_profit_multiplier": 2.0,
+                            "second_profit_multiplier": 2.5
+                        }
                     },
                     "cancellations": [
                         {
