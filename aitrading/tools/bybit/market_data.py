@@ -7,6 +7,9 @@ from pybit.unified_trading import HTTP
 from ..charts.config import TimeframesConfiguration
 
 import logging
+
+from ..charts.models import TimeframeConfig
+
 logger = logging.getLogger("trader")
 
 
@@ -64,7 +67,7 @@ class MarketDataTool:
             logger.error(f"Error fetching historical data for {timeframe}: {str(e)}")
             raise Exception(f"Error fetching historical data: {str(e)}")
 
-    def _get_start_timestamp(self, tf_config: Dict) -> int:
+    def _get_start_timestamp(self, tf_config: TimeframeConfig) -> int:
         """Calculate start timestamp based on timeframe configuration."""
         now = datetime.now()
         lookback_minutes = tf_config.candles * tf_config.minutes

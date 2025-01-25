@@ -1,5 +1,3 @@
-# scheduler.py
-
 import os
 import sys
 import yaml
@@ -96,18 +94,18 @@ class TradingScheduler:
                 symbol=symbol,
                 budget=float(params["budget"]),
                 leverage=int(params["leverage"]),
-                strategy_instructions=params.get("strategy_instructions", "")
+                stop_loss_config=self.config.get("stop_loss")
             )
 
             # Generate and execute trading plan
-            trading_plan = self.container.trading_planner().create_trading_plan(trading_params)
+            planner = self.container.trading_planner()
+            trading_plan = planner.create_trading_plan(trading_params)
 
             if trading_plan:
-
                 with logfire.span("executing_plan") as span:
                     span.set_attribute("symbol", symbol)
                     # Execute the plan
-                    result = self.container.trading_planner().execute_plan(trading_plan)
+                    result = await planner.execute_plan(trading_plan)
 
                     logfire.info("Executing results", extra=result)
                     if result.get("cancellations"):
@@ -132,6 +130,10 @@ class TradingScheduler:
                                 logfire.info("New order created")
                             else:
                                 logfire.error("Failed order creation", extra={"error": order["error"]})
+
+                    # Log stop loss updates
+                    if result.get("stop_loss_updates"):
+                        logfire.info("Stop loss updates", extra=result["stop_loss_updates"])
             else:
                 logfire.warning(f"No trading plan generated")
 

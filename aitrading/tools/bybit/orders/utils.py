@@ -1,9 +1,7 @@
 # aitrading/tools/bybit/orders/utils.py
 
 from typing import Dict, List
-from rich.console import Console
-
-console = Console()
+import logfire
 
 
 def get_active_orders(session, symbol: str) -> List[Dict]:
@@ -40,7 +38,7 @@ def get_active_orders(session, symbol: str) -> List[Dict]:
             }
             formatted_orders.append(formatted)
 
-        console.print(f"Found {len(formatted_orders)} active orders for {symbol}")
+        logfire.info(f"Found {len(formatted_orders)} active orders", formatted_orders=formatted_orders)
         return formatted_orders
 
     except Exception as e:
@@ -79,12 +77,11 @@ def get_positions(session, symbol: str) -> List[Dict]:
             }
             formatted_positions.append(formatted)
 
-        console.print(f"Found {len(formatted_positions)} active positions for {symbol}")
+        logfire.info(f"Found {len(formatted_positions)} active positions", formatted_positions=formatted_positions)
         return formatted_positions
 
     except Exception as e:
-        console.print(e)
-        raise Exception(f"[red]Error fetching positions for {symbol}: {str(e)}[/red]")
+        raise Exception(f"Error fetching positions for {symbol}: {str(e)}")
 
 
 def get_current_price(session, symbol: str) -> float:
@@ -104,19 +101,14 @@ def verify_account_status(session, symbol: str) -> None:
             accountType="UNIFIED",
             coin="USDT"
         )
-        #console.print("\n[yellow]Account Balance:[/yellow]")
-        #console.print(balance)
 
         # Check existing positions
         positions = session.get_positions(
             category="linear",
             symbol=symbol
         )
-        #console.print("\n[yellow]Current Positions:[/yellow]")
-        #console.print(positions)
 
     except Exception as e:
-        console.print(f"[red]Error verifying account status: {str(e)}[/red]")
         raise
 
 

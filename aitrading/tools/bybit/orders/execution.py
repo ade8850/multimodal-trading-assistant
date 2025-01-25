@@ -1,13 +1,10 @@
 # aitrading/tools/bybit/orders/execution.py
 
 from typing import Dict
-
-from rich.console import Console
-
+import logfire
 from .utils import get_current_price
 from .validation import calculate_quantity
 
-console = Console()
 
 
 def execute_order_operations(session, order, instrument_info: Dict) -> Dict:
@@ -17,18 +14,14 @@ def execute_order_operations(session, order, instrument_info: Dict) -> Dict:
     try:
         # Prepare base order parameters
         base_params = _prepare_base_order_params(session, order, instrument_info)
-        #console.print("\n[yellow]Prepared order parameters:[/yellow]")
-        #console.print(base_params)
 
         # Add TP/SL parameters if present
         order_params = _add_tp_sl_params(base_params, order.order.exit)
-        #console.print("\n[yellow]Final order parameters with TP/SL:[/yellow]")
-        #console.print(order_params)
 
         # Place the order
-        console.print("\n[yellow]Placing order...[/yellow]")
+        logfire.info("Placing order...")
         results["entry"] = session.place_order(**order_params)
-        console.print(f"[green]Order placed successfully: {results['entry']}[/green]")
+        logfire.info(f"Order placed successfully", **results)
 
         # Verify order status
         verify_order_status(session, order.symbol, results["entry"]["result"]["orderId"])
@@ -37,7 +30,7 @@ def execute_order_operations(session, order, instrument_info: Dict) -> Dict:
 
     except Exception as e:
         error_msg = str(e)
-        console.print(f"[red]Error in execute_order_operations: {error_msg}[/red]")
+        logfire.error(f"[red]Error in execute_order_operations: {error_msg}")
         results["errors"].append(error_msg)
         return results
 
@@ -68,7 +61,7 @@ def set_trading_stops(session, symbol: str, position_idx: int = 0, **kwargs) -> 
         if response["retCode"] != 0:
             raise ValueError(f"API error: {response['retMsg']}")
 
-        console.print(f"[green]Successfully updated trading stops for {symbol}[/green]")
+        logfire.info(f"Successfully updated trading stops for {symbol}")
         return response["result"]
 
     except Exception as e:
@@ -96,7 +89,7 @@ def cancel_order(session, symbol: str, order_id: str = None, order_link_id: str 
         if response["retCode"] != 0:
             raise ValueError(f"API error: {response['retMsg']}")
 
-        console.print(f"Successfully cancelled order: {order_id or order_link_id}")
+        logfire.info(f"Successfully cancelled order", order=(order_id or order_link_id))
         return response["result"]
 
     except Exception as e:
@@ -120,7 +113,6 @@ def _prepare_base_order_params(session, order, instrument_info: Dict) -> Dict:
             instrument_info=instrument_info,
         )
 
-        console.print(f"\n[yellow]Calculated quantity:[/yellow] {quantity}")
 
         # Base parameters
         params = {
@@ -185,17 +177,12 @@ def verify_order_status(session, symbol: str, order_id: str) -> None:
             symbol=symbol,
             orderId=order_id
         )
-        #console.print("\n[yellow]Order Status:[/yellow]")
-        #console.print(order_status)
 
         # Check updated positions
         positions = session.get_positions(
             category="linear",
             symbol=symbol
         )
-        #console.print("\n[yellow]Updated Positions:[/yellow]")
-        #console.print(positions)
 
     except Exception as e:
-        console.print(f"[red]Error verifying order status: {str(e)}[/red]")
         raise

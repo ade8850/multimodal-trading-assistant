@@ -30,7 +30,7 @@ class StopLossManager:
         
         logfire.info("Stop loss manager initialized", **self.config.model_dump())
 
-    async def update_position_stops(self, symbol: str) -> Dict[str, Any]:
+    def update_position_stops(self, symbol: str) -> Dict[str, Any]:
         """Update stop losses for all positions in the given symbol.
         
         Args:
@@ -71,7 +71,7 @@ class StopLossManager:
                 for position in positions:
                     try:
                         with logfire.span("process_position") as pos_span:
-                            pos_span.set_attribute("position_id", position["id"])
+                            pos_span.set_attribute("position", position)
                             
                             # Calculate new stop loss
                             update = self.calculator.calculate_stop_loss(
@@ -148,7 +148,7 @@ class StopLossManager:
                 for symbol in symbols:
                     with logfire.span("monitor_symbol") as span:
                         span.set_attribute("symbol", symbol)
-                        await self.update_position_stops(symbol)
+                        self.update_position_stops(symbol)
 
                 await asyncio.sleep(interval_seconds)
                 

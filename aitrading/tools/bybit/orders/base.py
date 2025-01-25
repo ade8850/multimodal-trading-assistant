@@ -79,8 +79,6 @@ class OrdersTool:
             verify_account_status(self.session, order.symbol)
 
             instrument_info = get_instrument_info(self.session, order.symbol)
-            #console.print(f"\n[yellow]Instrument info for {order.symbol}:[/yellow]")
-            #console.print(instrument_info)
 
             return execute_order_operations(self.session, order, instrument_info)
 
@@ -90,6 +88,6 @@ class OrdersTool:
             results["errors"].append(error_msg)
             return results
 
-    def set_trading_stops(self, symbol: str, position_idx: int = 0, **kwargs) -> Dict:
+    async def set_trading_stops(self, symbol: str, position_idx: int = 0, **kwargs) -> Dict:
         """Set or update trading stop levels for a position."""
         return set_trading_stops(self.session, symbol, position_idx, **kwargs)
