@@ -2,9 +2,8 @@
 
 from typing import Dict
 import logfire
-from .utils import get_current_price
+from .utils import get_current_price, get_instrument_info
 from .validation import calculate_quantity
-
 
 
 def execute_order_operations(session, order, instrument_info: Dict) -> Dict:
@@ -35,6 +34,18 @@ def execute_order_operations(session, order, instrument_info: Dict) -> Dict:
         return results
 
 
+def round_price(price: float, symbol: str, session) -> str:
+    """Round price to instrument precision and convert to string."""
+    try:
+        info = get_instrument_info(session, symbol)
+        price_scale = int(info.get("priceScale", "2"))  # Convert string to int
+        rounded = round(float(price), price_scale)
+        return f"{rounded:.{price_scale}f}"
+    except Exception as e:
+        logfire.error(f"Error rounding price: {str(e)}")
+        raise
+
+
 def set_trading_stops(session, symbol: str, position_idx: int = 0, **kwargs) -> Dict:
     """Set or update trading stop levels for a position."""
     try:
@@ -46,12 +57,17 @@ def set_trading_stops(session, symbol: str, position_idx: int = 0, **kwargs) -> 
         }
 
         # Add optional parameters if provided
-        valid_params = [
-            "takeProfit", "stopLoss", "tpTriggerBy", "slTriggerBy",
-            "tpSize", "slSize", "tpLimitPrice", "slLimitPrice"
-        ]
+        price_params = ["takeProfit", "stopLoss", "tpLimitPrice", "slLimitPrice"]
+        other_params = ["tpTriggerBy", "slTriggerBy", "tpSize", "slSize"]
 
-        for param in valid_params:
+        # Handle price parameters with proper rounding
+        for param in price_params:
+            if param in kwargs and kwargs[param] is not None:
+                params[param] = round_price(kwargs[param], symbol, session)
+                logfire.info(f"Rounded {param}", original=kwargs[param], rounded=params[param])
+
+        # Handle non-price parameters
+        for param in other_params:
             if param in kwargs and kwargs[param] is not None:
                 params[param] = str(kwargs[param])
 
@@ -113,7 +129,6 @@ def _prepare_base_order_params(session, order, instrument_info: Dict) -> Dict:
             instrument_info=instrument_info,
         )
 
-
         # Base parameters
         params = {
             "category": "linear",
@@ -129,7 +144,7 @@ def _prepare_base_order_params(session, order, instrument_info: Dict) -> Dict:
 
         # Add price for limit orders only
         if order.order.type == "limit":
-            params["price"] = str(order.order.entry.price)
+            params["price"] = round_price(order.order.entry.price, order.symbol, session)
 
         return params
 
@@ -150,14 +165,14 @@ def _add_tp_sl_params(base_params: Dict, exit_orders) -> Dict:
 
         if exit_orders.take_profit:
             order_params.update({
-                "takeProfit": str(exit_orders.take_profit.price),
+                "takeProfit": round_price(exit_orders.take_profit.price, order_params["symbol"], session),
                 "tpTriggerBy": "LastPrice",
                 "tpOrderType": "Market",
             })
 
         if exit_orders.stop_loss:
             order_params.update({
-                "stopLoss": str(exit_orders.stop_loss.price),
+                "stopLoss": round_price(exit_orders.stop_loss.price, order_params["symbol"], session),
                 "slTriggerBy": "LastPrice",
                 "slOrderType": "Market",
             })

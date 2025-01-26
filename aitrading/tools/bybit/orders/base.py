@@ -88,6 +88,6 @@ class OrdersTool:
             results["errors"].append(error_msg)
             return results
 
-    async def set_trading_stops(self, symbol: str, position_idx: int = 0, **kwargs) -> Dict:
+    def set_trading_stops(self, symbol: str, position_idx: int = 0, **kwargs) -> Dict:
         """Set or update trading stop levels for a position."""
         return set_trading_stops(self.session, symbol, position_idx, **kwargs)

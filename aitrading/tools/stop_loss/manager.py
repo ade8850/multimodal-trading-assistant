@@ -1,6 +1,6 @@
 from typing import Dict, List, Any, Optional
-import asyncio
 import logfire
+import time
 
 from .models import StopLossConfig, StopLossUpdate
 from .calculator import StopLossCalculator
@@ -16,13 +16,7 @@ class StopLossManager:
         orders: OrdersTool,
         config: Optional[StopLossConfig] = None
     ):
-        """Initialize the stop loss manager.
-        
-        Args:
-            market_data: Market data tool instance
-            orders: Orders tool instance
-            config: Optional stop loss configuration
-        """
+        """Initialize the stop loss manager."""
         self.market_data = market_data
         self.orders = orders
         self.config = config or StopLossConfig()
@@ -31,16 +25,7 @@ class StopLossManager:
         logfire.info("Stop loss manager initialized", **self.config.model_dump())
 
     def update_position_stops(self, symbol: str) -> Dict[str, Any]:
-        """Update stop losses for all positions in the given symbol.
-        
-        Args:
-            symbol: Trading pair symbol
-            
-        Returns:
-            Dictionary containing:
-            - updates: List of successful updates
-            - errors: List of failed updates
-        """
+        """Update stop losses for all positions in the given symbol."""
         results = {
             "symbol": symbol,
             "updates": [],
@@ -51,29 +36,24 @@ class StopLossManager:
             with logfire.span("position_stops_update") as span:
                 span.set_attribute("symbol", symbol)
                 
-                # Get current positions
                 positions = self.orders.get_positions(symbol)
                 if not positions:
                     logfire.info("No positions found", symbol=symbol)
                     return results
 
-                # Get current market data
                 current_price = self.market_data.get_current_price(symbol)
                 historical_data = self.market_data.fetch_historical_data(
                     symbol, 
                     self.config.timeframe
                 )
 
-                # Calculate current ATR
                 atr_value = self.calculator.calculate_atr(historical_data)
 
-                # Process each position
                 for position in positions:
                     try:
                         with logfire.span("process_position") as pos_span:
                             pos_span.set_attribute("position", position)
                             
-                            # Calculate new stop loss
                             update = self.calculator.calculate_stop_loss(
                                 symbol=symbol,
                                 current_price=current_price,
@@ -84,13 +64,11 @@ class StopLossManager:
                                 previous_stop_loss=position.get("stop_loss")
                             )
 
-                            # Skip update if stop loss hasn't changed
                             if (update.previous_stop_loss and 
                                 update.new_stop_loss == update.previous_stop_loss):
                                 logfire.info("Stop loss unchanged", **update.model_dump())
                                 continue
 
-                            # Apply new stop loss
                             result = self.orders.set_trading_stops(
                                 symbol=symbol,
                                 stopLoss=str(update.new_stop_loss)
@@ -100,21 +78,23 @@ class StopLossManager:
                                        update=update.model_dump(),
                                        result=result)
                             
+                            position_id = position.get("position_idx", position.get("symbol", "unknown"))
+                            
                             results["updates"].append({
-                                "position_id": position["id"],
+                                "position_id": position_id,
                                 "update": update.model_dump(),
                                 "result": result
                             })
 
                     except Exception as e:
+                        position_id = position.get("position_idx", position.get("symbol", "unknown"))
                         error_details = {
-                            "position_id": position["id"],
+                            "position_id": position_id,
                             "error": str(e)
                         }
                         logfire.error("Position update failed", **error_details)
                         results["errors"].append(error_details)
 
-                # Log final results
                 logfire.info("Position stops update completed",
                             symbol=symbol,
                             successful_updates=len(results["updates"]),
@@ -128,17 +108,12 @@ class StopLossManager:
                          error=str(e))
             raise
 
-    async def monitor_positions(
+    def monitor_positions(
         self,
         symbols: List[str],
         interval_seconds: int = 60
     ) -> None:
-        """Monitor positions and update stop losses periodically.
-        
-        Args:
-            symbols: List of trading pair symbols to monitor
-            interval_seconds: Update interval in seconds (default 60)
-        """
+        """Monitor positions and update stop losses periodically."""
         logfire.info("Starting position monitor",
                     symbols=symbols,
                     interval=interval_seconds)
@@ -150,10 +125,10 @@ class StopLossManager:
                         span.set_attribute("symbol", symbol)
                         self.update_position_stops(symbol)
 
-                await asyncio.sleep(interval_seconds)
+                time.sleep(interval_seconds)
                 
             except Exception as e:
                 logfire.error("Position monitoring error",
                             symbols=symbols,
                             error=str(e))
-                await asyncio.sleep(5)  # Brief pause before retry
+                time.sleep(5)

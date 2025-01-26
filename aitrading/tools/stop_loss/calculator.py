@@ -23,7 +23,7 @@ class StopLossCalculator:
         Args:
             entry_price: Position entry price
             current_price: Current market price
-            position_type: Either 'long' or 'short'
+            position_type: Either 'buy' or 'sell'
             
         Returns:
             Tuple containing:
@@ -32,7 +32,7 @@ class StopLossCalculator:
             - ATR multiplier to use
         """
         # Calculate profit percentage
-        if position_type.lower() == 'long':
+        if position_type.lower() == 'buy':
             profit_percentage = ((current_price - entry_price) / entry_price) * 100
         else:  # short position
             profit_percentage = ((entry_price - current_price) / entry_price) * 100
@@ -99,7 +99,7 @@ class StopLossCalculator:
             current_price: Current market price
             entry_price: Position entry price
             position_size: Position size
-            position_type: Either 'long' or 'short'
+            position_type: Either 'buy' or 'sell' (from Bybit API)
             atr_value: Current ATR value
             previous_stop_loss: Current active stop loss level
             
@@ -112,47 +112,48 @@ class StopLossCalculator:
                 band, profit_percentage, multiplier = self.calculate_profit_band(
                     entry_price, current_price, position_type
                 )
+
+                # Add detailed logging
+                logfire.info("Stop loss calculation parameters", **{
+                    "symbol": symbol,
+                    "current_price": current_price,
+                    "entry_price": entry_price,
+                    "position_type": position_type,
+                    "atr_value": atr_value,
+                    "band": band,
+                    "profit_percentage": profit_percentage,
+                    "multiplier": multiplier,
+                    "previous_stop_loss": previous_stop_loss
+                })
                 
                 # Calculate new stop loss level
                 atr_distance = atr_value * multiplier
-                if position_type.lower() == 'long':
+                logfire.info("ATR distance calculated", **{
+                    "atr_value": atr_value,
+                    "multiplier": multiplier,
+                    "atr_distance": atr_distance
+                })
+
+                # Determine if this is a long (buy) or short (sell) position
+                is_long = position_type.lower() == 'buy'
+                logfire.info("Position type determined", **{
+                    "position_type": position_type,
+                    "is_long": is_long,
+                    "calculation_type": "long" if is_long else "short"
+                })
+
+                if is_long:
                     new_stop_loss = current_price - atr_distance
-                    
-                    # Ensure new stop loss is higher than previous (for long positions)
-                    if previous_stop_loss and new_stop_loss <= previous_stop_loss:
-                        span.set_attribute("stop_loss_unchanged", True)
-                        return StopLossUpdate(
-                            symbol=symbol,
-                            current_price=current_price,
-                            entry_price=entry_price,
-                            position_size=position_size,
-                            current_band=band,
-                            current_profit_percentage=profit_percentage,
-                            atr_value=atr_value,
-                            new_stop_loss=previous_stop_loss,
-                            previous_stop_loss=previous_stop_loss,
-                            multiplier_used=multiplier,
-                            reason="New stop loss would be lower than current"
-                        )
+                    logfire.info("Long position stop loss calculated", **{
+                        "new_stop_loss": new_stop_loss,
+                        "calculation": f"{current_price} - {atr_distance} = {new_stop_loss}"
+                    })
                 else:  # short position
                     new_stop_loss = current_price + atr_distance
-                    
-                    # Ensure new stop loss is lower than previous (for short positions)
-                    if previous_stop_loss and new_stop_loss >= previous_stop_loss:
-                        span.set_attribute("stop_loss_unchanged", True)
-                        return StopLossUpdate(
-                            symbol=symbol,
-                            current_price=current_price,
-                            entry_price=entry_price,
-                            position_size=position_size,
-                            current_band=band,
-                            current_profit_percentage=profit_percentage,
-                            atr_value=atr_value,
-                            new_stop_loss=previous_stop_loss,
-                            previous_stop_loss=previous_stop_loss,
-                            multiplier_used=multiplier,
-                            reason="New stop loss would be higher than current"
-                        )
+                    logfire.info("Short position stop loss calculated", **{
+                        "new_stop_loss": new_stop_loss,
+                        "calculation": f"{current_price} + {atr_distance} = {new_stop_loss}"
+                    })
 
                 # Create update with new stop loss
                 update = StopLossUpdate(
