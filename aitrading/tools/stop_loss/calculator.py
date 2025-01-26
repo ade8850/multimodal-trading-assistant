@@ -148,12 +148,58 @@ class StopLossCalculator:
                         "new_stop_loss": new_stop_loss,
                         "calculation": f"{current_price} - {atr_distance} = {new_stop_loss}"
                     })
+
+                    # For long positions, ensure new stop loss is higher than previous
+                    if previous_stop_loss and new_stop_loss <= previous_stop_loss:
+                        logfire.info("Stop loss movement inhibited", **{
+                            "reason": "New stop loss would decrease for long position",
+                            "position_type": "buy",
+                            "new_stop_loss": new_stop_loss,
+                            "previous_stop_loss": previous_stop_loss,
+                            "difference": new_stop_loss - previous_stop_loss
+                        })
+                        return StopLossUpdate(
+                            symbol=symbol,
+                            current_price=current_price,
+                            entry_price=entry_price,
+                            position_size=position_size,
+                            current_band=band,
+                            current_profit_percentage=profit_percentage,
+                            atr_value=atr_value,
+                            new_stop_loss=previous_stop_loss,
+                            previous_stop_loss=previous_stop_loss,
+                            multiplier_used=multiplier,
+                            reason="Stop loss cannot decrease for long positions"
+                        )
                 else:  # short position
                     new_stop_loss = current_price + atr_distance
                     logfire.info("Short position stop loss calculated", **{
                         "new_stop_loss": new_stop_loss,
                         "calculation": f"{current_price} + {atr_distance} = {new_stop_loss}"
                     })
+
+                    # For short positions, ensure new stop loss is lower than previous
+                    if previous_stop_loss and new_stop_loss >= previous_stop_loss:
+                        logfire.info("Stop loss movement inhibited", **{
+                            "reason": "New stop loss would increase for short position",
+                            "position_type": "sell",
+                            "new_stop_loss": new_stop_loss,
+                            "previous_stop_loss": previous_stop_loss,
+                            "difference": new_stop_loss - previous_stop_loss
+                        })
+                        return StopLossUpdate(
+                            symbol=symbol,
+                            current_price=current_price,
+                            entry_price=entry_price,
+                            position_size=position_size,
+                            current_band=band,
+                            current_profit_percentage=profit_percentage,
+                            atr_value=atr_value,
+                            new_stop_loss=previous_stop_loss,
+                            previous_stop_loss=previous_stop_loss,
+                            multiplier_used=multiplier,
+                            reason="Stop loss cannot increase for short positions"
+                        )
 
                 # Create update with new stop loss
                 update = StopLossUpdate(
