@@ -51,6 +51,161 @@ class TradingPlanner:
         except Exception as e:
             logfire.exception(f"Failed to initialize Logfire: {str(e)}")
 
+    def execute_plan(self, plan: TradingPlan) -> Dict:
+        """Execute all operations in the trading plan on the exchange."""
+        try:
+            with logfire.span("execute_trading_plan") as span:
+                span.set_attributes({
+                    "plan_id": plan.id,
+                    "symbol": plan.parameters.symbol,
+                    "orders_count": len(plan.orders),
+                    "cancellations_count": len(plan.cancellations or [])
+                })
+
+                results = {
+                    "plan_id": plan.id,
+                    "cancellations": [],
+                    "orders": []
+                }
+
+                # Initialize StopLossManager if configuration is provided
+                stop_loss_manager = None
+                if plan.parameters.stop_loss_config:
+                    with logfire.span("init_stop_loss_manager"):
+                        try:
+                            stop_loss_config = StopLossConfig(**plan.parameters.stop_loss_config)
+                            stop_loss_manager = StopLossManager(
+                                market_data=self.market_data,
+                                orders=self.orders,
+                                config=stop_loss_config
+                            )
+                            logfire.info("Stop loss manager initialized", **plan.parameters.stop_loss_config)
+                        except Exception as e:
+                            logfire.error("Failed to initialize stop loss manager", error=str(e))
+
+                # Execute cancellations first
+                if plan.cancellations:
+                    with logfire.span("execute_cancellations"):
+                        cancellation_results = self._execute_cancellations(plan.cancellations)
+                        results["cancellations"] = cancellation_results
+                    time.sleep(1)
+
+                # Execute new orders
+                if plan.orders:
+                    with logfire.span("execute_orders"):
+                        for order in plan.orders:
+                            try:
+                                self.orders.set_position_settings(
+                                    symbol=order.symbol,
+                                    leverage=order.order.entry.leverage
+                                )
+
+                                result = self.orders.place_strategy_orders(order)
+                                if result.get("errors"):
+                                    raise ValueError(f"Order execution failed for {order.id}: {result['errors']}")
+
+                                results["orders"].append({
+                                    "order_id": order.id,
+                                    "order_link_id": order.order_link_id,
+                                    "result": result
+                                })
+
+                                logfire.info("Order placed", **{
+                                    "order_id": order.id,
+                                    "symbol": order.symbol,
+                                    "type": order.type,
+                                    "leverage": order.order.entry.leverage
+                                })
+
+                            except Exception as e:
+                                results["orders"].append({
+                                    "order_id": order.id,
+                                    "order_link_id": order.order_link_id,
+                                    "error": str(e)
+                                })
+                                logfire.error("Order placement failed", **{
+                                    "order_id": order.id,
+                                    "symbol": order.symbol,
+                                    "error": str(e)
+                                })
+
+                # Update stop losses regardless of other operations
+                if stop_loss_manager:
+                    with logfire.span("update_stop_losses"):
+                        try:
+                            # Check for active positions first
+                            positions = self.orders.get_positions(plan.parameters.symbol)
+                            if positions:
+                                stop_loss_results = stop_loss_manager.update_position_stops(plan.parameters.symbol)
+                                results["stop_loss_updates"] = stop_loss_results
+                                logfire.info("Stop loss updates executed", 
+                                           updates=len(stop_loss_results.get("updates", [])),
+                                           errors=len(stop_loss_results.get("errors", [])))
+                            else:
+                                logfire.info("No active positions to update stop losses")
+                        except Exception as e:
+                            logfire.exception("Stop loss update failed", error=str(e))
+                            raise
+
+                logfire.info("Plan execution complete", **{
+                    "plan_id": plan.id,
+                    "successful_cancellations": sum(1 for c in results["cancellations"] if c.get("status") == "success"),
+                    "successful_orders": sum(1 for o in results["orders"] if "error" not in o),
+                    "stop_loss_updated": "stop_loss_updates" in results
+                })
+
+                return results
+
+        except Exception as e:
+            logfire.exception("Plan execution failed", **{"error": str(e), "plan_id": plan.id})
+            raise Exception(f"Error executing trading plan: {str(e)}")
+
+    def _execute_cancellations(self, cancellations: List[OrderCancellation]) -> List[Dict]:
+        """Execute a list of order cancellations."""
+        results = []
+        for cancel in cancellations:
+            try:
+                with logfire.span("cancel_order") as span:
+                    span.set_attributes({
+                        "order_id": cancel.id,
+                        "order_link_id": cancel.order_link_id,
+                        "symbol": cancel.symbol
+                    })
+                    
+                    result = self.orders.cancel_order(
+                        symbol=cancel.symbol,
+                        order_id=cancel.id,
+                        order_link_id=cancel.order_link_id
+                    )
+
+                    results.append({
+                        "order_id": cancel.id,
+                        "order_link_id": cancel.order_link_id,
+                        "result": result,
+                        "status": "success"
+                    })
+
+                    logfire.info("Order cancelled", **{
+                        "order_id": cancel.id,
+                        "symbol": cancel.symbol,
+                        "reason": cancel.reason
+                    })
+
+            except Exception as e:
+                results.append({
+                    "order_id": cancel.id,
+                    "order_link_id": cancel.order_link_id,
+                    "error": str(e),
+                    "status": "failed"
+                })
+                logfire.error("Order cancellation failed", **{
+                    "order_id": cancel.id,
+                    "symbol": cancel.symbol,
+                    "error": str(e)
+                })
+
+        return results
+
     def create_trading_plan(self, params: TradingParameters) -> TradingPlan:
         """Create a new trading plan with analysis and planned orders."""
         try:
@@ -83,7 +238,7 @@ class TradingPlanner:
                     volatility_metrics = None
                     logfire.error("Volatility calculation failed", error=str(e))
 
-                # Get active orders - change from async to sync
+                # Get active orders
                 try:
                     with logfire.span("fetch_active_orders"):
                         active_orders = self.orders.get_active_orders(params.symbol)
@@ -93,7 +248,7 @@ class TradingPlanner:
                     existing_orders = []
                     logfire.error("Failed to fetch active orders", error=str(e))
 
-                # Get current positions - change from async to sync
+                # Get current positions
                 try:
                     with logfire.span("fetch_positions"):
                         current_positions = self.orders.get_positions(params.symbol)
@@ -210,158 +365,3 @@ class TradingPlanner:
         except Exception as e:
             logfire.exception(f"Error in chart generation: {str(e)}")
             return generated_charts  # Return any charts we managed to generate
-
-    async def execute_plan(self, plan: TradingPlan) -> Dict:
-        """Execute all operations in the trading plan on the exchange."""
-        try:
-            with logfire.span("execute_trading_plan") as span:
-                span.set_attributes({
-                    "plan_id": plan.id,
-                    "symbol": plan.parameters.symbol,
-                    "orders_count": len(plan.orders),
-                    "cancellations_count": len(plan.cancellations or [])
-                })
-
-                results = {
-                    "plan_id": plan.id,
-                    "cancellations": [],
-                    "orders": []
-                }
-
-                # Initialize StopLossManager if configuration is provided
-                stop_loss_manager = None
-                if plan.parameters.stop_loss_config:
-                    with logfire.span("init_stop_loss_manager"):
-                        try:
-                            stop_loss_config = StopLossConfig(**plan.parameters.stop_loss_config)
-                            stop_loss_manager = StopLossManager(
-                                market_data=self.market_data,
-                                orders=self.orders,
-                                config=stop_loss_config
-                            )
-                            logfire.info("Stop loss manager initialized", **plan.parameters.stop_loss_config)
-                        except Exception as e:
-                            logfire.error("Failed to initialize stop loss manager", error=str(e))
-
-                # Execute cancellations first
-                if plan.cancellations:
-                    with logfire.span("execute_cancellations"):
-                        cancellation_results = await self._execute_cancellations(plan.cancellations)
-                        results["cancellations"] = cancellation_results
-                    time.sleep(1)
-
-                # Execute new orders
-                if plan.orders:
-                    with logfire.span("execute_orders"):
-                        for order in plan.orders:
-                            try:
-                                await self.orders.set_position_settings(
-                                    symbol=order.symbol,
-                                    leverage=order.order.entry.leverage
-                                )
-
-                                result = await self.orders.place_strategy_orders(order)
-                                if result.get("errors"):
-                                    raise ValueError(f"Order execution failed for {order.id}: {result['errors']}")
-
-                                results["orders"].append({
-                                    "order_id": order.id,
-                                    "order_link_id": order.order_link_id,
-                                    "result": result
-                                })
-
-                                logfire.info("Order placed", **{
-                                    "order_id": order.id,
-                                    "symbol": order.symbol,
-                                    "type": order.type,
-                                    "leverage": order.order.entry.leverage
-                                })
-
-                            except Exception as e:
-                                results["orders"].append({
-                                    "order_id": order.id,
-                                    "order_link_id": order.order_link_id,
-                                    "error": str(e)
-                                })
-                                logfire.error("Order placement failed", **{
-                                    "order_id": order.id,
-                                    "symbol": order.symbol,
-                                    "error": str(e)
-                                })
-
-                # Update stop losses regardless of other operations
-                if stop_loss_manager:
-                    with logfire.span("update_stop_losses"):
-                        try:
-                            # Check for active positions first
-                            positions = self.orders.get_positions(plan.parameters.symbol)
-                            if positions:
-                                stop_loss_results = stop_loss_manager.update_position_stops(plan.parameters.symbol)
-                                results["stop_loss_updates"] = stop_loss_results
-                                logfire.info("Stop loss updates executed", 
-                                           updates=len(stop_loss_results.get("updates", [])),
-                                           errors=len(stop_loss_results.get("errors", [])))
-                            else:
-                                logfire.info("No active positions to update stop losses")
-                        except Exception as e:
-                            logfire.exception("Stop loss update failed", error=str(e))
-                            raise
-
-                logfire.info("Plan execution complete", **{
-                    "plan_id": plan.id,
-                    "successful_cancellations": sum(1 for c in results["cancellations"] if c.get("status") == "success"),
-                    "successful_orders": sum(1 for o in results["orders"] if "error" not in o),
-                    "stop_loss_updated": "stop_loss_updates" in results
-                })
-
-                return results
-
-        except Exception as e:
-            logfire.exception("Plan execution failed", **{"error": str(e), "plan_id": plan.id})
-            raise Exception(f"Error executing trading plan: {str(e)}")
-
-    async def _execute_cancellations(self, cancellations: List[OrderCancellation]) -> List[Dict]:
-        """Execute a list of order cancellations."""
-        results = []
-        for cancel in cancellations:
-            try:
-                with logfire.span("cancel_order") as span:
-                    span.set_attributes({
-                        "order_id": cancel.id,
-                        "order_link_id": cancel.order_link_id,
-                        "symbol": cancel.symbol
-                    })
-                    
-                    result = await self.orders.cancel_order(
-                        symbol=cancel.symbol,
-                        order_id=cancel.id,
-                        order_link_id=cancel.order_link_id
-                    )
-
-                    results.append({
-                        "order_id": cancel.id,
-                        "order_link_id": cancel.order_link_id,
-                        "result": result,
-                        "status": "success"
-                    })
-
-                    logfire.info("Order cancelled", **{
-                        "order_id": cancel.id,
-                        "symbol": cancel.symbol,
-                        "reason": cancel.reason
-                    })
-
-            except Exception as e:
-                results.append({
-                    "order_id": cancel.id,
-                    "order_link_id": cancel.order_link_id,
-                    "error": str(e),
-                    "status": "failed"
-                })
-                logfire.error("Order cancellation failed", **{
-                    "order_id": cancel.id,
-                    "symbol": cancel.symbol,
-                    "error": str(e)
-                })
-
-        return results

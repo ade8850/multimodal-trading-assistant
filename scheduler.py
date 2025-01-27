@@ -2,7 +2,7 @@ import os
 import sys
 import yaml
 import signal
-import asyncio
+import time
 import warnings
 from typing import Dict, Any
 from datetime import datetime
@@ -86,7 +86,7 @@ class TradingScheduler:
         logfire.info("Received termination signal - initiating shutdown")
         self.running = False
 
-    async def _execute_strategy(self, symbol: str, params: Dict[str, Any]) -> None:
+    def _execute_strategy(self, symbol: str, params: Dict[str, Any]) -> None:
         """Execute trading strategy for a single symbol."""
         try:
             # Create trading parameters
@@ -105,7 +105,7 @@ class TradingScheduler:
                 with logfire.span("executing_plan") as span:
                     span.set_attribute("symbol", symbol)
                     # Execute the plan
-                    result = await planner.execute_plan(trading_plan)
+                    result = planner.execute_plan(trading_plan)
 
                     logfire.info("Executing results", extra=result)
                     if result.get("cancellations"):
@@ -140,7 +140,7 @@ class TradingScheduler:
         except Exception as e:
             logfire.exception(f"Error executing strategy: {str(e)}")
 
-    async def run(self) -> None:
+    def run(self) -> None:
         """Main scheduling loop."""
         self.running = True
         interval = self.config.get("interval_minutes", 60)
@@ -157,10 +157,10 @@ class TradingScheduler:
                         break
 
                     logfire.info(f"Processing {symbol}")
-                    await self._execute_strategy(symbol, params)
+                    self._execute_strategy(symbol, params)
 
                     # Short pause between symbols
-                    await asyncio.sleep(1)
+                    time.sleep(1)
 
                 # Calculate time until next run
                 elapsed = (datetime.now() - start_time).total_seconds()
@@ -169,14 +169,14 @@ class TradingScheduler:
                 if sleep_time > 0 and self.running:
                     next_run = datetime.now().timestamp() + sleep_time
                     logfire.info(f"Next run at {datetime.fromtimestamp(next_run).strftime('%Y-%m-%d %H:%M:%S')}")
-                    await asyncio.sleep(sleep_time)
+                    time.sleep(sleep_time)
 
             except Exception as e:
                 logfire.exception(f"Error in main loop: {str(e)}")
 
                 # Wait before retrying
                 if self.running:
-                    await asyncio.sleep(60)
+                    time.sleep(60)
 
         logfire.info("Scheduler stopped")
 
@@ -197,7 +197,7 @@ def main():
     scheduler = TradingScheduler(config_path)
 
     try:
-        asyncio.run(scheduler.run())
+        scheduler.run()
     except KeyboardInterrupt:
         logfire.info("Scheduler terminated by user")
     except Exception as e:
