@@ -15,7 +15,8 @@ def execute_order_operations(session, order, instrument_info: Dict) -> Dict:
         base_params = _prepare_base_order_params(session, order, instrument_info)
 
         # Add TP/SL parameters if present
-        order_params = _add_tp_sl_params(base_params, order.order.exit)
+        #order_params = _add_tp_sl_params(session, base_params, order.order.exit)
+        order_params = base_params  # NO SL/TP (managed independently)
 
         # Place the order
         logfire.info("Placing order...")
@@ -46,7 +47,7 @@ def round_price(price: float, symbol: str, session) -> str:
         raise
 
 
-def set_trading_stops(session, symbol: str, position_idx: int = 0, **kwargs) -> Dict:
+def zset_trading_stops(session, symbol: str, position_idx: int = 0, **kwargs) -> Dict:
     """Set or update trading stop levels for a position."""
     try:
         # Prepare parameters
@@ -152,7 +153,7 @@ def _prepare_base_order_params(session, order, instrument_info: Dict) -> Dict:
         raise Exception(f"Error preparing order params for Order #{order.id}: {str(e)}")
 
 
-def _add_tp_sl_params(base_params: Dict, exit_orders) -> Dict:
+def _add_tp_sl_params(session, base_params: Dict, exit_orders) -> Dict:
     """Add take profit and stop loss parameters."""
     try:
         order_params = base_params.copy()
