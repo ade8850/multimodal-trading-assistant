@@ -30,7 +30,7 @@ def execute_order_operations(session, order, instrument_info: Dict) -> Dict:
 
     except Exception as e:
         error_msg = str(e)
-        logfire.error(f"Error in execute_order_operations: {error_msg}")
+        logfire.exception(f"Error in execute_order_operations: {error_msg}")
         results["errors"].append(error_msg)
         return results
 
