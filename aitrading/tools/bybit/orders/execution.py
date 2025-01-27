@@ -47,7 +47,7 @@ def round_price(price: float, symbol: str, session) -> str:
         raise
 
 
-def zset_trading_stops(session, symbol: str, position_idx: int = 0, **kwargs) -> Dict:
+def set_trading_stops(session, symbol: str, position_idx: int = 0, **kwargs) -> Dict:
     """Set or update trading stop levels for a position."""
     try:
         # Prepare parameters
