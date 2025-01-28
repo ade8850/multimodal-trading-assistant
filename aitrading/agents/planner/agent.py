@@ -297,7 +297,13 @@ class TradingPlanner:
                 plan_data['parameters'] = params
                 trading_plan = TradingPlan(**plan_data)
 
-                logfire.info("Trading plan created", _tags=["plan", params.symbol], **trading_plan.dict())
+                tags = ["plan", params.symbol]
+                if len(trading_plan.get("orders", [])):
+                    tags.append("orders")
+                if len(trading_plan.get("cancellations", [])):
+                    tags.append("cancellations")
+
+                logfire.info("Trading plan created", _tags=tags, **trading_plan.dict())
 
                 return trading_plan
 
