@@ -298,9 +298,9 @@ class TradingPlanner:
                 trading_plan = TradingPlan(**plan_data)
 
                 tags = ["plan", params.symbol]
-                if len(trading_plan.orders):
+                if trading_plan.orders and len(trading_plan.orders):
                     tags.append("orders")
-                if len(trading_plan.cancellations):
+                if trading_plan.cancellations and len(trading_plan.cancellations):
                     tags.append("cancellations")
 
                 logfire.info("Trading plan created", _tags=tags, **trading_plan.dict())
@@ -308,7 +308,7 @@ class TradingPlanner:
                 return trading_plan
 
         except Exception as e:
-            logfire.error("Error creating trading plan", error=str(e))
+            logfire.exception("Error creating trading plan", error=str(e))
             raise Exception(f"Error creating trading plan: {str(e)}")
 
     def _generate_analysis_charts(self, symbol: str, timeframes: List[str]) -> List[bytes]:
