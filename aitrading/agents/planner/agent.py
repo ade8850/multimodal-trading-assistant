@@ -338,9 +338,11 @@ class TradingPlanner:
                     with logfire.span(f"generate_chart_{timeframe}"):
                         # Fetch historical data
                         df = self.market_data.fetch_historical_data(symbol, timeframe)
+                        logfire.debug("Dataframe", df=df)
 
                         # Generate multiple charts for this timeframe
                         timeframe_charts = self.chart_generator.create_charts_for_timeframe(df, timeframe)
+                        logfire.debug("generated timeframe_charts", timeframe_charts=timeframe_charts)
                         if timeframe_charts:
                             generated_charts.extend(timeframe_charts)
 

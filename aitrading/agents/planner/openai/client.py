@@ -1,12 +1,10 @@
 import json
-import logging
+import logfire
 from typing import Dict, List, Any
 from openai import OpenAI
 from ..base import BaseAIClient
 from ....schema import SchemaConverter
-from rich.console import Console
 
-console = Console()
 
 class OpenAIClient(BaseAIClient):
     """Client for interacting with OpenAI's GPT-4V model."""
@@ -16,7 +14,8 @@ class OpenAIClient(BaseAIClient):
         super().__init__(api_key)
         self.client = OpenAI(api_key=api_key)
         self.model = "gpt-4o-mini"
-        logging.info("OpenAI client initialized")
+        logfire.instrument_openai(self.client)
+        logfire.info("OpenAI client initialized")
 
     def generate_strategy(self, system_prompt: str, images: List[bytes]) -> Dict[str, Any]:
         """Generate trading plan using GPT-4V.
@@ -32,8 +31,6 @@ class OpenAIClient(BaseAIClient):
             Complete trading plan with analysis and orders
         """
         try:
-            console.print()
-            console.print("Starting plan generation with GPT-4V", style="bold green")
 
             # Process images for OpenAI's format
             formatted_images = self._format_images(images)
@@ -46,7 +43,7 @@ class OpenAIClient(BaseAIClient):
             try:
                 openai_schema = SchemaConverter.convert(schema, "openai")
             except Exception as e:
-                logging.error(f"Error converting schema: {str(e)}")
+                logfire.exception(f"Error converting schema: {str(e)}")
                 raise
 
             # Add schema requirements to system prompt
@@ -78,14 +75,11 @@ Your response must be a valid JSON object matching the following schema exactly:
             )
 
             response_text = response.choices[0].message.content
-            console.print()
-            console.print("Raw response text: ", response_text, style="grey37")
 
             try:
                 result = json.loads(response_text)
             except json.JSONDecodeError as e:
-                logging.error(f"JSON parsing error: {str(e)}")
-                logging.error(f"Failed to parse response text: {response_text}")
+                logfire.exception(str(e))
                 raise ValueError(f"Invalid JSON response from OpenAI: {str(e)}")
 
             # Validate response structure and content
@@ -96,15 +90,11 @@ Your response must be a valid JSON object matching the following schema exactly:
             orders = result["plan"].get("orders", [])
             for i, order in enumerate(orders, 1):
                 if order.get("id") != i:
-                    console.print(f"[yellow]Fixing order ID from {order.get('id')} to {i}[/yellow]")
                     order["id"] = i
 
             return result
 
         except Exception as e:
-            logging.error(f"Error in generate_strategy: {str(e)}", exc_info=True)
-            console.print("[red]Error in generate_strategy:[/red]", style="bold red")
-            console.print(f"[red]Error details: {str(e)}[/red]")
             raise Exception(f"Error generating strategy with OpenAI: {str(e)}")
 
     def _format_images(self, images: List[bytes]) -> List[Dict]:

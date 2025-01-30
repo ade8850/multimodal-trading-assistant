@@ -21,14 +21,6 @@ class GeminiClient(BaseAIClient):
         self.model = 'gemini-2.0-flash-exp'
         logging.info("Gemini client initialized")
 
-        # Configure Gemini-specific Logfire instrumentation
-        if os.getenv('LOGFIRE_TOKEN'):
-            import logfire
-            try:
-                logfire.instrument_gemini(self.client)
-            except Exception as e:
-                logging.error(f"Failed to instrument Gemini with Logfire: {str(e)}")
-
     def generate_strategy(self, system_prompt: str, images: List[bytes]) -> Dict[str, Any]:
         """Generate trading plan using Gemini."""
         try:

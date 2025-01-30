@@ -1,6 +1,8 @@
 import json
 import logging
 from typing import Dict, List, Any
+
+import logfire
 from anthropic import Anthropic
 from ..base import BaseAIClient
 from ....schema import SchemaConverter
@@ -16,6 +18,7 @@ class AnthropicClient(BaseAIClient):
         super().__init__(api_key)
         self.client = Anthropic(api_key=api_key)
         self.model = "claude-3-5-sonnet-20241022"
+        logfire.instrument_anthropic(self.client)
         logging.info("Anthropic client initialized")
 
     def generate_strategy(self, system_prompt: str, images: List[bytes]) -> Dict[str, Any]:

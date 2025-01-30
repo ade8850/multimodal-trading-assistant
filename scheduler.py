@@ -25,7 +25,7 @@ install(show_locals=True)
 warnings.filterwarnings("ignore", category=SyntaxWarning)
 
 logfire.configure(
-    environment=os.environ.get("LOGFIRE_ENVIRONMENT", "scheduler"),
+    service_name="scheduler",
     send_to_logfire="if-token-present",
     scrubbing=False,
 )

@@ -13,9 +13,9 @@ import logfire
 load_dotenv()
 
 logfire.configure(
-    environment="local",
     send_to_logfire="if-token-present",
     scrubbing=False,
+    service_name="streamlit-app"
 )
 
 # Provider display mapping

@@ -84,6 +84,7 @@ docker run -d \
     -e DUMP_CHARTS="${DUMP_CHARTS:-False}" \
     -e CONFIG_PATH="/app/config.yaml" \
     -e LOGFIRE_TOKEN="${LOGFIRE_TOKEN:-}" \
+    -e LOGFIRE_ENVIRONMENT="${LOGFIRE_ENVIRONMENT:-production}" \
     trading-scheduler
 
 # Wait a moment for the container to start

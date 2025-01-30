@@ -4,7 +4,7 @@ import base64
 from typing import List, Dict, Any, Tuple
 import pandas as pd
 from plotly.subplots import make_subplots
-import logging
+
 
 from .indicators import IndicatorCalculator
 from .layout import (
@@ -15,7 +15,7 @@ from .models import ChartView
 from .config import TimeframesConfiguration
 from .utils import fig_to_image, chart_colors
 
-logger = logging.getLogger("trader")
+import logfire
 
 class ChartGeneratorTool:
     """Tool for generating technical analysis charts."""
@@ -29,6 +29,7 @@ class ChartGeneratorTool:
         try:
             # Get configuration for this timeframe
             timeframe_config = self.config.get_timeframe_config(timeframe)
+            logfire.debug("get timeframe config", timeframe_config=timeframe_config)
             
             # Calculate all indicators once
             calculator = IndicatorCalculator(df)
@@ -36,6 +37,7 @@ class ChartGeneratorTool:
             for view in timeframe_config.views:
                 all_indicators.extend(view.indicators)
             df_with_indicators = calculator.calculate_all(all_indicators)
+            logfire.debug("Dataframe with indicators", df=df_with_indicators)
             
             # Generate a chart for each view
             charts = []
@@ -48,12 +50,12 @@ class ChartGeneratorTool:
                     )
                     charts.append(chart_bytes)
                 except Exception as e:
-                    logger.error(f"Error generating {view.name} chart for {timeframe}: {str(e)}")
+                    logfire.exception(f"Error generating {view.name} chart for {timeframe}: {str(e)}")
                     
             return charts
 
         except Exception as e:
-            logger.error(f"Error generating charts for {timeframe}: {str(e)}")
+            logfire.exception(f"Error generating charts for {timeframe}: {str(e)}")
             raise
 
     def _create_view_chart(self, df: pd.DataFrame, view: ChartView, timeframe: str) -> bytes:
