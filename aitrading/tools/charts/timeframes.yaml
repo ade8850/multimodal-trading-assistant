@@ -8,10 +8,10 @@ timeframes:
         title: "Price Action (5m)"
         height_ratio: 1.0
         indicators:
-          - type: "ema"
-            parameters:
-              period: 55
-            overlay: true
+#          - type: "ema"
+#            parameters:
+#              period: 55
+#            overlay: true
           - type: "ema"
             parameters:
               period: 100
@@ -28,10 +28,10 @@ timeframes:
         title: "Price Action (15m)"
         height_ratio: 1.0
         indicators:
-          - type: "ema"
-            parameters:
-              period: 55
-            overlay: true
+#          - type: "ema"
+#            parameters:
+#              period: 55
+#            overlay: true
           - type: "ema"
             parameters:
               period: 100
@@ -48,14 +48,14 @@ timeframes:
         title: "Trend Analysis (1H)"
         height_ratio: 1.0
         indicators:
-          - type: "ema"
-            parameters:
-              period: 9
-            overlay: true
-          - type: "ema"
-            parameters:
-              period: 55
-            overlay: true
+#          - type: "ema"
+#            parameters:
+#              period: 55
+#            overlay: true
+#          - type: "ema"
+#            parameters:
+#              period: 9
+#            overlay: true
           - type: "ema"
             parameters:
               period: 100
@@ -83,14 +83,14 @@ timeframes:
         title: "Trend Analysis (4H)"
         height_ratio: 1.0
         indicators:
-          - type: "ema"
-            parameters:
-              period: 9
-            overlay: true
-          - type: "ema"
-            parameters:
-              period: 55
-            overlay: true
+#          - type: "ema"
+#            parameters:
+#              period: 9
+#            overlay: true
+#          - type: "ema"
+#            parameters:
+#              period: 55
+#            overlay: true
           - type: "ema"
             parameters:
               period: 100
