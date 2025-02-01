@@ -6,12 +6,9 @@ ai_provider: "anthropic"  # One of: anthropic, gemini, openai
 
 # Stop Loss Management Configuration
 stop_loss:
-  timeframe: "1H"  # Timeframe for ATR calculation
-  initial_multiplier: 1.5  # ATR multiplier for initial positions
-  first_profit_multiplier: 2.0  # ATR multiplier when position reaches first profit threshold
-  second_profit_multiplier: 2.5  # ATR multiplier when position reaches second profit threshold
-  first_profit_threshold: 1.0  # Percentage threshold for first profit band
-  second_profit_threshold: 2.0  # Percentage threshold for second profit band
+  timeframe: "4H"
+  initial_multiplier: 1.5
+  in_profit_multiplier: 2.0
 
 # Trading parameters per symbol
 symbols:

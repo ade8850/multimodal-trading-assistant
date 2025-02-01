@@ -30,12 +30,11 @@ The system implements an advanced automated risk management strategy that adapts
 Position Protection:
 - Stop losses are calculated using Average True Range (ATR) to account for market volatility
 - Protection levels automatically adjust based on position performance
-- Three-tiered system provides progressively more room for profitable trades to develop
+- Two-tiered system provides different ATR multipliers based on whether the position is in profit or not
 
 Risk Bands:
-1. Initial Protection Band: Conservative stop loss placement for new positions
-2. First Profit Band: Adjusted protection when initial profit targets are met
-3. Second Profit Band: Maximum room for trend continuation in strongly profitable positions
+1. Initial Protection Band: Conservative stop loss placement for new positions (not in profit)
+2. In Profit Band: Adjusted protection when the stop loss is above the entry price (for long positions) or below the entry price (for short positions)
 
 All risk parameters are fully configurable through the web interface or configuration files, allowing for customization while maintaining systematic risk control.
 

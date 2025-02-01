@@ -4,6 +4,7 @@ import logfire
 
 from .models import StopLossConfig, StopLossUpdate, ProfitBand
 
+
 class StopLossCalculator:
     """Calculator for dynamic stop loss levels based on ATR and profit bands."""
 
@@ -13,46 +14,23 @@ class StopLossCalculator:
         logfire.info("Stop loss calculator initialized", **config.model_dump())
 
     def calculate_profit_band(
-        self, 
-        entry_price: float, 
-        current_price: float,
+        self,
+        entry_price: float,
+        current_stop_loss: float,
         position_type: str
-    ) -> Tuple[ProfitBand, float, float]:
-        """Calculate profit band based on current position performance.
-        
-        Args:
-            entry_price: Position entry price
-            current_price: Current market price
-            position_type: Either 'buy' or 'sell'
-            
-        Returns:
-            Tuple containing:
-            - Current profit band
-            - Profit percentage
-            - ATR multiplier to use
-        """
-        # Calculate profit percentage
-        if position_type.lower() == 'buy':
-            profit_percentage = ((current_price - entry_price) / entry_price) * 100
-        else:  # short position
-            profit_percentage = ((entry_price - current_price) / entry_price) * 100
+    ) -> Tuple[ProfitBand, float]:
+        """Determine if the position is currently in profit based on the stop loss level."""
 
-        # Determine profit band and multiplier
-        if profit_percentage >= self.config.second_profit_threshold:
-            with logfire.span("profit_band_calculation") as span:
-                span.set_attribute("band", "second_profit")
-                span.set_attribute("profit_percentage", profit_percentage)
-                return ProfitBand.SECOND_PROFIT, profit_percentage, self.config.second_profit_multiplier
-        elif profit_percentage >= self.config.first_profit_threshold:
-            with logfire.span("profit_band_calculation") as span:
-                span.set_attribute("band", "first_profit")
-                span.set_attribute("profit_percentage", profit_percentage)
-                return ProfitBand.FIRST_PROFIT, profit_percentage, self.config.first_profit_multiplier
-        else:
-            with logfire.span("profit_band_calculation") as span:
-                span.set_attribute("band", "initial")
-                span.set_attribute("profit_percentage", profit_percentage)
-                return ProfitBand.INITIAL, profit_percentage, self.config.initial_multiplier
+        if position_type.lower() == 'buy':
+            if entry_price < current_stop_loss:
+                return ProfitBand.FIRST_PROFIT, self.config.in_profit_multiplier
+            else:
+                return ProfitBand.INITIAL, self.config.initial_multiplier
+        else:  # sell
+            if entry_price > current_stop_loss:
+                return ProfitBand.FIRST_PROFIT, self.config.in_profit_multiplier
+            else:
+                return ProfitBand.INITIAL, self.config.initial_multiplier
 
     def calculate_atr(self, df: pd.DataFrame, period: int = 14) -> float:
         """Calculate current ATR value.
@@ -75,7 +53,7 @@ class StopLossCalculator:
                 tr3 = (low - close).abs()
                 tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
                 atr = tr.rolling(window=period).mean().iloc[-1]
-                
+
                 logfire.info("ATR calculated", value=atr, period=period)
                 return float(atr)
         except Exception as e:
@@ -83,14 +61,14 @@ class StopLossCalculator:
             raise
 
     def calculate_stop_loss(
-        self,
-        symbol: str,
-        current_price: float,
-        entry_price: float,
-        position_size: float,
-        position_type: str,
-        atr_value: float,
-        previous_stop_loss: Optional[float] = None
+            self,
+            symbol: str,
+            current_price: float,
+            entry_price: float,
+            position_size: float,
+            position_type: str,
+            atr_value: float,
+            previous_stop_loss: Optional[float] = None
     ) -> StopLossUpdate:
         """Calculate new stop loss level based on current market conditions.
         
@@ -125,7 +103,7 @@ class StopLossCalculator:
                     "multiplier": multiplier,
                     "previous_stop_loss": previous_stop_loss
                 })
-                
+
                 # Calculate new stop loss level
                 atr_distance = atr_value * multiplier
                 logfire.info("ATR distance calculated", **{
@@ -220,9 +198,9 @@ class StopLossCalculator:
                 return update
 
         except Exception as e:
-            logfire.error("Stop loss calculation failed", 
-                         symbol=symbol,
-                         error=str(e),
-                         current_price=current_price,
-                         entry_price=entry_price)
+            logfire.error("Stop loss calculation failed",
+                          symbol=symbol,
+                          error=str(e),
+                          current_price=current_price,
+                          entry_price=entry_price)
             raise
