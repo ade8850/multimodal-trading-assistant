@@ -24,12 +24,14 @@ Management Strategy:
   - Analyze if current market structure supports position
   - Assess changes in technical conditions since entry
   - Evaluate position alignment with current market phase
+  - Consider how current volatility affects the automated stop management
 
 2. New positions decisions:
   - Evaluate setup quality based on price action and volume
   - Verify alignment with dominant trend
   - Ensure adequate volume
-  - Define clear invalidation levels
+  - Define clear market-based invalidation levels
+  - Verify current volatility supports the automated stop loss system
 
 3. Risk Management Triggers:
   - Immediate Risk Reduction Required When:
@@ -38,18 +40,23 @@ Management Strategy:
     * Key level failing with momentum
   - Position Exit Required When:
     * Market structure invalidated
-    * Stop level compromised
-    * Risk/reward no longer favorable
+    * Technical conditions no longer support position
+    * Risk/reward profile compromised by market conditions
 
 Analysis Requirements:
 1. Support/resistance levels and 24h range
 2. Technical indicators - EMAs, RSI, MACD, BB
 3. Position sizing based on:
-   - Market volatility
-   - Setup quality
+   - Current volatility regime
+   - ATR-based stop distance
    - Current market phase
+   - Setup quality
 4. Entry timing and type selection (market/limit)
-5. Take profit and stop loss levels
+5. Market structure analysis:
+   - Key levels identification
+   - Trend strength assessment
+   - Volume profile validation
+   - Volatility regime analysis
 6. Budget analysis:
   - Calculate current budget allocation across positions and orders
   - Consider budget freed by any planned order cancellations
@@ -64,10 +71,11 @@ Guidelines for Plan Creation:
      * Price is within target entry range (±0.1% of current price)
      * Quick entry is needed to capture momentum
      * Volume supports immediate execution
-     * Risk/reward remains favorable at current price
+     * Risk/reward profile considers automated stop management
    - Limit Orders (preferred when):
      * Targeting specific support/resistance levels
      * Building positions at predefined levels
      * Price expected to reach target in future
+     * Current market structure provides clear invalidation levels
    Note: Don't avoid market orders if conditions support immediate entry
-5. Set invalidation conditions based on key price levels
+5. Set clear market-based invalidation conditions
