@@ -87,8 +87,8 @@ class StopLossCalculator:
         try:
             with logfire.span("stop_loss_calculation") as span:
                 # Get profit band and multiplier
-                band, profit_percentage, multiplier = self.calculate_profit_band(
-                    entry_price, current_price, position_type
+                band, multiplier = self.calculate_profit_band(
+                    entry_price, previous_stop_loss, position_type
                 )
 
                 # Add detailed logging
