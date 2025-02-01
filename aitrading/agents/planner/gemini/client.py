@@ -24,7 +24,7 @@ class GeminiClient(BaseAIClient):
 
             # Process images
             gemini_images = [
-                types.Part.from_bytes(img, 'image/png') for img in images
+                types.Part.from_bytes(data=img, mime_type='image/png') for img in images
             ]
             logfire.debug(f"Processed {len(gemini_images)} images")
 
