@@ -23,7 +23,6 @@ class StopLossUpdate(BaseModel):
     entry_price: float
     position_size: float
     current_band: ProfitBand
-    current_profit_percentage: float
     atr_value: float
     new_stop_loss: float
     previous_stop_loss: Optional[float] = None
