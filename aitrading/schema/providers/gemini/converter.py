@@ -13,12 +13,10 @@ class GeminiSchemaConverter:
 
     def convert(self, schema: Dict[str, Any]) -> Dict[str, Any]:
         """Convert Pydantic/OpenAPI schema to Gemini schema format."""
-        #logger.debug(f"Converting schema for Gemini: {schema}")
         try:
             # Flatten schema if it has definitions
             if "$defs" in schema:
                 flattened = flatten_schema(schema)
-                #logger.debug(f"Flattened schema: {flattened}")
                 return self._convert_schema(flattened)
             return self._convert_schema(schema)
         except Exception as e:
@@ -43,6 +41,18 @@ class GeminiSchemaConverter:
         if "type" in schema:
             converted["type"] = convert_type(schema["type"])
 
+            # Per oggetti, assicuriamo che ci siano sempre properties definite
+            if converted["type"] == "OBJECT":
+                # Se non ci sono properties definite, creiamo un oggetto vuoto
+                # con una proprietà fittizia per soddisfare i requisiti di Gemini
+                if "properties" not in schema:
+                    converted["properties"] = {
+                        "_empty": {
+                            "type": "STRING",
+                            "description": "Empty object placeholder"
+                        }
+                    }
+
         # Handle properties for objects
         if "properties" in schema:
             converted["properties"] = handle_properties(schema["properties"], self._convert_schema)
@@ -66,10 +76,27 @@ class GeminiSchemaConverter:
         # Ensure type is present for objects
         if "properties" in schema and "type" not in converted:
             converted["type"] = "OBJECT"
+            # Assicuriamoci che le properties non siano vuote
+            if not converted.get("properties"):
+                converted["properties"] = {
+                    "_empty": {
+                        "type": "STRING",
+                        "description": "Empty object placeholder"
+                    }
+                }
 
         # Ensure type is present for arrays
         if "items" in schema and "type" not in converted:
             converted["type"] = "ARRAY"
+
+        # Handle optional objects (when type is OBJECT but no properties defined)
+        if converted.get("type") == "OBJECT" and "properties" not in converted:
+            converted["properties"] = {
+                "_empty": {
+                    "type": "STRING",
+                    "description": "Empty object placeholder"
+                }
+            }
 
         return converted
 
