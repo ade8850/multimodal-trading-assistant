@@ -21,6 +21,9 @@ class StopLossCalculator:
     ) -> Tuple[ProfitBand, float]:
         """Determine if the position is currently in profit based on the stop loss level."""
 
+        if current_stop_loss is None:
+            current_stop_loss = entry_price
+
         if position_type.lower() == 'buy':
             if entry_price < current_stop_loss:
                 return ProfitBand.FIRST_PROFIT, self.config.in_profit_multiplier
