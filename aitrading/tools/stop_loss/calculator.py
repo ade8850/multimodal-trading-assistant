@@ -99,7 +99,6 @@ class StopLossCalculator:
                     "position_type": position_type,
                     "atr_value": atr_value,
                     "band": band,
-                    "profit_percentage": profit_percentage,
                     "multiplier": multiplier,
                     "previous_stop_loss": previous_stop_loss
                 })
@@ -142,7 +141,6 @@ class StopLossCalculator:
                             entry_price=entry_price,
                             position_size=position_size,
                             current_band=band,
-                            current_profit_percentage=profit_percentage,
                             atr_value=atr_value,
                             new_stop_loss=previous_stop_loss,
                             previous_stop_loss=previous_stop_loss,
@@ -171,7 +169,6 @@ class StopLossCalculator:
                             entry_price=entry_price,
                             position_size=position_size,
                             current_band=band,
-                            current_profit_percentage=profit_percentage,
                             atr_value=atr_value,
                             new_stop_loss=previous_stop_loss,
                             previous_stop_loss=previous_stop_loss,
@@ -186,7 +183,6 @@ class StopLossCalculator:
                     entry_price=entry_price,
                     position_size=position_size,
                     current_band=band,
-                    current_profit_percentage=profit_percentage,
                     atr_value=atr_value,
                     new_stop_loss=new_stop_loss,
                     previous_stop_loss=previous_stop_loss,
