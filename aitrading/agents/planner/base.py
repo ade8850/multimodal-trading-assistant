@@ -1,3 +1,5 @@
+"""Base classes for AI provider clients."""
+
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Dict, List, Any
@@ -89,31 +91,3 @@ class BaseAIClient(ABC):
                 raise ValueError(f"Duplicate order ID found: {order_id}")
 
             used_ids.add(order_id)
-
-    def _validate_cancellations(self, cancellations: List[Dict[str, Any]]) -> None:
-        """Validate order cancellations structure and format."""
-        if not isinstance(cancellations, list):
-            raise ValueError("Cancellations must be a list")
-
-        for i, cancellation in enumerate(cancellations):
-            required_keys = {'symbol', 'reason'}
-            if not all(key in cancellation for key in required_keys):
-                missing = required_keys - set(cancellation.keys())
-                raise ValueError(f"Cancellation {i} missing required keys: {missing}")
-
-            # Either id or order_link_id must be present
-            if 'id' not in cancellation and 'order_link_id' not in cancellation:
-                raise ValueError(f"Cancellation {i} must have either 'id' or 'order_link_id'")
-
-            # Validate types only
-            order_id = cancellation.get('id')
-            if order_id and not isinstance(order_id, str):
-                raise ValueError(f"Cancellation {i} order ID must be a string")
-
-            order_link_id = cancellation.get('order_link_id')
-            if order_link_id and not isinstance(order_link_id, str):
-                raise ValueError(f"Cancellation {i} order link ID must be a string")
-
-    def set_active_orders(self, orders: List[Dict[str, Any]]) -> None:
-        """Set the list of active orders for validation."""
-        self._active_orders = orders

@@ -273,7 +273,8 @@ class TradingPlanner:
                     "leverage": params.leverage,
                     "existing_orders": existing_orders,
                     "current_positions": current_positions,
-                    "volatility_metrics": volatility_metrics
+                    "volatility_metrics": volatility_metrics,
+                    "atr_timeframe": params.stop_loss_config.get("timeframe") if params.stop_loss_config else "1H"
                 }
 
                 system_prompt = self.system_template.render(**template_vars)
