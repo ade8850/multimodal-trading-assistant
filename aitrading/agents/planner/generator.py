@@ -195,11 +195,7 @@ class PlanGenerator:
             "atr_timeframe": params.stop_loss_config.get("timeframe") if params.stop_loss_config else "1H"
         }
 
-        logfire.info("Template variables prepared", **{
-            k: v for k, v in template_vars.items() 
-            if not isinstance(v, (list, dict))  # Log solo valori scalari
-        })
-        logfire.debug("Full template variables", template_vars=template_vars)
+        logfire.info("Full template variables", template_vars=template_vars)
 
         return template_vars
 
