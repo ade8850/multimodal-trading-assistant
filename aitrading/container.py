@@ -4,7 +4,7 @@ from dependency_injector import containers, providers
 from .tools.bybit.market_data import MarketDataTool
 from .tools.bybit.orders import OrdersTool
 from .tools.charts import ChartGeneratorTool
-from .agents.planner.agent import TradingPlanner
+from .agents.planner.planner import TradingPlanner
 
 
 class Container(containers.DeclarativeContainer):

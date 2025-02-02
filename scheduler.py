@@ -99,7 +99,7 @@ class TradingScheduler:
 
             # Generate and execute trading plan
             planner = self.container.trading_planner()
-            trading_plan = planner.create_trading_plan(trading_params)
+            trading_plan = planner.create_plan(trading_params)
 
             if trading_plan:
                 with logfire.span("executing_plan") as span:

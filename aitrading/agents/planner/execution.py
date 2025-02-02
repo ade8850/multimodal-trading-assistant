@@ -38,6 +38,12 @@ class PlanExecutor:
                     "cancellations_count": len(plan.cancellations or [])
                 })
 
+                logfire.info("Starting plan execution", 
+                           plan_id=plan.id,
+                           symbol=plan.parameters.symbol,
+                           budget=plan.parameters.budget,
+                           leverage=plan.parameters.leverage)
+
                 results = {
                     "plan_id": plan.id,
                     "cancellations": [],
@@ -46,32 +52,55 @@ class PlanExecutor:
 
                 # Initialize components
                 stop_loss_manager = self._init_stop_loss_manager(plan) if plan.parameters.stop_loss_config else None
+                if stop_loss_manager:
+                    logfire.info("Stop loss manager initialized",
+                               symbol=plan.parameters.symbol,
+                               config=plan.parameters.stop_loss_config)
+                else:
+                    logfire.info("No stop loss configuration provided")
 
                 # Execute plan steps in sequence
                 if plan.cancellations:
+                    logfire.info("Processing order cancellations",
+                               count=len(plan.cancellations))
                     results["cancellations"] = self._execute_cancellations(plan.cancellations)
                     time.sleep(1)  # Brief pause after cancellations
 
                 if plan.orders:
+                    logfire.info("Processing new orders",
+                               count=len(plan.orders))
                     results["orders"] = self._execute_orders(plan)
 
                 if stop_loss_manager:
+                    logfire.info("Updating stop losses",
+                               symbol=plan.parameters.symbol)
                     results["stop_loss_updates"] = self._update_stop_losses(
                         stop_loss_manager, 
                         plan.parameters.symbol
                     )
 
-                logfire.info("Plan execution complete", **{
-                    "plan_id": plan.id,
+                # Log execution summary
+                success_metrics = {
                     "successful_cancellations": sum(1 for c in results["cancellations"] if c.get("status") == "success"),
+                    "failed_cancellations": sum(1 for c in results["cancellations"] if c.get("status") != "success"),
                     "successful_orders": sum(1 for o in results["orders"] if "error" not in o),
-                    "stop_loss_updated": "stop_loss_updates" in results
-                })
+                    "failed_orders": sum(1 for o in results["orders"] if "error" in o),
+                    "stop_loss_updates": len(results.get("stop_loss_updates", {}).get("updates", [])) if "stop_loss_updates" in results else 0,
+                    "stop_loss_errors": len(results.get("stop_loss_updates", {}).get("errors", [])) if "stop_loss_updates" in results else 0
+                }
+
+                logfire.info("Plan execution completed", 
+                           plan_id=plan.id,
+                           symbol=plan.parameters.symbol,
+                           **success_metrics)
 
                 return results
 
         except Exception as e:
-            logfire.exception("Plan execution failed", **{"error": str(e), "plan_id": plan.id})
+            logfire.exception("Plan execution failed", 
+                          plan_id=plan.id,
+                          symbol=plan.parameters.symbol,
+                          error=str(e))
             raise Exception(f"Error executing trading plan: {str(e)}")
 
     def _init_stop_loss_manager(self, plan: TradingPlan) -> StopLossManager:
@@ -87,7 +116,10 @@ class PlanExecutor:
                 logfire.info("Stop loss manager initialized", **plan.parameters.stop_loss_config)
                 return manager
         except Exception as e:
-            logfire.error("Failed to initialize stop loss manager", error=str(e))
+            logfire.error("Failed to initialize stop loss manager",
+                       symbol=plan.parameters.symbol,
+                       config=plan.parameters.stop_loss_config,
+                       error=str(e))
             return None
 
     def _execute_cancellations(self, cancellations: List[OrderCancellation]) -> List[Dict]:
@@ -102,6 +134,12 @@ class PlanExecutor:
                         "symbol": cancel.symbol
                     })
                     
+                    logfire.info("Cancelling order",
+                               order_id=cancel.id,
+                               order_link_id=cancel.order_link_id,
+                               symbol=cancel.symbol,
+                               reason=cancel.reason)
+
                     result = self.orders.cancel_order(
                         symbol=cancel.symbol,
                         order_id=cancel.id,
@@ -115,24 +153,31 @@ class PlanExecutor:
                         "status": "success"
                     })
 
-                    logfire.info("Order cancelled", **{
-                        "order_id": cancel.id,
-                        "symbol": cancel.symbol,
-                        "reason": cancel.reason
-                    })
+                    logfire.info("Order cancelled successfully",
+                               order_id=cancel.id,
+                               symbol=cancel.symbol,
+                               order_link_id=cancel.order_link_id)
 
             except Exception as e:
+                logfire.error("Order cancellation failed",
+                           order_id=cancel.id,
+                           order_link_id=cancel.order_link_id,
+                           symbol=cancel.symbol,
+                           error=str(e))
+                
                 results.append({
                     "order_id": cancel.id,
                     "order_link_id": cancel.order_link_id,
                     "error": str(e),
                     "status": "failed"
                 })
-                logfire.error("Order cancellation failed", **{
-                    "order_id": cancel.id,
-                    "symbol": cancel.symbol,
-                    "error": str(e)
-                })
+
+        # Log summary
+        success_count = sum(1 for r in results if r["status"] == "success")
+        logfire.info("Cancellations execution completed",
+                   total=len(cancellations),
+                   successful=success_count,
+                   failed=len(cancellations) - success_count)
 
         return results
 
@@ -141,14 +186,31 @@ class PlanExecutor:
         results = []
         for order in plan.orders:
             try:
-                with logfire.span("execute_order"):
+                with logfire.span("execute_order") as span:
+                    span.set_attributes({
+                        "order_id": order.id,
+                        "order_link_id": order.order_link_id,
+                        "symbol": order.symbol,
+                        "type": order.type
+                    })
+
                     # Configure position settings
+                    logfire.info("Configuring position settings",
+                               symbol=order.symbol,
+                               leverage=order.order.entry.leverage)
+
                     self.orders.set_position_settings(
                         symbol=order.symbol,
                         leverage=order.order.entry.leverage
                     )
 
                     # Place the order
+                    logfire.info("Placing order",
+                               order_id=order.id,
+                               order_link_id=order.order_link_id,
+                               symbol=order.symbol,
+                               type=order.type)
+
                     result = self.orders.place_strategy_orders(order)
                     if result.get("errors"):
                         raise ValueError(f"Order execution failed for {order.id}: {result['errors']}")
@@ -159,24 +221,33 @@ class PlanExecutor:
                         "result": result
                     })
 
-                    logfire.info("Order placed", **{
-                        "order_id": order.id,
-                        "symbol": order.symbol,
-                        "type": order.type,
-                        "leverage": order.order.entry.leverage
-                    })
+                    logfire.info("Order placed successfully",
+                               order_id=order.id,
+                               order_link_id=order.order_link_id,
+                               symbol=order.symbol,
+                               type=order.type,
+                               leverage=order.order.entry.leverage)
 
             except Exception as e:
+                logfire.error("Order placement failed",
+                           order_id=order.id,
+                           order_link_id=order.order_link_id,
+                           symbol=order.symbol,
+                           type=order.type,
+                           error=str(e))
+
                 results.append({
                     "order_id": order.id,
                     "order_link_id": order.order_link_id,
                     "error": str(e)
                 })
-                logfire.error("Order placement failed", **{
-                    "order_id": order.id,
-                    "symbol": order.symbol,
-                    "error": str(e)
-                })
+
+        # Log summary
+        success_count = sum(1 for r in results if "error" not in r)
+        logfire.info("Orders execution completed",
+                   total=len(plan.orders),
+                   successful=success_count,
+                   failed=len(plan.orders) - success_count)
 
         return results
 
@@ -186,19 +257,36 @@ class PlanExecutor:
             with logfire.span("update_stop_losses"):
                 positions = self.orders.get_positions(symbol)
                 if not positions:
-                    logfire.info("No active positions to update stop losses")
+                    logfire.info("No active positions to update stop losses",
+                               symbol=symbol)
                     return {}
 
+                logfire.info("Updating stop losses",
+                           symbol=symbol,
+                           positions_count=len(positions))
+
                 stop_loss_results = stop_loss_manager.update_position_stops(symbol)
-                logfire.info("Stop loss updates executed",
-                           updates=len(stop_loss_results.get("updates", [])),
-                           errors=len(stop_loss_results.get("errors", [])))
+                
+                # Log detailed results
+                successful_updates = len(stop_loss_results.get("updates", []))
+                failed_updates = len(stop_loss_results.get("errors", []))
+                
+                logfire.info("Stop loss updates completed",
+                           symbol=symbol,
+                           successful_updates=successful_updates,
+                           failed_updates=failed_updates)
+
                 return stop_loss_results
 
         except Exception as e:
-            logfire.exception("Stop loss update failed", error=str(e))
+            logfire.exception("Stop loss update failed",
+                          symbol=symbol,
+                          error=str(e))
             return {
                 "error": str(e),
                 "updates": [],
-                "errors": [{"error": str(e)}]
+                "errors": [{
+                    "error": str(e),
+                    "symbol": symbol
+                }]
             }

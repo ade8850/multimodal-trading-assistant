@@ -72,6 +72,9 @@ class PlanGenerator:
                     positions_orders=positions_orders
                 )
 
+                # Log template variables
+                logfire.info("Template variables prepared", **template_vars)
+
                 # Generate system prompt
                 system_prompt = self.system_template.render(**template_vars)
 
@@ -134,7 +137,7 @@ class PlanGenerator:
         plan_id = generate_uuid_short(8)
         session_id = generate_uuid_short(4)
 
-        return {
+        template_vars = {
             "plan_id": plan_id,
             "session_id": session_id,
             "current_price": market_data["current_price"],
@@ -146,6 +149,8 @@ class PlanGenerator:
             "volatility_metrics": market_data["volatility_metrics"],
             "atr_timeframe": params.stop_loss_config.get("timeframe") if params.stop_loss_config else "1H"
         }
+
+        return template_vars
 
     def _get_ai_response(self, system_prompt: str, charts: list) -> Dict[str, Any]:
         """Get response from AI provider."""
@@ -165,12 +170,14 @@ class PlanGenerator:
     def _create_trading_plan(self, plan_data: Dict, params: TradingParameters) -> TradingPlan:
         """Create and validate trading plan from AI response."""
         try:
-            # Initialize trading plan
+            # Create trading plan using only the fields we need
             trading_plan = TradingPlan(
                 id=plan_data['id'],
                 session_id=plan_data['session_id'],
                 parameters=params,
-                **plan_data
+                orders=plan_data.get('orders', []),
+                cancellations=plan_data.get('cancellations'),
+                analysis=plan_data['analysis']
             )
 
             # Add tags for logging

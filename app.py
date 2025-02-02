@@ -98,41 +98,17 @@ def render_strategy_ui(container: Container = Provide[Container]):
                 max_value=5.0,
                 value=1.5,
                 step=0.1,
-                help="ATR multiplier for initial position"
-            )
-            first_profit_multiplier = st.number_input(
-                "First Profit Band Multiplier",
-                min_value=0.5,
-                max_value=5.0,
-                value=2.0,
-                step=0.1,
-                help="ATR multiplier when first profit threshold is reached"
+                help="ATR multiplier for positions not in profit"
             )
 
         with sl_col2:
-            first_profit_threshold = st.number_input(
-                "First Profit Threshold (%)",
-                min_value=0.1,
-                max_value=10.0,
-                value=1.0,
-                step=0.1,
-                help="Profit percentage to enter first band"
-            )
-            second_profit_multiplier = st.number_input(
-                "Second Profit Band Multiplier",
+            in_profit_multiplier = st.number_input(
+                "In Profit ATR Multiplier",
                 min_value=0.5,
                 max_value=5.0,
-                value=2.5,
-                step=0.1,
-                help="ATR multiplier when second profit threshold is reached"
-            )
-            second_profit_threshold = st.number_input(
-                "Second Profit Threshold (%)",
-                min_value=0.1,
-                max_value=20.0,
                 value=2.0,
                 step=0.1,
-                help="Profit percentage to enter second band"
+                help="ATR multiplier for positions in profit"
             )
 
     if st.button("Create Plan") and symbol:
@@ -147,10 +123,7 @@ def render_strategy_ui(container: Container = Provide[Container]):
                     stop_loss_config = {
                         "timeframe": timeframe,
                         "initial_multiplier": initial_multiplier,
-                        "first_profit_multiplier": first_profit_multiplier,
-                        "second_profit_multiplier": second_profit_multiplier,
-                        "first_profit_threshold": first_profit_threshold,
-                        "second_profit_threshold": second_profit_threshold
+                        "in_profit_multiplier": in_profit_multiplier
                     }
 
                 # Create trading parameters
@@ -162,7 +135,7 @@ def render_strategy_ui(container: Container = Provide[Container]):
                 )
 
                 # Generate plan
-                trading_plan = container.trading_planner().create_trading_plan(params)
+                trading_plan = container.trading_planner().create_plan(params)
 
                 # Store results
                 st.session_state.trading_plan = trading_plan
