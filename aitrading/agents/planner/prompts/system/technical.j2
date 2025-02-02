@@ -41,10 +41,19 @@ Leverage: {{ leverage }}x
 - Current Regime: {{ volatility_metrics.metrics['15m'].regime }}
 
 Overall Opportunity Analysis:
-{% set opportunity = volatility_metrics.get_opportunity_summary(atr_timeframe) %}
-- Primary Score ({{ atr_timeframe }}): {{ opportunity.primary_score }}
-- Timeframe Confirmation: {{ opportunity.confirmation_score }}
-- Overall Opportunity: {{ opportunity.overall_score }}
+{% set primary_score = volatility_metrics.metrics[atr_timeframe].opportunity_score %}
+{% set primary_direction = volatility_metrics.metrics[atr_timeframe].direction_score %}
+{% set other_scores = [] %}
+{% for tf, metrics in volatility_metrics.metrics.items() %}
+    {% if tf != atr_timeframe and (metrics.direction_score * primary_direction > 0) %}
+        {% set _ = other_scores.append(metrics.opportunity_score) %}
+    {% endif %}
+{% endfor %}
+{% set confirmation_score = (other_scores|sum / other_scores|length) if other_scores|length > 0 else 0 %}
+{% set overall_score = (primary_score * 0.7 + confirmation_score * 0.3) %}
+- Primary Score ({{ atr_timeframe }}): {{ "%.2f"|format(primary_score) }}
+- Timeframe Confirmation: {{ "%.2f"|format(confirmation_score) }}
+- Overall Opportunity: {{ "%.2f"|format(overall_score) }}
 
 Directional Volatility Guidelines:
 1. Direction Score Interpretation:
