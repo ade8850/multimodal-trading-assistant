@@ -14,9 +14,9 @@ Leverage: {{ leverage }}x
 - BB Width: {{ volatility_metrics.metrics['4H'].bb_width }}
 - BB Width Percentile: {{ volatility_metrics.metrics['4H'].bb_width_percentile }}
 - Volatility Change 24h: {{ volatility_metrics.metrics['4H'].volatility_change_24h }}
-- Direction Score: {{ volatility_metrics.metrics['4H'].direction_score }}
-- Opportunity Score: {{ volatility_metrics.metrics['4H'].opportunity_score }}
-- Current Regime: {{ volatility_metrics.metrics['4H'].regime }}
+{#- Direction Score: {{ volatility_metrics.metrics['4H'].direction_score }}#}
+{#- Opportunity Score: {{ volatility_metrics.metrics['4H'].opportunity_score }}#}
+{#- Current Regime: {{ volatility_metrics.metrics['4H'].regime }}#}
 
 1H Timeframe :
 - ATR: {{ volatility_metrics.metrics['1H'].atr }}
@@ -25,9 +25,9 @@ Leverage: {{ leverage }}x
 - BB Width: {{ volatility_metrics.metrics['1H'].bb_width }}
 - BB Width Percentile: {{ volatility_metrics.metrics['1H'].bb_width_percentile }}
 - Volatility Change 24h: {{ volatility_metrics.metrics['1H'].volatility_change_24h }}
-- Direction Score: {{ volatility_metrics.metrics['1H'].direction_score }}
-- Opportunity Score: {{ volatility_metrics.metrics['1H'].opportunity_score }}
-- Current Regime: {{ volatility_metrics.metrics['1H'].regime }}
+{#- Direction Score: {{ volatility_metrics.metrics['1H'].direction_score }}#}
+{#- Opportunity Score: {{ volatility_metrics.metrics['1H'].opportunity_score }}#}
+{#- Current Regime: {{ volatility_metrics.metrics['1H'].regime }}#}
 
 15m Timeframe (Entry):
 - ATR: {{ volatility_metrics.metrics['15m'].atr }}
@@ -36,24 +36,24 @@ Leverage: {{ leverage }}x
 - BB Width: {{ volatility_metrics.metrics['15m'].bb_width }}
 - BB Width Percentile: {{ volatility_metrics.metrics['15m'].bb_width_percentile }}
 - Volatility Change 24h: {{ volatility_metrics.metrics['15m'].volatility_change_24h }}
-- Direction Score: {{ volatility_metrics.metrics['15m'].direction_score }}
-- Opportunity Score: {{ volatility_metrics.metrics['15m'].opportunity_score }}
-- Current Regime: {{ volatility_metrics.metrics['15m'].regime }}
+{#- Direction Score: {{ volatility_metrics.metrics['15m'].direction_score }}#}
+{#- Opportunity Score: {{ volatility_metrics.metrics['15m'].opportunity_score }}#}
+{#- Current Regime: {{ volatility_metrics.metrics['15m'].regime }}#}
 
-Overall Opportunity Analysis:
-{% set primary_score = volatility_metrics.metrics[atr_timeframe].opportunity_score %}
-{% set primary_direction = volatility_metrics.metrics[atr_timeframe].direction_score %}
-{% set other_scores = [] %}
-{% for tf, metrics in volatility_metrics.metrics.items() %}
-    {% if tf != atr_timeframe and (metrics.direction_score * primary_direction > 0) %}
-        {% set _ = other_scores.append(metrics.opportunity_score) %}
-    {% endif %}
-{% endfor %}
-{% set confirmation_score = (other_scores|sum / other_scores|length) if other_scores|length > 0 else 0 %}
-{% set overall_score = (primary_score * 0.7 + confirmation_score * 0.3) %}
-- Primary Score ({{ atr_timeframe }}): {{ "%.2f"|format(primary_score) }}
-- Timeframe Confirmation: {{ "%.2f"|format(confirmation_score) }}
-- Overall Opportunity: {{ "%.2f"|format(overall_score) }}
+{#Overall Opportunity Analysis:#}
+{#{% set primary_score = volatility_metrics.metrics[atr_timeframe].opportunity_score %}#}
+{#{% set primary_direction = volatility_metrics.metrics[atr_timeframe].direction_score %}#}
+{#{% set other_scores = [] %}#}
+{#{% for tf, metrics in volatility_metrics.metrics.items() %}#}
+{#    {% if tf != atr_timeframe and (metrics.direction_score * primary_direction > 0) %}#}
+{#        {% set _ = other_scores.append(metrics.opportunity_score) %}#}
+{#    {% endif %}#}
+{#{% endfor %}#}
+{#{% set confirmation_score = (other_scores|sum / other_scores|length) if other_scores|length > 0 else 0 %}#}
+{#{% set overall_score = (primary_score * 0.7 + confirmation_score * 0.3) %}#}
+{#- Primary Score ({{ atr_timeframe }}): {{ "%.2f"|format(primary_score) }}#}
+{#- Timeframe Confirmation: {{ "%.2f"|format(confirmation_score) }}#}
+{#- Overall Opportunity: {{ "%.2f"|format(overall_score) }}#}
 
 {#Trading Context Interpretation:#}
 {##}
@@ -107,18 +107,6 @@ Current Positions:
 
 Note: Stop losses are managed automatically by the system based on {{ atr_timeframe }} ATR.
 {% endfor %}
-
-Position Analysis Guidelines:
-1. Primary Analysis ({{ atr_timeframe }}):
-   - Direction score changes from entry
-   - Current opportunity score vs entry
-   - Volume profile evolution
-   - Technical structure integrity
-
-2. Risk Management:
-   - Reduce size if opportunity score drops below 30
-   - Tighten stops on direction score reversal
-   - Exit if overall opportunity score < 20
 {% endif %}
 
 {% if existing_orders %}
@@ -135,14 +123,6 @@ Current Active Orders:
   Take Profit: {{ order.take_profit }}
 {% endfor %}
 
-Order Review Guidelines:
-1. Evaluate Against Current Metrics:
-   - Direction score aligns with order side
-   - Overall opportunity score supports the trade
-
-2. Cancel Orders When:
-   - Direction score reverses since placement
-   - Overall score no longer supports the trade
 
 Order Cancellation Requirements:
 1. For EACH order to be cancelled, you MUST provide:

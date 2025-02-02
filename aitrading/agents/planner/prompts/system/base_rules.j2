@@ -10,6 +10,8 @@ Your default stance should be NO ACTION. Trading opportunities are evaluated whe
 Remember: Most analyses should result in no new orders - this is normal and expected.
 Action should be taken only when ALL criteria are met.
 
+Primary Decision Making is {{ atr_timeframe }}
+
 1. Priority System
    A. Capital Preservation (Critical)
       - Position sizing based on {{ atr_timeframe }} volatility
@@ -18,19 +20,16 @@ Action should be taken only when ALL criteria are met.
       - Consider position correlation and total exposure
 
    B. Market Analysis (Hierarchical)
-      - 4H: Trend Context and Structure
+      - 4H:
         * Major market structure
         * Overall trend direction
         * Key support/resistance levels
-        * Do NOT override {{ atr_timeframe }} signals
-      
-      - {{ atr_timeframe }}: Primary Decision Making
-        * Trade setup identification
+
+      - 1H:
         * Market structure analysis
         * Volume confirmation
-        * Stop loss calculation
         * Position sizing basis
-        * Risk/reward assessment
+        * Key support/resistance levels
       
       - 15m/5m: Entry Optimization
         * Entry price refinement
@@ -52,7 +51,6 @@ Action should be taken only when ALL criteria are met.
       
       3. Process Existing Positions
          - Check alignment with current conditions
-         - Evaluate stop loss adaptation
          - Monitor technical evolution
       
       4. Handle Order Management

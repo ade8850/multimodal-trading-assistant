@@ -17,8 +17,7 @@
    B. Market Analysis (Required)
       • Timeframe Hierarchy (STRICT)
         - Context (4H): Validates overall market structure and trend
-          * Used ONLY for trend confirmation
-          * MUST NOT override {{ atr_timeframe }} signals
+          * Used for trend confirmation
           * Identifies major support/resistance zones
         
         - Primary ({{ atr_timeframe }}): Main decision timeframe
@@ -40,7 +39,7 @@
         - Directional volume supports trade direction
 
       • Key Level Analysis
-        - Identify levels on 4H timeframe
+        - Identify levels on 4H and 1H timeframes
         - Confirm reactions on {{ atr_timeframe }}
         - Entry execution on 15m/5m if confirmed
         - Volume profile must strongly support continuation
@@ -82,7 +81,7 @@
         - Clear directional structure on {{ atr_timeframe }}
         - Volume supports the move
         - Stop loss placement reasonable for current volatility
-        - Risk/reward minimum 2:1 on {{ atr_timeframe }}
+        - Risk/reward minimum 1:1 on {{ atr_timeframe }}
 
       • NO Entry Conditions
         - {{ atr_timeframe }} signals unclear or weak
