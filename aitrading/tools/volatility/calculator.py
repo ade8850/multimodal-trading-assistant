@@ -53,6 +53,9 @@ def calculate_directional_strength(df: pd.DataFrame, lookback: int = 20) -> floa
     """
     # Get recent data
     recent = df.tail(lookback)
+
+    if 'EMA100' not in df.columns:
+        df['EMA100'] = df['close'].ewm(span=100, adjust=False).mean()
     
     # Calculate directional components
     price_direction = (recent['close'].iloc[-1] - recent['close'].iloc[0]) / recent['close'].iloc[0] * 100
