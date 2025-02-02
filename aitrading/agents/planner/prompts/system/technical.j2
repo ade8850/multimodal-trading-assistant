@@ -55,23 +55,42 @@ Overall Opportunity Analysis:
 - Timeframe Confirmation: {{ "%.2f"|format(confirmation_score) }}
 - Overall Opportunity: {{ "%.2f"|format(overall_score) }}
 
-Directional Volatility Guidelines:
-1. Direction Score Interpretation:
-   - Positive scores (0 to +100): Bullish bias, strength by magnitude
-   - Negative scores (-100 to 0): Bearish bias, strength by magnitude
-   - High magnitude (>70): Strong directional movement
-   - Low magnitude (<30): Weak or unclear direction
+Trading Context Interpretation:
+
+1. Volatility Regime:
+   - LOW (vol_score < 25): Market showing minimal volatility
+   - MEDIUM (vol_score 25-50): Normal market conditions
+   - HIGH (vol_score 50-75): Elevated volatility conditions
+   - EXTREME (vol_score > 75): Exceptional volatility levels
 
 2. Opportunity Score Interpretation:
-   - High (>70): Strong directional volatility, favorable for trading
-   - Medium (30-70): Moderate conditions, requires careful validation
-   - Low (<30): Poor risk/reward, avoid new positions
+   - High (>50): Strong alignment between volatility and direction
+     * Indicates strong trend with supporting volatility
+     * Optimal conditions for position entry
+     * Size positions according to confidence level
 
-3. Trade Implementation:
-   - Enter trades when {{ atr_timeframe }} opportunity score > 70
-   - Confirm with 4H direction alignment
-   - Use 15m for entry timing only
-   - Higher position size justified with higher opportunity scores
+   - Medium (20-50): Moderate alignment
+     * Market shows coherent movement but requires validation
+     * Consider partial position sizing
+     * Confirm with additional signals
+
+   - Low (<20): Weak alignment
+     * Could indicate:
+       a) Low volatility in a clear direction (trending calmly)
+       b) High volatility with unclear direction (choppy market)
+       c) Both low volatility and unclear direction
+     * Focus on position management rather than new entries
+     * Reduce position sizes or wait for better conditions
+
+3. Direction Score Impact (-100 to +100):
+   - Magnitude indicates trend strength
+   - Sign indicates direction (positive = upward, negative = downward)
+   - Values near zero suggest unclear direction regardless of volatility
+
+Trading Response:
+- Combine regime and opportunity score for decision making
+- Higher opportunity scores in MEDIUM regime may be preferable to lower scores in HIGH regime
+- EXTREME regime requires additional risk management regardless of opportunity score
 {% endif %}
 
 {% if current_positions %}
