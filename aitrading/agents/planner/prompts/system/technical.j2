@@ -5,49 +5,64 @@ Budget: {{ budget }} USDT
 Leverage: {{ leverage }}x
 
 {% if volatility_metrics %}
-Current volatility metrics for each significant timeframe:
+# Volatility Analysis by Timeframe
 
-# PRIMARY DECISION TIMEFRAME IS {{ atr_timeframe }}
-# Use this timeframe's metrics as primary input for trade decisions
-
-4H Timeframe:
+4H Timeframe (Context):
 - ATR: {{ volatility_metrics.metrics['4H'].atr }}
 - ATR Percentile: {{ volatility_metrics.metrics['4H'].atr_percentile }}
 - Normalized ATR: {{ volatility_metrics.metrics['4H'].normalized_atr }}
 - BB Width: {{ volatility_metrics.metrics['4H'].bb_width }}
 - BB Width Percentile: {{ volatility_metrics.metrics['4H'].bb_width_percentile }}
 - Volatility Change 24h: {{ volatility_metrics.metrics['4H'].volatility_change_24h }}
+- Direction Score: {{ volatility_metrics.metrics['4H'].direction_score }}
+- Opportunity Score: {{ volatility_metrics.metrics['4H'].opportunity_score }}
 - Current Regime: {{ volatility_metrics.metrics['4H'].regime }}
 
-1H Timeframe:
-- ATR: {{ volatility_metrics.metrics['1H'].atr }}
-- ATR Percentile: {{ volatility_metrics.metrics['1H'].atr_percentile }}
-- Normalized ATR: {{ volatility_metrics.metrics['1H'].normalized_atr }}
-- BB Width: {{ volatility_metrics.metrics['1H'].bb_width }}
-- BB Width Percentile: {{ volatility_metrics.metrics['1H'].bb_width_percentile }}
-- Volatility Change 24h: {{ volatility_metrics.metrics['1H'].volatility_change_24h }}
-- Current Regime: {{ volatility_metrics.metrics['1H'].regime }}
+{{ atr_timeframe }} Timeframe (Primary Decision):
+- ATR: {{ volatility_metrics.metrics[atr_timeframe].atr }}
+- ATR Percentile: {{ volatility_metrics.metrics[atr_timeframe].atr_percentile }}
+- Normalized ATR: {{ volatility_metrics.metrics[atr_timeframe].normalized_atr }}
+- BB Width: {{ volatility_metrics.metrics[atr_timeframe].bb_width }}
+- BB Width Percentile: {{ volatility_metrics.metrics[atr_timeframe].bb_width_percentile }}
+- Volatility Change 24h: {{ volatility_metrics.metrics[atr_timeframe].volatility_change_24h }}
+- Direction Score: {{ volatility_metrics.metrics[atr_timeframe].direction_score }}
+- Opportunity Score: {{ volatility_metrics.metrics[atr_timeframe].opportunity_score }}
+- Current Regime: {{ volatility_metrics.metrics[atr_timeframe].regime }}
 
-15m Timeframe:
+15m Timeframe (Entry):
 - ATR: {{ volatility_metrics.metrics['15m'].atr }}
 - ATR Percentile: {{ volatility_metrics.metrics['15m'].atr_percentile }}
 - Normalized ATR: {{ volatility_metrics.metrics['15m'].normalized_atr }}
 - BB Width: {{ volatility_metrics.metrics['15m'].bb_width }}
 - BB Width Percentile: {{ volatility_metrics.metrics['15m'].bb_width_percentile }}
 - Volatility Change 24h: {{ volatility_metrics.metrics['15m'].volatility_change_24h }}
+- Direction Score: {{ volatility_metrics.metrics['15m'].direction_score }}
+- Opportunity Score: {{ volatility_metrics.metrics['15m'].opportunity_score }}
 - Current Regime: {{ volatility_metrics.metrics['15m'].regime }}
 
-Volatility Interpretation Guidelines:
-1. Directional Analysis:
-   - Rising ATR with consistent price direction indicates opportunity
-   - Rising ATR with bidirectional price action indicates risk
-   - Volume must confirm price direction
-   - BB Width expansion in trending direction is positive
+Overall Opportunity Analysis:
+{% set opportunity = volatility_metrics.get_opportunity_summary(atr_timeframe) %}
+- Primary Score ({{ atr_timeframe }}): {{ opportunity.primary_score }}
+- Timeframe Confirmation: {{ opportunity.confirmation_score }}
+- Overall Opportunity: {{ opportunity.overall_score }}
 
-2. Cross-Timeframe Analysis:
-   - Focus on {{ atr_timeframe }} metrics for primary decisions
-   - Use 4H for trend confirmation only
-   - Use 15m for entry timing when higher timeframes align
+Directional Volatility Guidelines:
+1. Direction Score Interpretation:
+   - Positive scores (0 to +100): Bullish bias, strength by magnitude
+   - Negative scores (-100 to 0): Bearish bias, strength by magnitude
+   - High magnitude (>70): Strong directional movement
+   - Low magnitude (<30): Weak or unclear direction
+
+2. Opportunity Score Interpretation:
+   - High (>70): Strong directional volatility, favorable for trading
+   - Medium (30-70): Moderate conditions, requires careful validation
+   - Low (<30): Poor risk/reward, avoid new positions
+
+3. Trade Implementation:
+   - Enter trades when {{ atr_timeframe }} opportunity score > 70
+   - Confirm with 4H direction alignment
+   - Use 15m for entry timing only
+   - Higher position size justified with higher opportunity scores
 {% endif %}
 
 {% if current_positions %}
@@ -62,19 +77,20 @@ Current Positions:
   Take Profit: {{ position.take_profit }}
   Created: {{ position.created_time }}
 
-Note: Stop losses are managed automatically by the system based on market volatility.
+Note: Stop losses are managed automatically by the system based on {{ atr_timeframe }} ATR.
 {% endfor %}
 
 Position Analysis Guidelines:
-1. Evaluate each position's alignment with current market conditions
-2. Consider these factors:
-   - Price action relative to entry level
-   - Volume profile since entry
-   - Technical indicator readings
-   - Current volatility regime
-   - Trend strength and direction
-3. Focus on identifying take profit adjustments if needed
-4. Each position analysis must include clear technical reasoning
+1. Primary Analysis ({{ atr_timeframe }}):
+   - Direction score changes from entry
+   - Current opportunity score vs entry
+   - Volume profile evolution
+   - Technical structure integrity
+
+2. Risk Management:
+   - Reduce size if opportunity score drops below 30
+   - Tighten stops on direction score reversal
+   - Exit if overall opportunity score < 20
 {% endif %}
 
 {% if existing_orders %}
@@ -92,16 +108,15 @@ Current Active Orders:
 {% endfor %}
 
 Order Review Guidelines:
-1. Evaluate each order's alignment with:
-   - Current market structure
-   - Volume profile
-   - Technical indicators
-   - Volatility conditions
-2. Consider order placement relative to key price levels
-3. For each order that requires cancellation, provide:
-   - The exact Order ID from the active orders list
-   - The Order Link ID if available
-   - A clear technical explanation for the cancellation
+1. Evaluate Against Current Metrics:
+   - {{ atr_timeframe }} opportunity score > 70
+   - Direction score aligns with order side
+   - Overall opportunity score supports the trade
+
+2. Cancel Orders When:
+   - Direction score reverses since placement
+   - Opportunity score drops below 50
+   - Overall score no longer supports the trade
 
 Order Cancellation Requirements:
 1. For EACH order to be cancelled, you MUST provide:
@@ -115,6 +130,6 @@ Order Cancellation Requirements:
     "id": "1234567890",        // Exact Order ID from active orders
     "order_link_id": "abc123", // Optional, exact Link ID from active orders
     "symbol": "BTCUSDT",       // Must match the order's symbol
-    "reason": "Order level no longer aligns with current support/resistance structure"
+    "reason": "Direction score reversed from entry premise, opportunity score below threshold"
   }
 {% endif %}
