@@ -18,16 +18,16 @@ Leverage: {{ leverage }}x
 - Opportunity Score: {{ volatility_metrics.metrics['4H'].opportunity_score }}
 - Current Regime: {{ volatility_metrics.metrics['4H'].regime }}
 
-{{ atr_timeframe }} Timeframe (Primary Decision):
-- ATR: {{ volatility_metrics.metrics[atr_timeframe].atr }}
-- ATR Percentile: {{ volatility_metrics.metrics[atr_timeframe].atr_percentile }}
-- Normalized ATR: {{ volatility_metrics.metrics[atr_timeframe].normalized_atr }}
-- BB Width: {{ volatility_metrics.metrics[atr_timeframe].bb_width }}
-- BB Width Percentile: {{ volatility_metrics.metrics[atr_timeframe].bb_width_percentile }}
-- Volatility Change 24h: {{ volatility_metrics.metrics[atr_timeframe].volatility_change_24h }}
-- Direction Score: {{ volatility_metrics.metrics[atr_timeframe].direction_score }}
-- Opportunity Score: {{ volatility_metrics.metrics[atr_timeframe].opportunity_score }}
-- Current Regime: {{ volatility_metrics.metrics[atr_timeframe].regime }}
+1H Timeframe :
+- ATR: {{ volatility_metrics.metrics['1H'].atr }}
+- ATR Percentile: {{ volatility_metrics.metrics['1H'].atr_percentile }}
+- Normalized ATR: {{ volatility_metrics.metrics['1H'].normalized_atr }}
+- BB Width: {{ volatility_metrics.metrics['1H'].bb_width }}
+- BB Width Percentile: {{ volatility_metrics.metrics['1H'].bb_width_percentile }}
+- Volatility Change 24h: {{ volatility_metrics.metrics['1H'].volatility_change_24h }}
+- Direction Score: {{ volatility_metrics.metrics['1H'].direction_score }}
+- Opportunity Score: {{ volatility_metrics.metrics['1H'].opportunity_score }}
+- Current Regime: {{ volatility_metrics.metrics['1H'].regime }}
 
 15m Timeframe (Entry):
 - ATR: {{ volatility_metrics.metrics['15m'].atr }}
@@ -55,42 +55,42 @@ Overall Opportunity Analysis:
 - Timeframe Confirmation: {{ "%.2f"|format(confirmation_score) }}
 - Overall Opportunity: {{ "%.2f"|format(overall_score) }}
 
-Trading Context Interpretation:
-
-1. Volatility Regime:
-   - LOW (vol_score < 25): Market showing minimal volatility
-   - MEDIUM (vol_score 25-50): Normal market conditions
-   - HIGH (vol_score 50-75): Elevated volatility conditions
-   - EXTREME (vol_score > 75): Exceptional volatility levels
-
-2. Opportunity Score Interpretation:
-   - High (>50): Strong alignment between volatility and direction
-     * Indicates strong trend with supporting volatility
-     * Optimal conditions for position entry
-     * Size positions according to confidence level
-
-   - Medium (20-50): Moderate alignment
-     * Market shows coherent movement but requires validation
-     * Consider partial position sizing
-     * Confirm with additional signals
-
-   - Low (<20): Weak alignment
-     * Could indicate:
-       a) Low volatility in a clear direction (trending calmly)
-       b) High volatility with unclear direction (choppy market)
-       c) Both low volatility and unclear direction
-     * Focus on position management rather than new entries
-     * Reduce position sizes or wait for better conditions
-
-3. Direction Score Impact (-100 to +100):
-   - Magnitude indicates trend strength
-   - Sign indicates direction (positive = upward, negative = downward)
-   - Values near zero suggest unclear direction regardless of volatility
-
-Trading Response:
-- Combine regime and opportunity score for decision making
-- Higher opportunity scores in MEDIUM regime may be preferable to lower scores in HIGH regime
-- EXTREME regime requires additional risk management regardless of opportunity score
+{#Trading Context Interpretation:#}
+{##}
+{#1. Volatility Regime:#}
+{#   - LOW (vol_score < 25): Market showing minimal volatility#}
+{#   - MEDIUM (vol_score 25-50): Normal market conditions#}
+{#   - HIGH (vol_score 50-75): Elevated volatility conditions#}
+{#   - EXTREME (vol_score > 75): Exceptional volatility levels#}
+{##}
+{#2. Opportunity Score Interpretation:#}
+{#   - High (>50): Strong alignment between volatility and direction#}
+{#     * Indicates strong trend with supporting volatility#}
+{#     * Optimal conditions for position entry#}
+{#     * Size positions according to confidence level#}
+{##}
+{#   - Medium (20-50): Moderate alignment#}
+{#     * Market shows coherent movement but requires validation#}
+{#     * Consider partial position sizing#}
+{#     * Confirm with additional signals#}
+{##}
+{#   - Low (<20): Weak alignment#}
+{#     * Could indicate:#}
+{#       a) Low volatility in a clear direction (trending calmly)#}
+{#       b) High volatility with unclear direction (choppy market)#}
+{#       c) Both low volatility and unclear direction#}
+{#     * Focus on position management rather than new entries#}
+{#     * Reduce position sizes or wait for better conditions#}
+{##}
+{#3. Direction Score Impact (-100 to +100):#}
+{#   - Magnitude indicates trend strength#}
+{#   - Sign indicates direction (positive = upward, negative = downward)#}
+{#   - Values near zero suggest unclear direction regardless of volatility#}
+{##}
+{#Trading Response:#}
+{#- Combine regime and opportunity score for decision making#}
+{#- Higher opportunity scores in MEDIUM regime may be preferable to lower scores in HIGH regime#}
+{#- EXTREME regime requires additional risk management regardless of opportunity score#}
 {% endif %}
 
 {% if current_positions %}
@@ -137,13 +137,11 @@ Current Active Orders:
 
 Order Review Guidelines:
 1. Evaluate Against Current Metrics:
-   - {{ atr_timeframe }} opportunity score > 70
    - Direction score aligns with order side
    - Overall opportunity score supports the trade
 
 2. Cancel Orders When:
    - Direction score reverses since placement
-   - Opportunity score drops below 50
    - Overall score no longer supports the trade
 
 Order Cancellation Requirements:
