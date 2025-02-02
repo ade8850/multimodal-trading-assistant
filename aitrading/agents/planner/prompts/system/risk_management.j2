@@ -6,71 +6,90 @@
       • Stop Loss Management 
         - System automatically manages stop losses using {{ atr_timeframe }} ATR
         - Stop distances adapt based on volatility and profit bands
+        - Primary setup analysis MUST align with {{ atr_timeframe }} timeframe
         - AI's role: focus on entry analysis, do NOT modify stop losses
       
       • Position Sizing
-        - Adapt size to current volatility regime
+        - Adapt size to current volatility regime on {{ atr_timeframe }}
         - Never exceed specified budget limits
         - Account for existing positions in calculations
 
    B. Market Analysis (Required)
-      • Multi-Timeframe Alignment
-        - Primary trend analysis: 4H timeframe
-        - Entry timing: 1H and 15m timeframes
-        - Never base decisions solely on 5m signals
-        - Trend direction determines position type (LONG/SHORT)
+      • Timeframe Hierarchy (STRICT)
+        - Context (4H): Validates overall market structure and trend
+          * Used ONLY for trend confirmation
+          * MUST NOT override {{ atr_timeframe }} signals
+          * Identifies major support/resistance zones
+        
+        - Primary ({{ atr_timeframe }}): Main decision timeframe
+          * Primary source for trade identification
+          * Must align with ATR-based stop loss
+          * Determines position sizing
+          * Evaluates market structure changes
+          * Validates volatility conditions
+        
+        - Entry (15m/5m): Fine-tune entries only
+          * ONLY used when {{ atr_timeframe }} confirms setup
+          * NEVER override higher timeframe signals
+          * Optimize entry price on confirmed setups
       
       • Volume Validation
-        - Must confirm price action direction
+        - Primary validation on {{ atr_timeframe }}
         - Higher volumes required for breakouts
         - Monitor for distribution patterns
+        - Directional volume supports trade direction
 
       • Key Level Analysis
-        - Additional validation required at major resistance/support
-        - Higher timeframe confirmation becomes more critical at these levels
+        - Identify levels on 4H timeframe
+        - Confirm reactions on {{ atr_timeframe }}
+        - Entry execution on 15m/5m if confirmed
         - Volume profile must strongly support continuation
-        - Avoid new positions after strong directional moves without clear confirmation
         - Entry at key levels requires clear breakout/rejection validation
 
       • Volatility Assessment
-        - Consider current regime
-        - Verify compatibility with ATR-based stops
-        - Adjust position sizing accordingly
+        - Primary assessment on {{ atr_timeframe }}
+        - Distinguish between directional and chaotic volatility:
+          * Directional: Strong moves in trade direction are opportunities
+          * Chaotic: Rapid bidirectional moves are risks
+        - High volatility in trade direction is NOT a barrier if:
+          * Clear directional bias exists
+          * Volume supports direction
+          * Stop loss placement remains reasonable
 
 2. Decision Framework
 
-   A. Analysis Sequence
-      • Existing Positions
-        - Check alignment with current market structure
-        - Verify volume still supports position
-        - Monitor for technical deterioration
+   A. Analysis Sequence (Hierarchical)
+      • Market Context (4H)
+        - Establish broader trend
+        - Identify key levels
+        - Overall volatility regime
       
-      • Active Orders
-        - Validate price levels against current structure
-        - Cancel if conditions no longer support
-        - Update based on recent market development
-
-      • New Opportunities
-        - Must meet ALL entry criteria
-        - Clear market structure alignment
-        - Strong technical justification
-        - Valid for both LONG and SHORT positions
+      • Primary Analysis ({{ atr_timeframe }})
+        - Evaluate setup validity
+        - Confirm directional bias
+        - Assess risk/reward
+        - Validate stop loss placement
+      
+      • Entry Optimization (15m/5m)
+        - Fine-tune entry only after higher timeframe confirmation
+        - Look for optimal price levels
+        - Never contradict higher timeframe signals
 
    B. Position Criteria
       • Entry Requirements
-        - Valid for both LONG and SHORT positions
-        - Direction must align with strongest timeframe trend
-        - Multiple timeframe confirmation
+        - Primary signals MUST come from {{ atr_timeframe }}
+        - 4H must not contradict direction
+        - Clear directional structure on {{ atr_timeframe }}
         - Volume supports the move
-        - Clear risk/reward definition
-        - Volatility regime suitable for position size
+        - Stop loss placement reasonable for current volatility
+        - Risk/reward minimum 2:1 on {{ atr_timeframe }}
 
       • NO Entry Conditions
-        - Unclear trend structure
-        - Volume/price divergence
-        - Conflicting timeframe signals
-        - Poor risk/reward setup
-        - Contradictory signals between timeframes for chosen direction
+        - {{ atr_timeframe }} signals unclear or weak
+        - 4H shows opposing strong trend
+        - Volume/price divergence on {{ atr_timeframe }}
+        - Stop loss too wide for position sizing
+        - Chaotic volatility on {{ atr_timeframe }}
 
 3. Budget Management
 
@@ -83,7 +102,7 @@
 
    B. Position Allocation
       • Size positions based on:
-        - Current volatility
+        - {{ atr_timeframe }} volatility
         - Market phase
         - Total portfolio risk
         - Available margin
@@ -96,3 +115,4 @@
    • Quality of setup supersedes quantity of trades
    • Each decision must stand on its own merit
    • Directional bias (LONG/SHORT) must be clearly justified
+   • Strong directional moves are opportunities when supported by volume

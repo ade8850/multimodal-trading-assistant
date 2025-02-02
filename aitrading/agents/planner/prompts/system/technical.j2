@@ -7,6 +7,9 @@ Leverage: {{ leverage }}x
 {% if volatility_metrics %}
 Current volatility metrics for each significant timeframe:
 
+# PRIMARY DECISION TIMEFRAME IS {{ atr_timeframe }}
+# Use this timeframe's metrics as primary input for trade decisions
+
 4H Timeframe:
 - ATR: {{ volatility_metrics.metrics['4H'].atr }}
 - ATR Percentile: {{ volatility_metrics.metrics['4H'].atr_percentile }}
@@ -33,6 +36,18 @@ Current volatility metrics for each significant timeframe:
 - BB Width Percentile: {{ volatility_metrics.metrics['15m'].bb_width_percentile }}
 - Volatility Change 24h: {{ volatility_metrics.metrics['15m'].volatility_change_24h }}
 - Current Regime: {{ volatility_metrics.metrics['15m'].regime }}
+
+Volatility Interpretation Guidelines:
+1. Directional Analysis:
+   - Rising ATR with consistent price direction indicates opportunity
+   - Rising ATR with bidirectional price action indicates risk
+   - Volume must confirm price direction
+   - BB Width expansion in trending direction is positive
+
+2. Cross-Timeframe Analysis:
+   - Focus on {{ atr_timeframe }} metrics for primary decisions
+   - Use 4H for trend confirmation only
+   - Use 15m for entry timing when higher timeframes align
 {% endif %}
 
 {% if current_positions %}
