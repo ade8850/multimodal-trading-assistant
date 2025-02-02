@@ -8,9 +8,35 @@ from ...models import (
 from ...tools.bybit.market_data import MarketDataTool
 from ...tools.bybit.orders import OrdersTool
 from ...tools.charts import ChartGeneratorTool
-from ...tools.volatility import VolatilityCalculator
+from ...tools.volatility import VolatilityCalculator, TimeframeVolatility
 from .analysis import MarketAnalyzer
 from .base import BaseAIClient
+
+
+def _convert_pydantic_to_dict(obj: Any) -> Any:
+    """Convert Pydantic objects to plain dictionaries recursively."""
+    if hasattr(obj, 'model_dump'):
+        # Per i modelli Pydantic più recenti che usano model_dump
+        obj_dict = obj.model_dump()
+    elif hasattr(obj, 'dict'):
+        # Per compatibilità con versioni precedenti
+        obj_dict = obj.dict()
+    else:
+        return obj
+
+    # Converte ricorsivamente i valori del dizionario
+    for key, value in obj_dict.items():
+        if hasattr(value, 'model_dump') or hasattr(value, 'dict'):
+            obj_dict[key] = _convert_pydantic_to_dict(value)
+        elif isinstance(value, dict):
+            obj_dict[key] = {k: _convert_pydantic_to_dict(v) for k, v in value.items()}
+        elif isinstance(value, list):
+            obj_dict[key] = [_convert_pydantic_to_dict(item) for item in value]
+        elif isinstance(value, (int, float, str, bool, type(None))):
+            obj_dict[key] = value
+        else:
+            obj_dict[key] = str(value)
+    return obj_dict
 
 
 class PlanGenerator:
@@ -71,9 +97,6 @@ class PlanGenerator:
                     market_data=market_data,
                     positions_orders=positions_orders
                 )
-
-                # Log template variables
-                logfire.info("Template variables prepared", **template_vars)
 
                 # Generate system prompt
                 system_prompt = self.system_template.render(**template_vars)
@@ -137,6 +160,28 @@ class PlanGenerator:
         plan_id = generate_uuid_short(8)
         session_id = generate_uuid_short(4)
 
+        # Get volatility metrics and convert to plain dict if present
+        volatility_metrics = market_data.get("volatility_metrics")
+        if isinstance(volatility_metrics, TimeframeVolatility):
+            vol_metrics_dict = _convert_pydantic_to_dict(volatility_metrics)
+            
+            # Log detailed metrics for debugging
+            for timeframe, metrics in vol_metrics_dict.get("metrics", {}).items():
+                logfire.info(f"Volatility metrics for {timeframe}",
+                           timeframe=timeframe,
+                           direction_score=metrics.get("direction_score"),
+                           opportunity_score=metrics.get("opportunity_score"),
+                           regime=metrics.get("regime"),
+                           atr=metrics.get("atr"),
+                           atr_percentile=metrics.get("atr_percentile"))
+        else:
+            vol_metrics_dict = None
+            logfire.warning("No volatility metrics available")
+
+        # Convert existing orders to plain dicts
+        existing_orders = [_convert_pydantic_to_dict(order) 
+                         for order in positions_orders["existing_orders"]]
+
         template_vars = {
             "plan_id": plan_id,
             "session_id": session_id,
@@ -144,11 +189,17 @@ class PlanGenerator:
             "symbol": params.symbol,
             "budget": params.budget,
             "leverage": params.leverage,
-            "existing_orders": positions_orders["existing_orders"],
+            "existing_orders": existing_orders,
             "current_positions": positions_orders["current_positions"],
-            "volatility_metrics": market_data["volatility_metrics"],
+            "volatility_metrics": vol_metrics_dict,
             "atr_timeframe": params.stop_loss_config.get("timeframe") if params.stop_loss_config else "1H"
         }
+
+        logfire.info("Template variables prepared", **{
+            k: v for k, v in template_vars.items() 
+            if not isinstance(v, (list, dict))  # Log solo valori scalari
+        })
+        logfire.debug("Full template variables", template_vars=template_vars)
 
         return template_vars
 
@@ -187,7 +238,7 @@ class PlanGenerator:
             if trading_plan.cancellations and len(trading_plan.cancellations):
                 tags.append("cancellations")
 
-            logfire.info("Trading plan created", _tags=tags, **trading_plan.dict())
+            logfire.info("Trading plan created", _tags=tags, **_convert_pydantic_to_dict(trading_plan))
             return trading_plan
 
         except Exception as e:

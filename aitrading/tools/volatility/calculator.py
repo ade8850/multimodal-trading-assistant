@@ -6,7 +6,6 @@ import numpy as np
 import logfire
 from .models import VolatilityMetrics, TimeframeVolatility
 
-
 def calculate_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
     """Calculate Average True Range."""
     high = df["high"]
@@ -20,7 +19,6 @@ def calculate_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
     
     return tr.rolling(window=period).mean()
 
-
 def calculate_bb_width(df: pd.DataFrame, period: int = 20, std_dev: float = 2.0) -> pd.Series:
     """Calculate Bollinger Band Width ((Upper - Lower) / Middle)."""
     middle = df["close"].rolling(window=period).mean()
@@ -31,23 +29,21 @@ def calculate_bb_width(df: pd.DataFrame, period: int = 20, std_dev: float = 2.0)
     
     return (upper - lower) / middle
 
-
 def calculate_percentile(series: pd.Series, window: int) -> float:
     """Calculate the current value's percentile over a historical window."""
     current_value = series.iloc[-1]
-    historical_window = series.iloc[-window:]
+    historical_window = series.iloc[-window:] 
     return float(pd.Series(historical_window).rank(pct=True).iloc[-1] * 100)
-
 
 def calculate_directional_strength(df: pd.DataFrame, lookback: int = 20) -> float:
     """Calculate the directional strength of price movement.
     
-    Args:
-        df: DataFrame with OHLC and indicators
-        lookback: Number of periods to analyze
+    Simplified version that focuses on:
+    1. EMA trend direction and strength
+    2. Volume confirmation
     
     Returns:
-        Directional strength score (-100 to +100)
+        float: Score from -100 to +100
         Positive values indicate upward direction
         Negative values indicate downward direction
         Magnitude indicates strength
@@ -55,78 +51,52 @@ def calculate_directional_strength(df: pd.DataFrame, lookback: int = 20) -> floa
     try:
         # Get recent data
         recent = df.tail(lookback)
+        if len(recent) < lookback:
+            logfire.warning("Insufficient data for directional strength calculation", 
+                          available=len(recent), required=lookback)
+            return 0.0
+
+        # Calculate EMA trend
+        ema = recent['close'].ewm(span=100, adjust=False).mean()
+        ema_start = ema.iloc[0]
+        ema_end = ema.iloc[-1]
         
-        if len(recent) < 2:  # Need at least 2 points for direction
+        if ema_start == 0:  # Avoid division by zero
+            logfire.warning("EMA calculation error - zero value detected")
             return 0.0
-
-        # Calculate price direction
-        start_price = recent['close'].iloc[0]
-        if start_price == 0:  # Avoid division by zero
-            return 0.0
-        price_direction = (recent['close'].iloc[-1] - start_price) / start_price * 100
-
-        # Use EMA100 if present or calculate it
-        if 'EMA100' not in recent:
-            recent['EMA100'] = recent['close'].ewm(span=100, adjust=False).mean()
             
-        recent_ema = recent['EMA100']
-        start_ema = recent_ema.iloc[0]
-        if start_ema == 0:  # Avoid division by zero
-            ema_direction = price_direction  # Fall back to price direction
+        # Calculate trend percentage
+        trend_pct = ((ema_end - ema_start) / ema_start) * 100
+        
+        # Calculate volume trend
+        # Compare average volume on up days vs down days
+        up_days = recent['close'] > recent['close'].shift(1)
+        up_volume = recent.loc[up_days, 'volume'].mean()
+        down_volume = recent.loc[~up_days, 'volume'].mean()
+        
+        # Volume ratio (-1 to +1)
+        if up_volume + down_volume == 0:
+            volume_ratio = 0
         else:
-            ema_direction = (recent_ema.iloc[-1] - start_ema) / start_ema * 100
+            volume_ratio = (up_volume - down_volume) / (up_volume + down_volume)
+
+        # Combine trend and volume
+        # trend_pct is already in percentage form
+        # volume_ratio is scaled up to match
+        direction_score = (trend_pct * 0.7) + (volume_ratio * 100 * 0.3)
         
-        # Calculate BB position score
-        bb_middle = recent['close'].rolling(20).mean()
-        bb_std = recent['close'].rolling(20).std()
-        bb_upper = bb_middle + (2 * bb_std)
-        bb_lower = bb_middle - (2 * bb_std)
-        
-        # Position relative to BB (0 at middle, +/-1 at bands)
-        bb_diff = bb_upper - bb_lower
-        bb_position = np.where(bb_diff == 0, 0,  # Avoid division by zero
-                             ((recent['close'] - bb_middle) / bb_diff)).mean()
-        
-        # Volume-price correlation
-        volume_direction = np.where(recent['close'] > recent['close'].shift(1), 
-                                  recent['volume'], 
-                                  -recent['volume'])
-        try:
-            volume_price_correlation = pd.Series(volume_direction).corr(recent['close'])
-            if pd.isna(volume_price_correlation):
-                volume_price_correlation = 0
-        except:
-            volume_price_correlation = 0
-        
-        # Combine components
-        direction_score = (
-            price_direction * 0.4 +      # Price trend (40%)
-            ema_direction * 0.3 +        # EMA trend (30%)
-            bb_position * 20 +           # BB position
-            volume_price_correlation * 10 # Volume confirmation
-        )
-        
-        # Handle NaN and bound the score
-        if pd.isna(direction_score):
-            return 0.0
-        return np.clip(direction_score, -100, 100)
-        
+        # Log intermediate values
+        logfire.debug("Directional strength calculation",
+                     trend_pct=trend_pct,
+                     volume_ratio=volume_ratio,
+                     direction_score=direction_score)
+
+        # Clip to -100/+100 range
+        return float(np.clip(direction_score, -100, 100))
+
     except Exception as e:
         logfire.error(f"Error calculating directional strength: {str(e)}")
-        return 0.0  # Return neutral score on error
-
-
-def get_timeframe_minutes(timeframe: str) -> int:
-    """Get number of minutes for a timeframe."""
-    timeframe = timeframe.upper()
-    if timeframe.endswith('M'):
-        return int(timeframe[:-1])
-    elif timeframe.endswith('H'):
-        return int(timeframe[:-1]) * 60
-    elif timeframe.endswith('D'):
-        return int(timeframe[:-1]) * 1440
-    raise ValueError(f"Unsupported timeframe format: {timeframe}")
-
+        return 0.0
 
 def analyze_volatility_context(
     atr_percentile: float,
@@ -154,20 +124,32 @@ def analyze_volatility_context(
         direction_score = 0.0 if pd.isna(direction_score) else direction_score
         vol_change_24h = 0.0 if pd.isna(vol_change_24h) else vol_change_24h
         
-        # Base volatility score
-        vol_score = (atr_percentile * 0.4 +    # ATR has significant weight
-                    bb_width_percentile * 0.4 + # BB width equally important
-                    min(abs(vol_change_24h) * 2, 100) * 0.2)  # Recent change
+        # Calculate base volatility score (0-100)
+        vol_score = (
+            atr_percentile * 0.5 +    # ATR percentile (50%)
+            bb_width_percentile * 0.3 + # BB width (30%)
+            min(abs(vol_change_24h), 100) * 0.2  # Recent change (20%)
+        )
         
-        # Direction alignment
-        direction_alignment = abs(direction_score) / 100  # 0 to 1
+        # Calculate directional alignment (0-1)
+        # Higher when strong direction (either up or down)
+        direction_alignment = abs(direction_score) / 100
         
         # Opportunity score increases when:
         # - High volatility aligns with strong direction
-        # - Low volatility with weak direction gets low score
+        # - Low volatility or weak direction results in low score
         opportunity_score = vol_score * direction_alignment
         
-        # Regime classification
+        # Log calculation details
+        logfire.debug("Volatility context analysis",
+                     vol_score=vol_score,
+                     direction_alignment=direction_alignment,
+                     opportunity_score=opportunity_score,
+                     atr_pct=atr_percentile,
+                     bb_width_pct=bb_width_percentile,
+                     direction_score=direction_score)
+        
+        # Determine regime
         if vol_score < 30:
             regime = "LOW"
         elif vol_score < 60:
@@ -177,11 +159,11 @@ def analyze_volatility_context(
         else:
             regime = "EXTREME"
         
-        return regime, np.clip(opportunity_score, 0, 100)
+        return regime, float(np.clip(opportunity_score, 0, 100))
+        
     except Exception as e:
-        logfire.error(f"Error in volatility context analysis: {str(e)}")
-        return "LOW", 0.0  # Return conservative values on error
-
+        logfire.error("Error in volatility context analysis", error=str(e))
+        return "LOW", 0.0
 
 class VolatilityCalculator:
     """Calculator for volatility metrics across timeframes."""
@@ -228,6 +210,16 @@ class VolatilityCalculator:
             direction_score,
             volatility_change
         )
+
+        # Log detailed metrics
+        logfire.info(f"Volatility metrics calculated for {timeframe}",
+                    timeframe=timeframe,
+                    atr=atr_current,
+                    atr_percentile=atr_percentile,
+                    normalized_atr=normalized_atr,
+                    direction_score=direction_score,
+                    opportunity_score=opportunity_score,
+                    regime=regime)
         
         return VolatilityMetrics(
             atr=atr_current,
@@ -241,10 +233,7 @@ class VolatilityCalculator:
             opportunity_score=opportunity_score
         )
         
-    def calculate_for_timeframes(
-        self,
-        data: Dict[str, pd.DataFrame]
-    ) -> TimeframeVolatility:
+    def calculate_for_timeframes(self, data: Dict[str, pd.DataFrame]) -> TimeframeVolatility:
         """Calculate volatility metrics for multiple timeframes."""
         metrics = {}
         
@@ -255,9 +244,21 @@ class VolatilityCalculator:
             try:
                 metrics[timeframe] = self.calculate_metrics(df, timeframe)
             except Exception as e:
+                logfire.error(f"Error calculating metrics for {timeframe}", error=str(e))
                 raise ValueError(f"Error calculating metrics for {timeframe}: {str(e)}")
                 
         return TimeframeVolatility(
             symbol=symbol,
             metrics=metrics
         )
+
+def get_timeframe_minutes(timeframe: str) -> int:
+    """Get number of minutes for a timeframe."""
+    timeframe = timeframe.upper()
+    if timeframe.endswith('M'):
+        return int(timeframe[:-1])
+    elif timeframe.endswith('H'):
+        return int(timeframe[:-1]) * 60
+    elif timeframe.endswith('D'):
+        return int(timeframe[:-1]) * 1440
+    raise ValueError(f"Unsupported timeframe format: {timeframe}")
