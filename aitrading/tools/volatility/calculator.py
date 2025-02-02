@@ -3,6 +3,7 @@
 from typing import Dict, Tuple, List
 import pandas as pd
 import numpy as np
+import logfire
 from .models import VolatilityMetrics, TimeframeVolatility
 
 
@@ -51,39 +52,68 @@ def calculate_directional_strength(df: pd.DataFrame, lookback: int = 20) -> floa
         Negative values indicate downward direction
         Magnitude indicates strength
     """
-    # Get recent data
-    recent = df.tail(lookback)
+    try:
+        # Get recent data
+        recent = df.tail(lookback)
+        
+        if len(recent) < 2:  # Need at least 2 points for direction
+            return 0.0
 
-    if 'EMA100' not in recent:
-        recent['EMA100'] = recent['close'].ewm(span=100, adjust=False).mean()
-    
-    # Calculate directional components
-    price_direction = (recent['close'].iloc[-1] - recent['close'].iloc[0]) / recent['close'].iloc[0] * 100
-    ema_direction = (recent['EMA100'].iloc[-1] - recent['EMA100'].iloc[0]) / recent['EMA100'].iloc[0] * 100
-    
-    # Calculate BB position score
-    bb_middle = recent['close'].rolling(20).mean()
-    bb_std = recent['close'].rolling(20).std()
-    bb_upper = bb_middle + (2 * bb_std)
-    bb_lower = bb_middle - (2 * bb_std)
-    
-    # Position relative to BB (0 at middle, +/-1 at bands)
-    bb_position = ((recent['close'] - bb_middle) / (bb_upper - bb_lower)).mean()
-    
-    # Volume-price correlation
-    volume_direction = np.where(recent['close'] > recent['close'].shift(1), recent['volume'], -recent['volume'])
-    volume_price_correlation = pd.Series(volume_direction).corr(recent['close'])
-    
-    # Combine components
-    direction_score = (
-        price_direction * 0.4 +      # Price trend
-        ema_direction * 0.3 +        # EMA trend
-        bb_position * 20 +           # BB position
-        volume_price_correlation * 10 # Volume confirmation
-    )
-    
-    # Bound the score
-    return np.clip(direction_score, -100, 100)
+        # Calculate price direction
+        start_price = recent['close'].iloc[0]
+        if start_price == 0:  # Avoid division by zero
+            return 0.0
+        price_direction = (recent['close'].iloc[-1] - start_price) / start_price * 100
+
+        # Use EMA100 if present or calculate it
+        if 'EMA100' not in recent:
+            recent['EMA100'] = recent['close'].ewm(span=100, adjust=False).mean()
+            
+        recent_ema = recent['EMA100']
+        start_ema = recent_ema.iloc[0]
+        if start_ema == 0:  # Avoid division by zero
+            ema_direction = price_direction  # Fall back to price direction
+        else:
+            ema_direction = (recent_ema.iloc[-1] - start_ema) / start_ema * 100
+        
+        # Calculate BB position score
+        bb_middle = recent['close'].rolling(20).mean()
+        bb_std = recent['close'].rolling(20).std()
+        bb_upper = bb_middle + (2 * bb_std)
+        bb_lower = bb_middle - (2 * bb_std)
+        
+        # Position relative to BB (0 at middle, +/-1 at bands)
+        bb_diff = bb_upper - bb_lower
+        bb_position = np.where(bb_diff == 0, 0,  # Avoid division by zero
+                             ((recent['close'] - bb_middle) / bb_diff)).mean()
+        
+        # Volume-price correlation
+        volume_direction = np.where(recent['close'] > recent['close'].shift(1), 
+                                  recent['volume'], 
+                                  -recent['volume'])
+        try:
+            volume_price_correlation = pd.Series(volume_direction).corr(recent['close'])
+            if pd.isna(volume_price_correlation):
+                volume_price_correlation = 0
+        except:
+            volume_price_correlation = 0
+        
+        # Combine components
+        direction_score = (
+            price_direction * 0.4 +      # Price trend (40%)
+            ema_direction * 0.3 +        # EMA trend (30%)
+            bb_position * 20 +           # BB position
+            volume_price_correlation * 10 # Volume confirmation
+        )
+        
+        # Handle NaN and bound the score
+        if pd.isna(direction_score):
+            return 0.0
+        return np.clip(direction_score, -100, 100)
+        
+    except Exception as e:
+        logfire.error(f"Error calculating directional strength: {str(e)}")
+        return 0.0  # Return neutral score on error
 
 
 def get_timeframe_minutes(timeframe: str) -> int:
@@ -117,30 +147,40 @@ def analyze_volatility_context(
         regime: Volatility classification (LOW/MEDIUM/HIGH/EXTREME)
         opportunity_score: Score indicating trade opportunity (0-100)
     """
-    # Base volatility score
-    vol_score = (atr_percentile * 0.4 +    # ATR has significant weight
-                bb_width_percentile * 0.4 + # BB width equally important
-                min(abs(vol_change_24h) * 2, 100) * 0.2)  # Recent change
-    
-    # Direction alignment
-    direction_alignment = abs(direction_score) / 100  # 0 to 1
-    
-    # Opportunity score increases when:
-    # - High volatility aligns with strong direction
-    # - Low volatility with weak direction gets low score
-    opportunity_score = vol_score * direction_alignment
-    
-    # Regime classification
-    if vol_score < 30:
-        regime = "LOW"
-    elif vol_score < 60:
-        regime = "MEDIUM"
-    elif vol_score < 85:
-        regime = "HIGH"
-    else:
-        regime = "EXTREME"
-    
-    return regime, min(opportunity_score, 100)
+    try:
+        # Handle NaN inputs
+        atr_percentile = 0.0 if pd.isna(atr_percentile) else atr_percentile
+        bb_width_percentile = 0.0 if pd.isna(bb_width_percentile) else bb_width_percentile
+        direction_score = 0.0 if pd.isna(direction_score) else direction_score
+        vol_change_24h = 0.0 if pd.isna(vol_change_24h) else vol_change_24h
+        
+        # Base volatility score
+        vol_score = (atr_percentile * 0.4 +    # ATR has significant weight
+                    bb_width_percentile * 0.4 + # BB width equally important
+                    min(abs(vol_change_24h) * 2, 100) * 0.2)  # Recent change
+        
+        # Direction alignment
+        direction_alignment = abs(direction_score) / 100  # 0 to 1
+        
+        # Opportunity score increases when:
+        # - High volatility aligns with strong direction
+        # - Low volatility with weak direction gets low score
+        opportunity_score = vol_score * direction_alignment
+        
+        # Regime classification
+        if vol_score < 30:
+            regime = "LOW"
+        elif vol_score < 60:
+            regime = "MEDIUM"
+        elif vol_score < 85:
+            regime = "HIGH"
+        else:
+            regime = "EXTREME"
+        
+        return regime, np.clip(opportunity_score, 0, 100)
+    except Exception as e:
+        logfire.error(f"Error in volatility context analysis: {str(e)}")
+        return "LOW", 0.0  # Return conservative values on error
 
 
 class VolatilityCalculator:
