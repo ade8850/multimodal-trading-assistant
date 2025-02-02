@@ -1,205 +1,224 @@
-from typing import Optional, Tuple
+# aitrading/tools/volatility/calculator.py
+
+from typing import Dict, Tuple, List
 import pandas as pd
-import logfire
+import numpy as np
+from .models import VolatilityMetrics, TimeframeVolatility
 
-from .models import StopLossConfig, StopLossUpdate, ProfitBand
+
+def calculate_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
+    """Calculate Average True Range."""
+    high = df["high"]
+    low = df["low"]
+    close = df["close"]
+
+    tr1 = high - low
+    tr2 = abs(high - close.shift())
+    tr3 = abs(low - close.shift())
+    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+
+    return tr.rolling(window=period).mean()
 
 
-class StopLossCalculator:
-    """Calculator for dynamic stop loss levels based on ATR and profit bands."""
+def calculate_bb_width(df: pd.DataFrame, period: int = 20, std_dev: float = 2.0) -> pd.Series:
+    """Calculate Bollinger Band Width ((Upper - Lower) / Middle)."""
+    middle = df["close"].rolling(window=period).mean()
+    std = df["close"].rolling(window=period).std()
 
-    def __init__(self, config: StopLossConfig):
-        """Initialize the calculator with configuration."""
-        self.config = config
-        logfire.info("Stop loss calculator initialized", **config.model_dump())
+    upper = middle + (std_dev * std)
+    lower = middle - (std_dev * std)
 
-    def calculate_profit_band(
-        self,
-        entry_price: float,
-        current_stop_loss: float,
-        position_type: str
-    ) -> Tuple[ProfitBand, float]:
-        """Determine if the position is currently in profit based on the stop loss level."""
+    return (upper - lower) / middle
 
-        if current_stop_loss is None:
-            current_stop_loss = entry_price
 
-        if position_type.lower() == 'buy':
-            if entry_price < current_stop_loss:
-                return ProfitBand.FIRST_PROFIT, self.config.in_profit_multiplier
-            else:
-                return ProfitBand.INITIAL, self.config.initial_multiplier
-        else:  # sell
-            if entry_price > current_stop_loss:
-                return ProfitBand.FIRST_PROFIT, self.config.in_profit_multiplier
-            else:
-                return ProfitBand.INITIAL, self.config.initial_multiplier
+def calculate_percentile(series: pd.Series, window: int) -> float:
+    """Calculate the current value's percentile over a historical window."""
+    current_value = series.iloc[-1]
+    historical_window = series.iloc[-window:]
+    return float(pd.Series(historical_window).rank(pct=True).iloc[-1] * 100)
 
-    def calculate_atr(self, df: pd.DataFrame, period: int = 14) -> float:
-        """Calculate current ATR value.
-        
-        Args:
-            df: DataFrame with OHLC data
-            period: ATR period (default 14)
-            
-        Returns:
-            Current ATR value
-        """
+
+def calculate_directional_strength(df: pd.DataFrame, lookback: int = 20) -> float:
+    """Calculate the directional strength of price movement.
+
+    Args:
+        df: DataFrame with OHLC data
+        lookback: Number of periods to analyze
+
+    Returns:
+        Directional strength score (-100 to +100)
+        Positive values indicate upward direction
+        Negative values indicate downward direction
+        Magnitude indicates strength
+    """
+    # Get recent data
+    recent = df.tail(lookback)
+
+    # Calculate price direction
+    price_direction = (recent['close'].iloc[-1] - recent['close'].iloc[0]) / recent['close'].iloc[0] * 100
+
+    # Calculate EMA100
+    ema100 = df['close'].ewm(span=100, adjust=False).mean()
+    recent_ema = ema100.tail(lookback)
+    ema_direction = (recent_ema.iloc[-1] - recent_ema.iloc[0]) / recent_ema.iloc[0] * 100
+
+    # Calculate BB position score
+    bb_middle = recent['close'].rolling(20).mean()
+    bb_std = recent['close'].rolling(20).std()
+    bb_upper = bb_middle + (2 * bb_std)
+    bb_lower = bb_middle - (2 * bb_std)
+
+    # Position relative to BB (0 at middle, +/-1 at bands)
+    bb_position = ((recent['close'] - bb_middle) / (bb_upper - bb_lower)).mean()
+
+    # Volume-price correlation
+    volume_direction = np.where(recent['close'] > recent['close'].shift(1), recent['volume'], -recent['volume'])
+    volume_price_correlation = pd.Series(volume_direction).corr(recent['close'])
+
+    # Combine components
+    direction_score = (
+            price_direction * 0.4 +  # Price trend
+            ema_direction * 0.3 +  # EMA trend
+            bb_position * 20 +  # BB position
+            volume_price_correlation * 10  # Volume confirmation
+    )
+
+    # Bound the score
+    return np.clip(direction_score, -100, 100)
+
+
+def get_timeframe_minutes(timeframe: str) -> int:
+    """Get number of minutes for a timeframe."""
+    timeframe = timeframe.upper()
+    if timeframe.endswith('M'):
+        return int(timeframe[:-1])
+    elif timeframe.endswith('H'):
+        return int(timeframe[:-1]) * 60
+    elif timeframe.endswith('D'):
+        return int(timeframe[:-1]) * 1440
+    raise ValueError(f"Unsupported timeframe format: {timeframe}")
+
+
+def analyze_volatility_context(
+        atr_percentile: float,
+        bb_width_percentile: float,
+        direction_score: float,
+        vol_change_24h: float
+) -> Tuple[str, float]:
+    """Analyze volatility context considering direction.
+
+    Args:
+        atr_percentile: Historical percentile of current ATR
+        bb_width_percentile: Historical percentile of current BB width
+        direction_score: Directional strength score (-100 to +100)
+        vol_change_24h: 24h change in volatility
+
+    Returns:
+        Tuple of (regime, opportunity_score)
+        regime: Volatility classification (LOW/MEDIUM/HIGH/EXTREME)
+        opportunity_score: Score indicating trade opportunity (0-100)
+    """
+    # Base volatility score
+    vol_score = (atr_percentile * 0.4 +  # ATR has significant weight
+                 bb_width_percentile * 0.4 +  # BB width equally important
+                 min(abs(vol_change_24h) * 2, 100) * 0.2)  # Recent change
+
+    # Direction alignment
+    direction_alignment = abs(direction_score) / 100  # 0 to 1
+
+    # Opportunity score increases when:
+    # - High volatility aligns with strong direction
+    # - Low volatility with weak direction gets low score
+    opportunity_score = vol_score * direction_alignment
+
+    # Regime classification
+    if vol_score < 30:
+        regime = "LOW"
+    elif vol_score < 60:
+        regime = "MEDIUM"
+    elif vol_score < 85:
+        regime = "HIGH"
+    else:
+        regime = "EXTREME"
+
+    return regime, min(opportunity_score, 100)
+
+
+class VolatilityCalculator:
+    """Calculator for volatility metrics across timeframes."""
+
+    def __init__(self, historical_window: int = 100):
+        self.historical_window = historical_window
+
+    def calculate_metrics(self, df: pd.DataFrame, timeframe: str) -> VolatilityMetrics:
+        """Calculate volatility metrics for a single timeframe."""
+        # Calculate ATR and related metrics
+        atr = calculate_atr(df)
+        atr_current = float(atr.iloc[-1])
+        atr_percentile = calculate_percentile(atr, self.historical_window)
+
+        # Calculate normalized ATR
+        price = float(df["close"].iloc[-1])
+        normalized_atr = (atr_current / price) * 100
+
+        # Calculate BB width and percentile
+        bb_width = calculate_bb_width(df)
+        bb_width_current = float(bb_width.iloc[-1])
+        bb_width_percentile = calculate_percentile(bb_width, self.historical_window)
+
+        # Calculate 24h volatility change
         try:
-            with logfire.span("atr_calculation"):
-                high = df["high"]
-                low = df["low"]
-                close = df["close"].shift()
-
-                tr1 = high - low
-                tr2 = (high - close).abs()
-                tr3 = (low - close).abs()
-                tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-                atr = tr.rolling(window=period).mean().iloc[-1]
-
-                logfire.info("ATR calculated", value=atr, period=period)
-                return float(atr)
+            minutes_per_period = get_timeframe_minutes(timeframe)
+            periods_24h = int(24 * 60 / minutes_per_period)
+            if periods_24h >= len(atr):
+                periods_24h = len(atr) // 2
+            atr_24h_ago = float(atr.iloc[-periods_24h])
+            volatility_change = ((atr_current - atr_24h_ago) / atr_24h_ago) * 100
         except Exception as e:
-            logfire.error("ATR calculation failed", error=str(e))
-            raise
+            periods_24h = 4
+            atr_24h_ago = float(atr.iloc[-periods_24h])
+            volatility_change = ((atr_current - atr_24h_ago) / atr_24h_ago) * 100
 
-    def calculate_stop_loss(
+        # Calculate directional strength
+        direction_score = calculate_directional_strength(df)
+
+        # Analyze volatility context
+        regime, opportunity_score = analyze_volatility_context(
+            atr_percentile,
+            bb_width_percentile,
+            direction_score,
+            volatility_change
+        )
+
+        return VolatilityMetrics(
+            atr=atr_current,
+            atr_percentile=atr_percentile,
+            normalized_atr=normalized_atr,
+            bb_width=bb_width_current,
+            bb_width_percentile=bb_width_percentile,
+            volatility_change_24h=volatility_change,
+            regime=regime,
+            direction_score=direction_score,
+            opportunity_score=opportunity_score
+        )
+
+    def calculate_for_timeframes(
             self,
-            symbol: str,
-            current_price: float,
-            entry_price: float,
-            position_size: float,
-            position_type: str,
-            atr_value: float,
-            previous_stop_loss: Optional[float] = None
-    ) -> StopLossUpdate:
-        """Calculate new stop loss level based on current market conditions.
-        
-        Args:
-            symbol: Trading pair symbol
-            current_price: Current market price
-            entry_price: Position entry price
-            position_size: Position size
-            position_type: Either 'buy' or 'sell' (from Bybit API)
-            atr_value: Current ATR value
-            previous_stop_loss: Current active stop loss level
-            
-        Returns:
-            StopLossUpdate object with new stop loss details
-        """
-        try:
-            with logfire.span("stop_loss_calculation") as span:
-                # Get profit band and multiplier
-                band, multiplier = self.calculate_profit_band(
-                    entry_price, previous_stop_loss, position_type
-                )
+            data: Dict[str, pd.DataFrame]
+    ) -> TimeframeVolatility:
+        """Calculate volatility metrics for multiple timeframes."""
+        metrics = {}
 
-                # Add detailed logging
-                logfire.info("Stop loss calculation parameters", **{
-                    "symbol": symbol,
-                    "current_price": current_price,
-                    "entry_price": entry_price,
-                    "position_type": position_type,
-                    "atr_value": atr_value,
-                    "band": band,
-                    "multiplier": multiplier,
-                    "previous_stop_loss": previous_stop_loss
-                })
+        first_df = next(iter(data.values()))
+        symbol = first_df.index.name or "UNKNOWN"
 
-                # Calculate new stop loss level
-                atr_distance = atr_value * multiplier
-                logfire.info("ATR distance calculated", **{
-                    "atr_value": atr_value,
-                    "multiplier": multiplier,
-                    "atr_distance": atr_distance
-                })
+        for timeframe, df in data.items():
+            try:
+                metrics[timeframe] = self.calculate_metrics(df, timeframe)
+            except Exception as e:
+                raise ValueError(f"Error calculating metrics for {timeframe}: {str(e)}")
 
-                # Determine if this is a long (buy) or short (sell) position
-                is_long = position_type.lower() == 'buy'
-                logfire.info("Position type determined", **{
-                    "position_type": position_type,
-                    "is_long": is_long,
-                    "calculation_type": "long" if is_long else "short"
-                })
-
-                if is_long:
-                    new_stop_loss = current_price - atr_distance
-                    logfire.info("Long position stop loss calculated", **{
-                        "new_stop_loss": new_stop_loss,
-                        "calculation": f"{current_price} - {atr_distance} = {new_stop_loss}"
-                    })
-
-                    # For long positions, ensure new stop loss is higher than previous
-                    if previous_stop_loss and new_stop_loss <= previous_stop_loss:
-                        logfire.info("Stop loss movement inhibited", **{
-                            "reason": "New stop loss would decrease for long position",
-                            "position_type": "buy",
-                            "new_stop_loss": new_stop_loss,
-                            "previous_stop_loss": previous_stop_loss,
-                            "difference": new_stop_loss - previous_stop_loss
-                        })
-                        return StopLossUpdate(
-                            symbol=symbol,
-                            current_price=current_price,
-                            entry_price=entry_price,
-                            position_size=position_size,
-                            current_band=band,
-                            atr_value=atr_value,
-                            new_stop_loss=previous_stop_loss,
-                            previous_stop_loss=previous_stop_loss,
-                            multiplier_used=multiplier,
-                            reason="Stop loss cannot decrease for long positions"
-                        )
-                else:  # short position
-                    new_stop_loss = current_price + atr_distance
-                    logfire.info("Short position stop loss calculated", **{
-                        "new_stop_loss": new_stop_loss,
-                        "calculation": f"{current_price} + {atr_distance} = {new_stop_loss}"
-                    })
-
-                    # For short positions, ensure new stop loss is lower than previous
-                    if previous_stop_loss and new_stop_loss >= previous_stop_loss:
-                        logfire.info("Stop loss movement inhibited", **{
-                            "reason": "New stop loss would increase for short position",
-                            "position_type": "sell",
-                            "new_stop_loss": new_stop_loss,
-                            "previous_stop_loss": previous_stop_loss,
-                            "difference": new_stop_loss - previous_stop_loss
-                        })
-                        return StopLossUpdate(
-                            symbol=symbol,
-                            current_price=current_price,
-                            entry_price=entry_price,
-                            position_size=position_size,
-                            current_band=band,
-                            atr_value=atr_value,
-                            new_stop_loss=previous_stop_loss,
-                            previous_stop_loss=previous_stop_loss,
-                            multiplier_used=multiplier,
-                            reason="Stop loss cannot increase for short positions"
-                        )
-
-                # Create update with new stop loss
-                update = StopLossUpdate(
-                    symbol=symbol,
-                    current_price=current_price,
-                    entry_price=entry_price,
-                    position_size=position_size,
-                    current_band=band,
-                    atr_value=atr_value,
-                    new_stop_loss=new_stop_loss,
-                    previous_stop_loss=previous_stop_loss,
-                    multiplier_used=multiplier,
-                    reason=f"Updated based on {band.value} band"
-                )
-
-                logfire.info("Stop loss calculated", **update.model_dump())
-                return update
-
-        except Exception as e:
-            logfire.error("Stop loss calculation failed",
-                          symbol=symbol,
-                          error=str(e),
-                          current_price=current_price,
-                          entry_price=entry_price)
-            raise
+        return TimeframeVolatility(
+            symbol=symbol,
+            metrics=metrics
+        )
