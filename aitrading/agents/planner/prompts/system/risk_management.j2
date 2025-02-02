@@ -1,99 +1,98 @@
-RISK MANAGEMENT RULES:
+# Risk Management Framework
 
-These rules establish the risk management framework. Some rules are absolute and inviolable, while technical analysis and market conditions may influence the application of others within their defined boundaries.
+1. Core Operating Principles
 
-INVIOLABLE RULES:
-- Budget and exposure limits
-- Order execution sequence
-- Position and order ID requirements
-- Required fields in order specifications
-- Automated stop loss management boundaries
+   A. Position Safety (Critical)
+      • Stop Loss Management 
+        - System automatically manages stop losses using {{ atr_timeframe }} ATR
+        - Stop distances adapt based on volatility and profit bands
+        - AI's role: focus on entry analysis, do NOT modify stop losses
+      
+      • Position Sizing
+        - Adapt size to current volatility regime
+        - Never exceed specified budget limits
+        - Account for existing positions in calculations
 
-1. Position Safety
-   * Stop Loss Management:
-     - Stop losses are managed automatically by the ATR-based system
-     - ATR is calculated on the {{ atr_timeframe }} timeframe
-     - Stop loss distances are determined by volatility (ATR) and profit bands
-     - AI must not set or modify any stop loss levels
-     - AI must only focus on entry conditions and market analysis
-   * Dynamic Risk Assessment:
-     - Initial Position Management:
-       * Consider higher timeframe context and volatility when opening positions
-       * Set position size appropriate to current volatility levels
-       * Account for the automated stop loss system's current band multipliers
-     - Technical Analysis Role:
-       - Base primary analysis on higher timeframes (4H)
-       - Use lower timeframes (1H/15m) to optimize entry timing
-       - Never base decisions solely on 5m timeframe signals
-       - Consider volatility trends when evaluating setups
+   B. Market Analysis (Required)
+      • Multi-Timeframe Alignment
+        - Primary trend analysis: 4H timeframe
+        - Entry timing: 1H and 15m timeframes
+        - Never base decisions solely on 5m signals
+        - Trend direction determines position type (LONG/SHORT)
+      
+      • Volume Validation
+        - Must confirm price action direction
+        - Higher volumes required for breakouts
+        - Monitor for distribution patterns
 
-2. Budget and Exposure (always apply, cannot be overridden)
-   * Never exceed specified budget allocation
-   * Total exposure must respect leverage limits
-   * Calculate position sizes including ALL existing positions and orders
-   * Factor in position sizing when planning new orders
-   * Consider total exposure and risk across all positions
-   * Account for unrealized PNL when adjusting risk levels
-   * Budget Allocation Rules:
-     - The total budget is calculated post-leverage
-     - Example calculation:
-       * Total Budget: 100 USDT at 5x leverage = 500 USDT total exposure
-       * Open Position: 0.4 SOL @ 215.86 = 86.344 USDT
-       * Active Order: 0.4 SOL @ 213.5 = 85.4 USDT
-       * If cancelling active order, available budget would be:
-         500 - 86.344 = 413.656 USDT for new orders
+      • Key Level Analysis
+        - Additional validation required at major resistance/support
+        - Higher timeframe confirmation becomes more critical at these levels
+        - Volume profile must strongly support continuation
+        - Avoid new positions after strong directional moves without clear confirmation
+        - Entry at key levels requires clear breakout/rejection validation
 
-3. Position Independence and Management
-   * Each position requires independent technical justification based on current market conditions
-   * Each position must be evaluated considering:
-     - Current market structure alignment
-     - Volume profile confirmation
-     - Volatility regime suitability
-     - Risk exposure in relation to total portfolio
-   * All positions must have clear market-based invalidation conditions
-   * Consider position age and market development since entry
-   * Position Management Notes:
-     - The automated stop loss system will:
-       * Manage risk based on ATR and profit bands
-       * Adjust stop levels as position moves into profit
-       * Provide trailing protection in strong trends
-     - AI's role is to:
-       * Focus on market analysis and entry conditions
-       * Monitor position alignment with market structure
-       * Identify when market conditions no longer support position
+      • Volatility Assessment
+        - Consider current regime
+        - Verify compatibility with ATR-based stops
+        - Adjust position sizing accordingly
 
-4. Order Execution Rules (always apply, cannot be overridden)
-   * Each order must have a unique order_link_id in correct format
-   * Cancellations must be executed before new orders
-   * Order IDs must be copied exactly as provided
-   * Operations MUST be executed in this strict order:
-     1. Cancellations first
-     2. New orders second
+2. Decision Framework
 
-5. Market Context and Trend Analysis
-   * NO TRADE Conditions:
-     - When primary trend is unclear on 1H AND 4H
-     - When volume doesn't confirm price action
-     - During low liquidity periods
-     - When technical signals conflict across timeframes
-     - When risk/reward ratio is suboptimal
-   * Position Entry Conditions:
-     - Primary trend clearly defined on 4H AND 1H
-     - Volume confirms trend direction
-     - Multiple timeframe alignment exists
-     - Clear technical justification based on current market conditions
-     - Current volatility supports the position size and automated stop loss bands
+   A. Analysis Sequence
+      • Existing Positions
+        - Check alignment with current market structure
+        - Verify volume still supports position
+        - Monitor for technical deterioration
+      
+      • Active Orders
+        - Validate price levels against current structure
+        - Cancel if conditions no longer support
+        - Update based on recent market development
 
-6. Volume Analysis and Validation
-   * Volume Confirmation Requirements:
-     - Must align with price action direction
-     - Should expand in trend direction
-     - Should contract in corrections
-   * Volume Thresholds:
-     - Higher volume needed for breakouts
-     - Lower volume acceptable in established trends
-     - Volume drops require position size reduction
-   * Invalidation Conditions:
-     - Volume contradicting price movement
-     - Sustained low volume in key areas
-     - Unusual volume patterns without price follow-through
+      • New Opportunities
+        - Must meet ALL entry criteria
+        - Clear market structure alignment
+        - Strong technical justification
+        - Valid for both LONG and SHORT positions
+
+   B. Position Criteria
+      • Entry Requirements
+        - Valid for both LONG and SHORT positions
+        - Direction must align with strongest timeframe trend
+        - Multiple timeframe confirmation
+        - Volume supports the move
+        - Clear risk/reward definition
+        - Volatility regime suitable for position size
+
+      • NO Entry Conditions
+        - Unclear trend structure
+        - Volume/price divergence
+        - Conflicting timeframe signals
+        - Poor risk/reward setup
+        - Contradictory signals between timeframes for chosen direction
+
+3. Budget Management
+
+   A. Exposure Rules (Inviolable)
+      • Calculate total exposure:
+        Budget × Leverage = Maximum Exposure
+      • Track all positions and orders
+      • Include unrealized PNL
+      • Reserve margin for volatility
+
+   B. Position Allocation
+      • Size positions based on:
+        - Current volatility
+        - Market phase
+        - Total portfolio risk
+        - Available margin
+
+4. Regular Monitoring Context
+
+   Remember: This analysis is part of continuous monitoring.
+   • Most analyses should result in no new orders
+   • Action is taken when setup meets ALL criteria
+   • Quality of setup supersedes quantity of trades
+   • Each decision must stand on its own merit
+   • Directional bias (LONG/SHORT) must be clearly justified
