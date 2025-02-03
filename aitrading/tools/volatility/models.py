@@ -3,6 +3,37 @@
 from typing import Dict, Literal
 from pydantic import BaseModel, Field
 
+VolatilityClass = Literal["LOW", "NORMAL", "HIGH", "EXTREME"]
+DirectionalClass = Literal["STRONGLY_DIRECTIONAL", "MODERATELY_DIRECTIONAL", "WEAKLY_DIRECTIONAL", "CHAOTIC"]
+TradingImplication = Literal["OPPORTUNITY", "CAUTIOUS_OPPORTUNITY", "NEUTRAL", "RISK"]
+
+class VolatilityNature(BaseModel):
+    """Detailed analysis of volatility nature."""
+    volatility_class: VolatilityClass = Field(
+        ...,
+        description="Classification based on absolute volatility level"
+    )
+    directional_class: DirectionalClass = Field(
+        ...,
+        description="Classification of directional strength"
+    )
+    trading_implication: TradingImplication = Field(
+        ...,
+        description="Trading implication based on volatility analysis"
+    )
+    directional_strength: float = Field(
+        ...,
+        ge=0,
+        le=1,
+        description="Normalized measure of price movement efficiency (0-1)"
+    )
+    chaos_ratio: float = Field(
+        ...,
+        ge=0,
+        le=1,
+        description="Proportion of volatility that is non-directional (0-1)"
+    )
+
 
 class VolatilityMetrics(BaseModel):
     """Volatility metrics for a single timeframe."""
@@ -31,7 +62,7 @@ class VolatilityMetrics(BaseModel):
         ...,
         description="Percentage change in ATR over last 24h"
     )
-    regime: Literal["LOW", "MEDIUM", "HIGH", "EXTREME"] = Field(
+    regime: VolatilityClass = Field(
         ...,
         description="Current volatility regime classification"
     )
@@ -45,7 +76,13 @@ class VolatilityMetrics(BaseModel):
         ...,
         ge=0,
         le=100,
-        description="Trade opportunity score based on volatility/direction alignment. Higher values indicate better opportunities."
+        description="Trade opportunity score considering volatility nature and directionality"
+    )
+    risk_adjustment: float = Field(
+        default=1.0,
+        ge=0.2,
+        le=1.0,
+        description="Position sizing multiplier based on volatility characteristics"
     )
 
 
@@ -76,14 +113,21 @@ class TimeframeVolatility(BaseModel):
     def get_opportunity_summary(self, primary_timeframe: str) -> Dict[str, float]:
         """Get opportunity summary across timeframes.
         
+        This method provides a comprehensive analysis by:
+        1. Evaluating primary timeframe metrics
+        2. Checking alignment with other timeframes
+        3. Weighing opportunities based on volatility nature
+        
         Args:
             primary_timeframe: Main decision timeframe (e.g. '1H')
             
         Returns:
             Dict containing:
             - primary_score: Opportunity score on primary timeframe
+            - risk_adjusted_score: Score adjusted for volatility risk
             - confirmation_score: Average alignment of other timeframes
-            - overall_score: Combined opportunity rating
+            - overall_score: Final weighted opportunity rating
+            - position_sizing: Recommended position size multiplier
         """
         try:
             # Get primary timeframe metrics
@@ -91,29 +135,46 @@ class TimeframeVolatility(BaseModel):
             primary_score = primary_metrics.opportunity_score
             primary_direction = primary_metrics.direction_score
             
-            # Calculate confirmation from other timeframes
-            other_scores = []
+            # Track directional alignment scores
+            aligned_scores = []
             for tf, metrics in self.metrics.items():
                 if tf != primary_timeframe:
-                    # Check directional alignment with primary timeframe
-                    direction_alignment = (
-                        metrics.direction_score * primary_direction > 0
-                    )
-                    if direction_alignment:
-                        other_scores.append(metrics.opportunity_score)
+                    # Check both directional alignment and volatility regime compatibility
+                    direction_alignment = metrics.direction_score * primary_direction > 0
+                    regime_compatible = metrics.regime in ["NORMAL", "HIGH"]
+                    
+                    if direction_alignment and regime_compatible:
+                        # Weight the score based on volatility regime
+                        regime_weight = {
+                            "LOW": 0.7,
+                            "NORMAL": 1.0,
+                            "HIGH": 0.8,
+                            "EXTREME": 0.5
+                        }[metrics.regime]
+                        
+                        adjusted_score = metrics.opportunity_score * regime_weight
+                        aligned_scores.append(adjusted_score)
             
-            # Calculate confirmation score (if any other timeframes exist)
+            # Calculate confirmation score
             confirmation_score = (
-                sum(other_scores) / len(other_scores) if other_scores else 0
+                sum(aligned_scores) / len(aligned_scores) if aligned_scores else 0
             )
             
-            # Overall score weights primary timeframe more heavily
-            overall_score = (primary_score * 0.7 + confirmation_score * 0.3)
+            # Calculate risk-adjusted primary score
+            risk_adjusted_score = primary_score * primary_metrics.risk_adjustment
+            
+            # Calculate final weighted score
+            overall_score = (
+                risk_adjusted_score * 0.6 +  # Primary timeframe
+                confirmation_score * 0.4     # Confirmation from other timeframes
+            )
             
             return {
                 "primary_score": primary_score,
+                "risk_adjusted_score": risk_adjusted_score,
                 "confirmation_score": confirmation_score,
-                "overall_score": overall_score
+                "overall_score": overall_score,
+                "position_sizing": primary_metrics.risk_adjustment
             }
             
         except KeyError:

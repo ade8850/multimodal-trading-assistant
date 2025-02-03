@@ -1,3 +1,4 @@
+import os
 from typing import Dict, Any
 from jinja2 import Template
 import logfire
@@ -15,6 +16,10 @@ from .base import BaseAIClient
 
 def _convert_pydantic_to_dict(obj: Any) -> Any:
     """Convert Pydantic objects to plain dictionaries recursively."""
+    # Special case for TimeframeVolatility: pass it through unchanged
+    if isinstance(obj, TimeframeVolatility):
+        return obj
+
     if hasattr(obj, 'model_dump'):
         # Per i modelli Pydantic più recenti che usano model_dump
         obj_dict = obj.model_dump()
@@ -26,7 +31,9 @@ def _convert_pydantic_to_dict(obj: Any) -> Any:
 
     # Converte ricorsivamente i valori del dizionario
     for key, value in obj_dict.items():
-        if hasattr(value, 'model_dump') or hasattr(value, 'dict'):
+        if isinstance(value, TimeframeVolatility):
+            obj_dict[key] = value  # Keep TimeframeVolatility object intact
+        elif hasattr(value, 'model_dump') or hasattr(value, 'dict'):
             obj_dict[key] = _convert_pydantic_to_dict(value)
         elif isinstance(value, dict):
             obj_dict[key] = {k: _convert_pydantic_to_dict(v) for k, v in value.items()}
@@ -101,6 +108,10 @@ class PlanGenerator:
                 # Generate system prompt
                 system_prompt = self.system_template.render(**template_vars)
 
+                if "RENDERED_PROMPT_FILE" in os.environ:
+                    with open(os.environ['RENDERED_PROMPT_FILE'].replace('symbol', params.symbol), 'w') as f:
+                        f.write(system_prompt)
+
                 # Get AI response
                 plan_data = self._get_ai_response(
                     system_prompt=system_prompt,
@@ -160,23 +171,19 @@ class PlanGenerator:
         plan_id = generate_uuid_short(8)
         session_id = generate_uuid_short(4)
 
-        # Get volatility metrics and convert to plain dict if present
-        volatility_metrics = market_data.get("volatility_metrics")
-        if isinstance(volatility_metrics, TimeframeVolatility):
-            vol_metrics_dict = _convert_pydantic_to_dict(volatility_metrics)
-            
-            # Log detailed metrics for debugging
-            for timeframe, metrics in vol_metrics_dict.get("metrics", {}).items():
-                logfire.info(f"Volatility metrics for {timeframe}",
-                           timeframe=timeframe,
-                           direction_score=metrics.get("direction_score"),
-                           opportunity_score=metrics.get("opportunity_score"),
-                           regime=metrics.get("regime"),
-                           atr=metrics.get("atr"),
-                           atr_percentile=metrics.get("atr_percentile"))
-        else:
-            vol_metrics_dict = None
-            logfire.warning("No volatility metrics available")
+        # Get volatility metrics - keep TimeframeVolatility object intact
+        # volatility_metrics = market_data.get("volatility_metrics")
+        #
+        # if isinstance(volatility_metrics, TimeframeVolatility):
+        #     # Log detailed metrics for debugging without converting to dict
+        #     for timeframe, metrics in volatility_metrics.metrics.items():
+        #         logfire.info(f"Volatility metrics for {timeframe}",
+        #                    timeframe=timeframe,
+        #                    direction_score=metrics.direction_score,
+        #                    opportunity_score=metrics.opportunity_score,
+        #                    regime=metrics.regime,
+        #                    atr=metrics.atr,
+        #                    atr_percentile=metrics.atr_percentile)
 
         # Convert existing orders to plain dicts
         existing_orders = [_convert_pydantic_to_dict(order) 
@@ -191,11 +198,14 @@ class PlanGenerator:
             "leverage": params.leverage,
             "existing_orders": existing_orders,
             "current_positions": positions_orders["current_positions"],
-            "volatility_metrics": vol_metrics_dict,
+            #"volatility_metrics": volatility_metrics,  # Use the TimeframeVolatility object directly
             "atr_timeframe": params.stop_loss_config.get("timeframe") if params.stop_loss_config else "1H"
         }
 
-        logfire.info("Full template variables", template_vars=template_vars)
+        # Log info excluding volatility_metrics to avoid recursion issues
+        log_vars = template_vars.copy()
+        log_vars["volatility_metrics"] = "TimeframeVolatility object"  # Just log presence
+        logfire.info("Template variables prepared", template_vars=log_vars)
 
         return template_vars
 

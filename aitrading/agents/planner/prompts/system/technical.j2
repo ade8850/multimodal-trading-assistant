@@ -1,100 +1,108 @@
+
+# TECHNICALS
+
 Trading Parameters:
 Symbol: {{ symbol }}
 Current Price: {{ current_price }}
 Budget: {{ budget }} USDT
 Leverage: {{ leverage }}x
 
-{% if volatility_metrics %}
-# Volatility Analysis by Timeframe
-
-4H Timeframe (Context):
-- ATR: {{ volatility_metrics.metrics['4H'].atr }}
-- ATR Percentile: {{ volatility_metrics.metrics['4H'].atr_percentile }}
-- Normalized ATR: {{ volatility_metrics.metrics['4H'].normalized_atr }}
-- BB Width: {{ volatility_metrics.metrics['4H'].bb_width }}
-- BB Width Percentile: {{ volatility_metrics.metrics['4H'].bb_width_percentile }}
-- Volatility Change 24h: {{ volatility_metrics.metrics['4H'].volatility_change_24h }}
-{#- Direction Score: {{ volatility_metrics.metrics['4H'].direction_score }}#}
-{#- Opportunity Score: {{ volatility_metrics.metrics['4H'].opportunity_score }}#}
-{#- Current Regime: {{ volatility_metrics.metrics['4H'].regime }}#}
-
-1H Timeframe :
-- ATR: {{ volatility_metrics.metrics['1H'].atr }}
-- ATR Percentile: {{ volatility_metrics.metrics['1H'].atr_percentile }}
-- Normalized ATR: {{ volatility_metrics.metrics['1H'].normalized_atr }}
-- BB Width: {{ volatility_metrics.metrics['1H'].bb_width }}
-- BB Width Percentile: {{ volatility_metrics.metrics['1H'].bb_width_percentile }}
-- Volatility Change 24h: {{ volatility_metrics.metrics['1H'].volatility_change_24h }}
-{#- Direction Score: {{ volatility_metrics.metrics['1H'].direction_score }}#}
-{#- Opportunity Score: {{ volatility_metrics.metrics['1H'].opportunity_score }}#}
-{#- Current Regime: {{ volatility_metrics.metrics['1H'].regime }}#}
-
-15m Timeframe (Entry):
-- ATR: {{ volatility_metrics.metrics['15m'].atr }}
-- ATR Percentile: {{ volatility_metrics.metrics['15m'].atr_percentile }}
-- Normalized ATR: {{ volatility_metrics.metrics['15m'].normalized_atr }}
-- BB Width: {{ volatility_metrics.metrics['15m'].bb_width }}
-- BB Width Percentile: {{ volatility_metrics.metrics['15m'].bb_width_percentile }}
-- Volatility Change 24h: {{ volatility_metrics.metrics['15m'].volatility_change_24h }}
-{#- Direction Score: {{ volatility_metrics.metrics['15m'].direction_score }}#}
-{#- Opportunity Score: {{ volatility_metrics.metrics['15m'].opportunity_score }}#}
-{#- Current Regime: {{ volatility_metrics.metrics['15m'].regime }}#}
-
-{#Overall Opportunity Analysis:#}
-{#{% set primary_score = volatility_metrics.metrics[atr_timeframe].opportunity_score %}#}
-{#{% set primary_direction = volatility_metrics.metrics[atr_timeframe].direction_score %}#}
-{#{% set other_scores = [] %}#}
-{#{% for tf, metrics in volatility_metrics.metrics.items() %}#}
-{#    {% if tf != atr_timeframe and (metrics.direction_score * primary_direction > 0) %}#}
-{#        {% set _ = other_scores.append(metrics.opportunity_score) %}#}
-{#    {% endif %}#}
+{#{% if volatility_metrics %}#}
+{#{%  if false %}#}
+{## Market Volatility Analysis#}
+{##}
+{#{% for tf in ['4H', '1H', '15m'] %}#}
+{#{% set metrics = volatility_metrics.metrics[tf] %}#}
+{##}
+{#{{ tf }} Timeframe Analysis:#}
+{##}
+{#1. Volatility Context:#}
+{#   - Current ATR: {{ metrics.atr }} ({{ metrics.atr_percentile }}th percentile)#}
+{#   - Normalized to price: {{ "%.2f"|format(metrics.normalized_atr) }}% of current price#}
+{#   - 24h Change: {{ "%.2f"|format(metrics.volatility_change_24h) }}%#}
+{#   {% if metrics.regime == 'LOW' %}#}
+{#   → Volatility is LOW: Market showing minimal movement, consider widening stop distances#}
+{#   {% elif metrics.regime == 'NORMAL' %}#}
+{#   → Volatility is NORMAL: Standard risk parameters apply#}
+{#   {% elif metrics.regime == 'HIGH' %}#}
+{#   → Volatility is HIGH: Consider reducing position sizes by {{ "%.0f"|format((1 - metrics.risk_adjustment) * 100) }}%#}
+{#   {% else %}#}
+{#   → Volatility is EXTREME: High risk conditions, maximum position reduction recommended#}
+{#   {% endif %}#}
+{##}
+{#2. Movement Analysis:#}
+{#   - Direction Score: {{ "%.1f"|format(metrics.direction_score) }}#}
+{#   {% if metrics.direction_score > 70 %}#}
+{#   → Strong upward movement with clear directional bias#}
+{#   {% elif metrics.direction_score > 30 %}#}
+{#   → Moderate upward trend, movement showing some directional consistency#}
+{#   {% elif metrics.direction_score > -30 %}#}
+{#   → Neutral/unclear directional bias#}
+{#   {% elif metrics.direction_score > -70 %}#}
+{#   → Moderate downward trend, movement showing some directional consistency#}
+{#   {% else %}#}
+{#   → Strong downward movement with clear directional bias#}
+{#   {% endif %}#}
+{##}
+{#3. Trading Implications:#}
+{#   {% if metrics.opportunity_score > 70 %}#}
+{#   → HIGH OPPORTUNITY: Strong directional movement with supporting volatility#}
+{#   - Position Sizing: Up to {{ "%.0f"|format(metrics.risk_adjustment * 100) }}% of normal size#}
+{#   - Entry Type: Can consider market orders if momentum confirms#}
+{#   {% elif metrics.opportunity_score > 50 %}#}
+{#   → MODERATE OPPORTUNITY: Decent setup with acceptable risk#}
+{#   - Position Sizing: {{ "%.0f"|format(metrics.risk_adjustment * 100) }}% of normal size#}
+{#   - Entry Type: Prefer limit orders at key levels#}
+{#   {% elif metrics.opportunity_score > 30 %}#}
+{#   → CAUTIOUS: Conditions require careful validation#}
+{#   - Position Sizing: Maximum {{ "%.0f"|format(metrics.risk_adjustment * 100) }}% of normal size#}
+{#   - Entry Type: Only limit orders with clear invalidation#}
+{#   {% else %}#}
+{#   → DEFENSIVE: Not ideal for new positions#}
+{#   - Focus on managing existing positions#}
+{#   - Consider wider stops if holding through volatility#}
+{#   {% endif %}#}
+{##}
+{#4. Market Efficiency:#}
+{#   - BB Width: {{ "%.4f"|format(metrics.bb_width) }} ({{ metrics.bb_width_percentile }}th percentile)#}
+{#   {% if metrics.bb_width_percentile > 80 %}#}
+{#   → Market showing significant expansion, expect increased volatility#}
+{#   {% elif metrics.bb_width_percentile > 50 %}#}
+{#   → Normal market expansion, standard trading conditions#}
+{#   {% else %}#}
+{#   → Compressed market conditions, potential for expansion#}
+{#   {% endif %}#}
+{##}
 {#{% endfor %}#}
-{#{% set confirmation_score = (other_scores|sum / other_scores|length) if other_scores|length > 0 else 0 %}#}
-{#{% set overall_score = (primary_score * 0.7 + confirmation_score * 0.3) %}#}
-{#- Primary Score ({{ atr_timeframe }}): {{ "%.2f"|format(primary_score) }}#}
-{#- Timeframe Confirmation: {{ "%.2f"|format(confirmation_score) }}#}
-{#- Overall Opportunity: {{ "%.2f"|format(overall_score) }}#}
-
-{#Trading Context Interpretation:#}
 {##}
-{#1. Volatility Regime:#}
-{#   - LOW (vol_score < 25): Market showing minimal volatility#}
-{#   - MEDIUM (vol_score 25-50): Normal market conditions#}
-{#   - HIGH (vol_score 50-75): Elevated volatility conditions#}
-{#   - EXTREME (vol_score > 75): Exceptional volatility levels#}
+{## Cross-Timeframe Summary#}
 {##}
-{#2. Opportunity Score Interpretation:#}
-{#   - High (>50): Strong alignment between volatility and direction#}
-{#     * Indicates strong trend with supporting volatility#}
-{#     * Optimal conditions for position entry#}
-{#     * Size positions according to confidence level#}
+{#Primary Decision Timeframe ({{ atr_timeframe }}):#}
+{#{% set primary = volatility_metrics.metrics[atr_timeframe] %}#}
+{#- Movement Efficiency: {{ "%.1f"|format(primary.opportunity_score) }}/100#}
+{#- Risk Adjustment: {{ "%.2f"|format(primary.risk_adjustment) }}x normal size#}
+{#- Current Phase: {{ primary.regime }}#}
 {##}
-{#   - Medium (20-50): Moderate alignment#}
-{#     * Market shows coherent movement but requires validation#}
-{#     * Consider partial position sizing#}
-{#     * Confirm with additional signals#}
+{#{% if primary.regime == "EXTREME" %}#}
+{#CAUTION: Extreme volatility detected on primary timeframe.#}
+{#- Consider reducing position sizes significantly#}
+{#- Widen stop distances to accommodate volatility#}
+{#- Prefer limit orders over market orders#}
+{#{% endif %}#}
 {##}
-{#   - Low (<20): Weak alignment#}
-{#     * Could indicate:#}
-{#       a) Low volatility in a clear direction (trending calmly)#}
-{#       b) High volatility with unclear direction (choppy market)#}
-{#       c) Both low volatility and unclear direction#}
-{#     * Focus on position management rather than new entries#}
-{#     * Reduce position sizes or wait for better conditions#}
+{#{% set summary = volatility_metrics.get_opportunity_summary(atr_timeframe) %}#}
+{#Timeframe Alignment:#}
+{#- Primary Score: {{ "%.1f"|format(summary.primary_score) }}#}
+{#- Risk-Adjusted: {{ "%.1f"|format(summary.risk_adjusted_score) }}#}
+{#- Confirmation: {{ "%.1f"|format(summary.confirmation_score) }}#}
+{#- Overall Rating: {{ "%.1f"|format(summary.overall_score) }}#}
 {##}
-{#3. Direction Score Impact (-100 to +100):#}
-{#   - Magnitude indicates trend strength#}
-{#   - Sign indicates direction (positive = upward, negative = downward)#}
-{#   - Values near zero suggest unclear direction regardless of volatility#}
-{##}
-{#Trading Response:#}
-{#- Combine regime and opportunity score for decision making#}
-{#- Higher opportunity scores in MEDIUM regime may be preferable to lower scores in HIGH regime#}
-{#- EXTREME regime requires additional risk management regardless of opportunity score#}
-{% endif %}
+{#Position Sizing Guide:#}
+{#Based on current market conditions: {{ "%.0f"|format(summary.position_sizing * 100) }}% of normal size#}
+{#{% endif %}#}
 
 {% if current_positions %}
-Current Positions:
+# Current Positions:
 {% for position in current_positions %}
 - Symbol: {{ position.symbol }}
   Side: {{ position.side }}
@@ -110,7 +118,7 @@ Note: Stop losses are managed automatically by the system based on {{ atr_timefr
 {% endif %}
 
 {% if existing_orders %}
-Current Active Orders:
+# Current Active Orders:
 {% for order in existing_orders %}
 - Order ID: {{ order.id }}
   Link ID: {{ order.order_link_id }}
