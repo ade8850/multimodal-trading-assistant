@@ -160,10 +160,10 @@ class PlanGenerator:
             "existing_orders": existing_orders
         }
 
-    def _prepare_template_vars(self, 
-                             params: TradingParameters,
-                             market_data: Dict,
-                             positions_orders: Dict) -> Dict[str, Any]:
+    def _prepare_template_vars(self,
+                               params: TradingParameters,
+                               market_data: Dict,
+                               positions_orders: Dict) -> Dict[str, Any]:
         """Prepare variables for template rendering."""
         from ...models import generate_uuid_short
 
@@ -172,22 +172,22 @@ class PlanGenerator:
         session_id = generate_uuid_short(4)
 
         # Get volatility metrics - keep TimeframeVolatility object intact
-        # volatility_metrics = market_data.get("volatility_metrics")
-        #
-        # if isinstance(volatility_metrics, TimeframeVolatility):
-        #     # Log detailed metrics for debugging without converting to dict
-        #     for timeframe, metrics in volatility_metrics.metrics.items():
-        #         logfire.info(f"Volatility metrics for {timeframe}",
-        #                    timeframe=timeframe,
-        #                    direction_score=metrics.direction_score,
-        #                    opportunity_score=metrics.opportunity_score,
-        #                    regime=metrics.regime,
-        #                    atr=metrics.atr,
-        #                    atr_percentile=metrics.atr_percentile)
+        volatility_metrics = market_data.get("volatility_metrics")
+
+        if isinstance(volatility_metrics, TimeframeVolatility):
+            # Log detailed metrics for debugging without converting to dict
+            for timeframe, metrics in volatility_metrics.metrics.items():
+                logfire.info(f"Volatility metrics for {timeframe}",
+                             timeframe=timeframe,
+                             direction_score=metrics.direction_score,
+                             opportunity_score=metrics.opportunity_score,
+                             regime=metrics.regime,
+                             atr=metrics.atr,
+                             atr_percentile=metrics.atr_percentile)
 
         # Convert existing orders to plain dicts
-        existing_orders = [_convert_pydantic_to_dict(order) 
-                         for order in positions_orders["existing_orders"]]
+        existing_orders = [_convert_pydantic_to_dict(order)
+                           for order in positions_orders["existing_orders"]]
 
         template_vars = {
             "plan_id": plan_id,
@@ -216,12 +216,12 @@ class PlanGenerator:
                 "ai_provider": self.ai_client.__class__.__name__,
                 "charts_count": len(charts)
             })
-            
+
             response_dict = self.ai_client.generate_strategy(system_prompt, charts)
-            
+
             if 'plan' not in response_dict:
                 raise ValueError("AI response missing plan data")
-                
+
             return response_dict['plan']
 
     def _create_trading_plan(self, plan_data: Dict, params: TradingParameters) -> TradingPlan:
