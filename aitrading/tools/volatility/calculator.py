@@ -26,7 +26,7 @@ class VolatilityCalculator:
 
     def __init__(self, historical_window: int = 100):
         self.historical_window = historical_window
-        self.period = 14  # Default period for indicators
+        self.period = 9
 
     def calculate_metrics(self, df: pd.DataFrame, timeframe: str) -> VolatilityMetrics:
         """
