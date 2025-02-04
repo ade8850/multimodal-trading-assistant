@@ -17,8 +17,8 @@ class AnthropicClient(BaseAIClient):
         """Initialize the Anthropic client."""
         super().__init__(api_key)
         self.client = Anthropic(api_key=api_key)
-        #self.model = "claude-3-5-sonnet-20241022"
-        self.model = "claude-3-haiku-20240307"
+        self.model = "claude-3-5-sonnet-20241022"
+        #self.model = "claude-3-haiku-20240307"
         logfire.instrument_anthropic(self.client)
         logging.info("Anthropic client initialized")
 
