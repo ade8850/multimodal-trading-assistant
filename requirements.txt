@@ -1,4 +1,4 @@
-anthropic>=0.42.0
+anthropic[vertex]>=0.42.0
 pybit>=5.8.0
 streamlit>=1.41.1
 plotly>=4.14.3

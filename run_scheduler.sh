@@ -28,6 +28,7 @@ required_vars=(
 # Add AI provider check
 if [ -n "$ANTHROPIC_API_KEY" ]; then
     AI_PROVIDER_KEY="ANTHROPIC_API_KEY"
+    required_vars+=("VERTEX_PROJECT_ID" "VERTEX_REGION")
 elif [ -n "$GEMINI_API_KEY" ]; then
     AI_PROVIDER_KEY="GEMINI_API_KEY"
 elif [ -n "$OPENAI_API_KEY" ]; then
@@ -79,6 +80,8 @@ docker run -d \
     -e BYBIT_API_SECRET="$BYBIT_API_SECRET" \
     -e BYBIT_TESTNET="${BYBIT_TESTNET:-False}" \
     -e ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}" \
+    -e VERTEX_PROJECT_ID="${VERTEX_PROJECT_ID:-}" \
+    -e VERTEX_REGION="${VERTEX_REGION:-}" \
     -e GEMINI_API_KEY="${GEMINI_API_KEY:-}" \
     -e OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
     -e DUMP_CHARTS="${DUMP_CHARTS:-False}" \
