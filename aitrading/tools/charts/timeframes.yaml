@@ -44,9 +44,26 @@ timeframes:
     candles: 336
     minutes: 60
     views:
-      - name: "trend"
-        title: "Trend Analysis (1H)"
-        height_ratio: 1.0
+#      - name: "trend"
+#        title: "Trend Analysis (1H)"
+#        height_ratio: 1.0
+#        indicators:
+#          - type: "ema"
+#            parameters:
+#              period: 21
+#            overlay: true
+#          - type: "ema"
+#            parameters:
+#              period: 100
+#            overlay: true
+#          - type: "bollinger"
+#            parameters:
+#              period: 20
+#              std_dev: 2.0
+#            overlay: true
+      - name: "market"
+        title: "Trend and Momentum Analysis (1H)"
+        height_ratio: 0.8
         indicators:
           - type: "ema"
             parameters:
@@ -61,10 +78,6 @@ timeframes:
               period: 20
               std_dev: 2.0
             overlay: true
-      - name: "momentum"
-        title: "Momentum Analysis (1H)"
-        height_ratio: 0.8
-        indicators:
           - type: "macd"
             subplot: true
           - type: "volume"
@@ -72,12 +85,29 @@ timeframes:
 
   4H:
     interval: "240"
-    candles: 180
+    candles: 300
     minutes: 240
     views:
-      - name: "trend"
-        title: "Trend Analysis (4H)"
-        height_ratio: 1.0
+#      - name: "trend"
+#        title: "Trend Analysis (4H)"
+#        height_ratio: 1.0
+#        indicators:
+#          - type: "ema"
+#            parameters:
+#              period: 21
+#            overlay: true
+#          - type: "ema"
+#            parameters:
+#              period: 100
+#            overlay: true
+#          - type: "bollinger"
+#            parameters:
+#              period: 20
+#              std_dev: 2.0
+#            overlay: true
+      - name: "market"
+        title: "Trend and Momentum Analysis (4H)"
+        height_ratio: 0.8
         indicators:
           - type: "ema"
             parameters:
@@ -92,10 +122,6 @@ timeframes:
               period: 20
               std_dev: 2.0
             overlay: true
-      - name: "momentum"
-        title: "Momentum Analysis (4H)"
-        height_ratio: 0.8
-        indicators:
           - type: "macd"
             subplot: true
           - type: "rsi"
