@@ -1,5 +1,3 @@
-# aitrading/agents/planner/anthropic/__init__.py
+from .client import create_anthropic_client
 
-from .client import AnthropicClient
-
-__all__ = ['AnthropicClient']
+__all__ = ['create_anthropic_client']

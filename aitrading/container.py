@@ -42,5 +42,12 @@ class Container(containers.DeclarativeContainer):
         api_key=providers.Callable(
             lambda config: config["llm"]["api_key"],
             config
+        ),
+        vertex_params=providers.Callable(
+            lambda config: {
+                "vertex_project": config["llm"].get("vertex_project"),
+                "vertex_region": config["llm"].get("vertex_region")
+            } if config["llm"]["provider"] == "anthropic-vertex" else None,
+            config
         )
     )

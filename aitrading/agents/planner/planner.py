@@ -1,9 +1,9 @@
-from typing import Dict
+from typing import Dict, Optional
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 import logfire
 
-from .anthropic import AnthropicClient
+from .anthropic import create_anthropic_client
 from .gemini import GeminiClient
 from .openai import OpenAIClient
 from ...tools.bybit.market_data import MarketDataTool
@@ -13,28 +13,16 @@ from ...tools.volatility import VolatilityCalculator
 from ...models import TradingParameters, TradingPlan
 
 class TradingPlanner:
-    """Main trading planner class that coordinates analysis and execution."""
-    
     def __init__(self, market_data: MarketDataTool, orders: OrdersTool, 
-                chart_generator: ChartGeneratorTool, provider_name: str, api_key: str):
-        """Initialize the trading planner with required services.
-        
-        Args:
-            market_data: Service for market data operations
-            orders: Service for order management
-            chart_generator: Service for chart generation
-            provider_name: AI provider name (anthropic/gemini/openai)
-            api_key: AI provider API key
-        """
-        # Initialize core services
+                chart_generator: ChartGeneratorTool, provider_name: str, 
+                api_key: str, vertex_params: Optional[Dict] = None):
         self.market_data = market_data
         self.orders = orders
         self.chart_generator = chart_generator
         self.volatility_calculator = VolatilityCalculator()
 
-        # Initialize AI client based on provider
-        if provider_name == "anthropic":
-            self.ai_client = AnthropicClient(api_key)
+        if provider_name.startswith("anthropic"):
+            self.ai_client = create_anthropic_client(provider_name, api_key, **(vertex_params or {}))
         elif provider_name == "openai":
             self.ai_client = OpenAIClient(api_key)
         elif provider_name == "gemini":
@@ -42,7 +30,6 @@ class TradingPlanner:
         else:
             raise ValueError(f"Unsupported AI provider: {provider_name}")
 
-        # Setup template engine
         template_dir = Path(__file__).parent / "prompts"
         self.env = Environment(
             loader=FileSystemLoader(template_dir),
@@ -50,24 +37,9 @@ class TradingPlanner:
             lstrip_blocks=True,
         )
         self.system_template = self.env.get_template("system_prompt.j2")
-
-        try:
-            logfire.info("Trading planner initialized", ai_provider=provider_name)
-        except Exception as e:
-            logfire.exception(f"Failed to initialize Logfire: {str(e)}")
+        logfire.info("Trading planner initialized", ai_provider=provider_name)
 
     def create_plan(self, params: TradingParameters) -> TradingPlan:
-        """Create a new trading plan.
-        
-        This is the main entry point for plan creation. It delegates to the
-        PlanGenerator class for the actual plan generation.
-        
-        Args:
-            params: Trading parameters for plan generation
-            
-        Returns:
-            Complete trading plan with analysis and orders
-        """
         from .generator import PlanGenerator
         generator = PlanGenerator(
             market_data=self.market_data,
@@ -80,17 +52,6 @@ class TradingPlanner:
         return generator.generate(params)
 
     def execute_plan(self, plan: TradingPlan) -> Dict:
-        """Execute a trading plan.
-        
-        This is the main entry point for plan execution. It delegates to the
-        PlanExecutor class for the actual execution.
-        
-        Args:
-            plan: Trading plan to execute
-            
-        Returns:
-            Execution results including order and cancellation statuses
-        """
         from .execution import PlanExecutor
         executor = PlanExecutor(
             market_data=self.market_data,
