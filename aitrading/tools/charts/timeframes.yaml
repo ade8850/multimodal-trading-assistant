@@ -130,3 +130,31 @@ timeframes:
             subplot: true
 
   
+  1D:
+    interval: "D"
+    candles: 200
+    minutes: 1440
+    views:
+      - name: "market"
+        title: "Trend and Momentum Analysis (1D)"
+        height_ratio: 0.8
+        indicators:
+          - type: "ema"
+            parameters:
+              period: 21
+            overlay: true
+          - type: "ema"
+            parameters:
+              period: 100
+            overlay: true
+          - type: "bollinger"
+            parameters:
+              period: 20
+              std_dev: 2.0
+            overlay: true
+          - type: "macd"
+            subplot: true
+          - type: "rsi"
+            parameters:
+              period: 14
+            subplot: true
