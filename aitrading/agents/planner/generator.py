@@ -102,27 +102,37 @@ class PlanGenerator:
         """Calculate total budget allocated in pending orders."""
         total_budget = 0.0
         for order in orders:
-            # For market orders use qty directly
-            if order["type"].lower() == "market":
-                qty = float(order["qty"])
-                price = float(order.get("price", 0))  # might be None for market orders
-                leverage = float(order.get("leverage", 1))
-                order_budget = (qty * price) / leverage if price > 0 else 0
-            # For limit orders use price * qty
-            else:
-                qty = float(order["qty"])
-                price = float(order["price"])
-                leverage = float(order.get("leverage", 1))
-                order_budget = (qty * price) / leverage
+            try:
+                # Per gli oggetti ExistingOrder dobbiamo usare accesso agli attributi
+                # For market orders use qty directly
+                if order.type.lower() == "market":
+                    qty = float(order.qty)
+                    price = float(order.price) if order.price is not None else 0
+                    # Nota: ExistingOrder potrebbe non avere leverage, usiamo 1 come default
+                    leverage = float(getattr(order, 'leverage', 1))
+                    order_budget = (qty * price) / leverage if price > 0 else 0
+                # For limit orders use price * qty
+                else:
+                    qty = float(order.qty)
+                    price = float(order.price)
+                    leverage = float(getattr(order, 'leverage', 1))
+                    order_budget = (qty * price) / leverage
 
-            total_budget += order_budget
+                total_budget += order_budget
 
-            logfire.debug(f"Order budget calculation",
-                          type=order["type"],
-                          qty=qty,
-                          price=price,
-                          leverage=leverage,
-                          order_budget=order_budget)
+                logfire.debug(f"Order budget calculation",
+                              type=order.type,
+                              qty=qty,
+                              price=price,
+                              leverage=leverage,
+                              order_budget=order_budget)
+
+            except Exception as e:
+                logfire.error(f"Error calculating order budget",
+                              error=str(e),
+                              order=str(order))
+                # Continuiamo con il prossimo ordine invece di far fallire tutto
+                continue
 
         return total_budget
 
