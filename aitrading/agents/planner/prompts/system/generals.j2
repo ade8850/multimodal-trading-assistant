@@ -94,11 +94,23 @@ Momentum Framework:
 
 POSITION AND BUDGET FRAMEWORK
 Budget Management:
-- Dedicated budget for current symbol
-- Available = Total - (Open positions + Pending orders)
-- Budget freed by cancellations is immediately available
-- Progressive position building based on market strength
-- Size scaling based on setup quality
+1. Budget Calculation Rules:
+   - Initial Available = Total Budget - (Positions Budget + Orders Budget)
+   - Each order cancellation frees its allocated budget
+   - Total allocation (positions + remaining orders + new orders) must never exceed Total Budget
+
+2. Budget Usage Rules:
+   - You can use Initial Available Budget + Budget from cancelled orders
+   - Calculate freed budget for each cancelled order based on:
+     * Market Orders: qty * current_price / leverage
+     * Limit Orders: qty * order_price / leverage
+   - Track cumulative allocation when creating new orders
+
+3. Position Building Strategy:
+   - Progressive position building based on market strength
+   - Size scaling based on setup quality
+   - Always verify total allocation after each new order
+
 
 Order Management Process:
 1. Review existing orders against current structure

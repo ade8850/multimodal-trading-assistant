@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 from jinja2 import Template
 import logfire
 
@@ -57,7 +57,7 @@ class PlanGenerator:
                  ai_client: BaseAIClient,
                  system_template: Template):
         """Initialize the plan generator.
-        
+
         Args:
             market_data: Service for market data operations
             orders: Service for order management
@@ -75,12 +75,75 @@ class PlanGenerator:
         self.ai_client = ai_client
         self.system_template = system_template
 
+    def _calculate_positions_budget(self, positions: list, current_price: float) -> float:
+        """Calculate total budget allocated in open positions."""
+        total_budget = 0.0
+        for position in positions:
+            # Calculate position value using entry price
+            position_size = float(position["size"])
+            entry_price = float(position["entry_price"])
+            leverage = float(position["leverage"])
+
+            # Calculate actual budget (position value / leverage)
+            position_value = position_size * entry_price
+            position_budget = position_value / leverage
+            total_budget += position_budget
+
+            logfire.debug(f"Position budget calculation",
+                          size=position_size,
+                          entry_price=entry_price,
+                          leverage=leverage,
+                          position_value=position_value,
+                          position_budget=position_budget)
+
+        return total_budget
+
+    def _calculate_orders_budget(self, orders: list) -> float:
+        """Calculate total budget allocated in pending orders."""
+        total_budget = 0.0
+        for order in orders:
+            # For market orders use qty directly
+            if order["type"].lower() == "market":
+                qty = float(order["qty"])
+                price = float(order.get("price", 0))  # might be None for market orders
+                leverage = float(order.get("leverage", 1))
+                order_budget = (qty * price) / leverage if price > 0 else 0
+            # For limit orders use price * qty
+            else:
+                qty = float(order["qty"])
+                price = float(order["price"])
+                leverage = float(order.get("leverage", 1))
+                order_budget = (qty * price) / leverage
+
+            total_budget += order_budget
+
+            logfire.debug(f"Order budget calculation",
+                          type=order["type"],
+                          qty=qty,
+                          price=price,
+                          leverage=leverage,
+                          order_budget=order_budget)
+
+        return total_budget
+
+    def _calculate_allocated_budget(self, positions: list, orders: list, current_price: float) -> Tuple[float, float]:
+        """Calculate total allocated budget and breakdown by positions and orders."""
+        positions_budget = self._calculate_positions_budget(positions, current_price)
+        orders_budget = self._calculate_orders_budget(orders)
+
+        logfire.info("Budget allocation calculated",
+                     positions_budget=positions_budget,
+                     orders_budget=orders_budget,
+                     total_allocated=positions_budget + orders_budget)
+
+        return positions_budget, orders_budget
+
     def generate(self, params: TradingParameters) -> TradingPlan:
         """Generate a complete trading plan.
-        
+
         Args:
             params: Trading parameters for plan generation
-            
+
         Returns:
             Complete trading plan with analysis and orders
         """
@@ -98,11 +161,20 @@ class PlanGenerator:
                 # Get current positions and orders
                 positions_orders = self._fetch_positions_orders(params.symbol)
 
+                # Calculate allocated budgets
+                positions_budget, orders_budget = self._calculate_allocated_budget(
+                    positions_orders["current_positions"],
+                    positions_orders["existing_orders"],
+                    market_data["current_price"]
+                )
+
                 # Generate template variables
                 template_vars = self._prepare_template_vars(
                     params=params,
                     market_data=market_data,
-                    positions_orders=positions_orders
+                    positions_orders=positions_orders,
+                    positions_budget=positions_budget,
+                    orders_budget=orders_budget
                 )
 
                 # Generate system prompt
@@ -163,7 +235,9 @@ class PlanGenerator:
     def _prepare_template_vars(self,
                                params: TradingParameters,
                                market_data: Dict,
-                               positions_orders: Dict) -> Dict[str, Any]:
+                               positions_orders: Dict,
+                               positions_budget: float,
+                               orders_budget: float) -> Dict[str, Any]:
         """Prepare variables for template rendering."""
         from ...models import generate_uuid_short
 
@@ -194,11 +268,12 @@ class PlanGenerator:
             "session_id": session_id,
             "current_price": market_data["current_price"],
             "symbol": params.symbol,
-            "budget": params.budget,
+            "total_budget": params.budget,
             "leverage": params.leverage,
+            "positions_budget": positions_budget,
+            "orders_budget": orders_budget,
             "existing_orders": existing_orders,
             "current_positions": positions_orders["current_positions"],
-            #"volatility_metrics": volatility_metrics,  # Use the TimeframeVolatility object directly
             "atr_timeframe": params.stop_loss_config.get("timeframe") if params.stop_loss_config else "1H"
         }
 
