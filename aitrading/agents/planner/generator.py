@@ -284,7 +284,8 @@ class PlanGenerator:
             "orders_budget": orders_budget,
             "existing_orders": existing_orders,
             "current_positions": positions_orders["current_positions"],
-            "atr_timeframe": params.stop_loss_config.get("timeframe") if params.stop_loss_config else "1H"
+            "atr_timeframe": params.stop_loss_config.get("timeframe") if params.stop_loss_config else "1H",
+            "volatility_metrics": volatility_metrics,
         }
 
         # Log info excluding volatility_metrics to avoid recursion issues
