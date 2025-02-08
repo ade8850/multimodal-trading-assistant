@@ -28,7 +28,7 @@ required_vars=(
 # Add AI provider check
 if [ -n "$ANTHROPIC_API_KEY" ]; then
     AI_PROVIDER_KEY="ANTHROPIC_API_KEY"
-    required_vars+=("VERTEX_PROJECT_ID" "VERTEX_REGION")
+    required_vars+=(\"VERTEX_PROJECT_ID\" \"VERTEX_REGION\")
 elif [ -n "$GEMINI_API_KEY" ]; then
     AI_PROVIDER_KEY="GEMINI_API_KEY"
 elif [ -n "$OPENAI_API_KEY" ]; then
@@ -37,7 +37,7 @@ else
     echo "Error: No AI provider API key found in .env!"
     exit 1
 fi
-required_vars+=("$AI_PROVIDER_KEY")
+required_vars+=(\"$AI_PROVIDER_KEY\")
 
 # Verify all required variables are set
 for var in "${required_vars[@]}"; do
@@ -58,6 +58,32 @@ echo "Setting up directories and files..."
 mkdir -p .graphs
 mkdir -p .logs
 touch .logs/scheduler.log
+
+# Check Redis configuration
+redis_vars=""
+if [ -n "$REDIS_HOST" ]; then
+    echo "Checking Redis configuration..."
+    redis_check_vars=(
+        "REDIS_HOST"
+        "REDIS_PORT"
+        "REDIS_DB"
+        "REDIS_PASSWORD"
+        "REDIS_SSL"
+    )
+    
+    for var in "${redis_check_vars[@]}"; do
+        if is_empty "${!var}"; then
+            echo "Warning: $var is not set but Redis host is configured"
+        fi
+    done
+
+    # Build Redis environment variables for Docker
+    redis_vars="-e REDIS_HOST=\"${REDIS_HOST}\" \
+                -e REDIS_PORT=\"${REDIS_PORT:-6379}\" \
+                -e REDIS_DB=\"${REDIS_DB:-0}\" \
+                -e REDIS_PASSWORD=\"${REDIS_PASSWORD}\" \
+                -e REDIS_SSL=\"${REDIS_SSL:-False}\""
+fi
 
 # Build the container
 echo "Building scheduler container..."
@@ -88,6 +114,7 @@ docker run -d \
     -e CONFIG_PATH="/app/config.yaml" \
     -e LOGFIRE_TOKEN="${LOGFIRE_TOKEN:-}" \
     -e LOGFIRE_ENVIRONMENT="${LOGFIRE_ENVIRONMENT:-production}" \
+    $redis_vars \
     trading-scheduler
 
 # Wait a moment for the container to start

@@ -10,6 +10,17 @@ stop_loss:
   initial_multiplier: 1.5
   in_profit_multiplier: 2.0
 
+# Redis Configuration
+redis:
+  enabled: false  # Enable/disable Redis support
+  host: "localhost"
+  port: 6379
+  db: 0
+  password: ""  # Optional
+  ssl: false
+  key_prefix: "trading:"  # Prefix for Redis keys
+  ttl: 3600  # Default TTL for cached items (seconds)
+
 # Trading parameters per symbol
 symbols:
   BTCUSDT:
