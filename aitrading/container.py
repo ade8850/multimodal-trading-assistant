@@ -6,6 +6,7 @@ from .tools.bybit.orders import OrdersTool
 from .tools.charts import ChartGeneratorTool
 from .tools.redis.provider import RedisProvider
 from .tools.redis.order_context import OrderContext
+from .tools.stop_loss import StopLossManager
 from .agents.planner.planner import TradingPlanner
 
 
@@ -18,7 +19,7 @@ class Container(containers.DeclarativeContainer):
     redis_provider = providers.Singleton(
         RedisProvider,
         enabled=providers.Callable(
-            lambda config: config.get("redis", {}).get("enabled", True),
+            lambda config: config.get("redis", {}).get("enabled", False),
             config
         ),
         host=providers.Callable(
@@ -63,6 +64,17 @@ class Container(containers.DeclarativeContainer):
     )
 
     chart_generator = providers.Singleton(ChartGeneratorTool)
+
+    # Stop Loss Manager - ora disabilitato di default
+    stop_loss_manager = providers.Singleton(
+        StopLossManager,
+        market_data=market_data,
+        orders=orders,
+        enabled=providers.Callable(
+            lambda config: config.get("stop_loss", {}).get("enabled", True),  # default False
+            config
+        )
+    )
 
     # Order context manager
     order_context = providers.Singleton(
