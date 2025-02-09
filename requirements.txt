@@ -12,7 +12,7 @@ PyYAML>=6.0.1
 openai>=1.59.3
 logfire>=3.2.0
 gitpython>=3.1.44
-pytz>=2024.
+pytz>=2024.1
 redis>=5.2.1
 
 rich>=13.9.4
