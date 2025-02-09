@@ -9,6 +9,7 @@ from ...models import (
     PlannedOrder, StrategicContext
 )
 from ...models.orders import OrderRole
+from ...models.position import Position
 from ...tools.bybit.market_data import MarketDataTool
 from ...tools.bybit.orders import OrdersTool
 from ...tools.charts import ChartGeneratorTool
@@ -224,7 +225,7 @@ class PlanGenerator:
             logfire.exception("Failed to process existing orders", error=str(e))
             raise
 
-    def _calculate_position_limits(self, positions: List[Dict]) -> Dict[str, float]:
+    def _calculate_position_limits(self, positions: List[Position]) -> Dict[str, float]:
         """Calculate position-based limits for reduce-only orders."""
         try:
             limits = {
@@ -235,8 +236,8 @@ class PlanGenerator:
             }
 
             for position in positions:
-                position_size = float(position["size"])
-                if position["side"].lower() == "buy":
+                position_size = float(position.size)
+                if position.side.lower() == "buy":
                     limits["total_long_size"] += position_size
                     limits["max_long_reduce"] = max(limits["max_long_reduce"], position_size)
                 else:
