@@ -10,10 +10,10 @@ class OrderExitLevel(BaseModel):
     price: float
     size_percentage: float
 
-class OrderExit(BaseModel):
-    """Exit conditions including take profit and stop loss."""
-    take_profit: OrderExitLevel
-    stop_loss: OrderExitLevel
+# class OrderExit(BaseModel):
+#     """Exit conditions including take profit and stop loss."""
+#     take_profit: OrderExitLevel
+#     stop_loss: OrderExitLevel
 
 class OrderEntry(BaseModel):
     """Entry order details."""
@@ -25,7 +25,7 @@ class Order(BaseModel):
     """Complete order specification."""
     type: Literal["market", "limit"]
     entry: OrderEntry
-    exit: OrderExit
+    # exit: OrderExit
 
 class ExistingOrder(TimeBasedModel):
     """Representation of an existing order on the exchange."""
