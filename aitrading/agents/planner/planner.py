@@ -10,11 +10,12 @@ from ...tools.bybit.market_data import MarketDataTool
 from ...tools.bybit.orders import OrdersTool
 from ...tools.charts import ChartGeneratorTool
 from ...tools.volatility import VolatilityCalculator
+from ...tools.redis.order_context import OrderContext
 from ...models import TradingParameters, TradingPlan
 
 class TradingPlanner:
-    def __init__(self, market_data: MarketDataTool, orders: OrdersTool, 
-                chart_generator: ChartGeneratorTool, provider_name: str, 
+    def __init__(self, market_data: MarketDataTool, orders: OrdersTool,
+                chart_generator: ChartGeneratorTool, provider_name: str,
                 api_key: str, vertex_params: Optional[Dict] = None):
         self.market_data = market_data
         self.orders = orders
@@ -46,6 +47,7 @@ class TradingPlanner:
             orders=self.orders,
             chart_generator=self.chart_generator,
             volatility_calculator=self.volatility_calculator,
+            order_context=self.order_context,  # Usa l'order_context dal container
             ai_client=self.ai_client,
             system_template=self.system_template
         )
