@@ -89,6 +89,7 @@ class Container(containers.DeclarativeContainer):
         market_data=market_data,
         orders=orders,
         chart_generator=chart_generator,
+        order_context=order_context,
         provider_name=providers.Callable(
             lambda config: config["llm"]["provider"],
             config

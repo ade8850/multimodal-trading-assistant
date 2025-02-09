@@ -16,11 +16,13 @@ from ...models import TradingParameters, TradingPlan
 class TradingPlanner:
     def __init__(self, market_data: MarketDataTool, orders: OrdersTool,
                 chart_generator: ChartGeneratorTool, provider_name: str,
-                api_key: str, vertex_params: Optional[Dict] = None):
+                api_key: str, order_context: OrderContext,
+                vertex_params: Optional[Dict] = None):
         self.market_data = market_data
         self.orders = orders
         self.chart_generator = chart_generator
         self.volatility_calculator = VolatilityCalculator()
+        self.order_context = order_context
 
         if provider_name.startswith("anthropic"):
             self.ai_client = create_anthropic_client(provider_name, api_key, **(vertex_params or {}))
@@ -38,7 +40,9 @@ class TradingPlanner:
             lstrip_blocks=True,
         )
         self.system_template = self.env.get_template("system_prompt.j2")
-        logfire.info("Trading planner initialized", ai_provider=provider_name)
+        logfire.info("Trading planner initialized",
+                    ai_provider=provider_name,
+                    redis_enabled=self.order_context.redis.enabled)
 
     def create_plan(self, params: TradingParameters) -> TradingPlan:
         from .generator import PlanGenerator
@@ -47,7 +51,7 @@ class TradingPlanner:
             orders=self.orders,
             chart_generator=self.chart_generator,
             volatility_calculator=self.volatility_calculator,
-            order_context=self.order_context,  # Usa l'order_context dal container
+            order_context=self.order_context,
             ai_client=self.ai_client,
             system_template=self.system_template
         )
