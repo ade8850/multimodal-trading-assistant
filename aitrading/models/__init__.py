@@ -2,7 +2,7 @@
 
 from .base import generate_uuid_short
 from .orders import (
-    Order, OrderEntry,
+    Order, OrderEntry, ChildOrder, OrderExit,
     ExistingOrder, OrderCancellation
 )
 from .trading import (
@@ -15,7 +15,7 @@ from .validity import (
 
 __all__ = [
     'generate_uuid_short',
-    'Order', 'OrderEntry',
+    'Order', 'OrderEntry', 'ChildOrder', 'OrderExit',
     'ExistingOrder', 'OrderCancellation',
     'TradingParameters', 'TradingPlan', 'PlanResponse',
     'PriceLevel', 'Range24h', 'Rationale',
