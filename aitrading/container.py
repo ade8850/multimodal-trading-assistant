@@ -6,7 +6,7 @@ from .tools.bybit.orders import OrdersTool
 from .tools.charts import ChartGeneratorTool
 from .tools.redis.provider import RedisProvider
 from .tools.redis.order_context import OrderContext
-from .tools.stop_loss import StopLossManager
+from .tools.stop_loss import StopLossManager, StopLossConfig
 from .agents.planner.planner import TradingPlanner
 
 
@@ -71,11 +71,11 @@ class Container(containers.DeclarativeContainer):
         market_data=market_data,
         orders=orders,
         config=providers.Callable(
-            lambda config: {
-                "timeframe": config.get("stop_loss", {}).get("timeframe", "1H"),
-                "initial_multiplier": config.get("stop_loss", {}).get("initial_multiplier", 1.5),
-                "in_profit_multiplier": config.get("stop_loss", {}).get("in_profit_multiplier", 2.0)
-            },
+            lambda config: StopLossConfig(
+                timeframe=config.get("stop_loss", {}).get("timeframe", "1H"),
+                initial_multiplier=config.get("stop_loss", {}).get("initial_multiplier", 1.5),
+                in_profit_multiplier=config.get("stop_loss", {}).get("in_profit_multiplier", 2.0)
+            ),
             config
         ),
         enabled=providers.Callable(
