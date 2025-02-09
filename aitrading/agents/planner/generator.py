@@ -430,38 +430,13 @@ class PlanGenerator:
         """Validate relationships between parent and child orders."""
         try:
             for order in orders:
-                # Verifico prima se c'è una strategia di uscita nel campo exit
-                has_valid_exit_strategy = False
+                # Non validiamo più la presenza obbligatoria di child orders
+                if not hasattr(order, 'child_orders'):
+                    continue
 
-                if hasattr(order.order, 'exit'):
-                    exit_strategy = order.order.exit
-                    if exit_strategy:
-                        # Validate take profit levels
-                        tp_total = sum(level.size_percentage for level in exit_strategy.take_profit)
-                        if tp_total > 0:
-                            if not math.isclose(tp_total, 100.0, rel_tol=1e-9):
-                                raise ValueError(f"Take profit total size must be 100%, got {tp_total}%")
-
-                        # Validate stop loss levels
-                        sl_total = sum(level.size_percentage for level in exit_strategy.stop_loss)
-                        if sl_total > 0:
-                            if not math.isclose(sl_total, 100.0, rel_tol=1e-9):
-                                raise ValueError(f"Stop loss total size must be 100%, got {sl_total}%")
-
-                        # If we have both TP and SL defined, it's a valid strategy
-                        if tp_total > 0 and sl_total > 0:
-                            has_valid_exit_strategy = True
-                            logfire.info("Valid exit strategy found in order.exit",
-                                         order_id=order.id,
-                                         tp_levels=len(exit_strategy.take_profit),
-                                         sl_levels=len(exit_strategy.stop_loss))
-
-                # Se non c'è una strategia valida in exit, verifichiamo i child_orders
-                if not has_valid_exit_strategy and order.child_orders:
+                # Se ci sono child orders, li validiano
+                if order.child_orders:
                     total_exit_size = 0.0
-                    has_protection = False
-                    has_profit = False
-
                     for child in order.child_orders:
                         # Validate child order properties
                         if not child.parameters.reduce_only:
@@ -474,35 +449,21 @@ class PlanGenerator:
 
                         total_exit_size += child.parameters.size_percentage
 
-                        # Track order roles
-                        if child.role == OrderRole.PROTECT:
-                            has_protection = True
-                        elif child.role == OrderRole.PROFIT:
-                            has_profit = True
-
                     # Validate total exit size for child orders
                     if not math.isclose(total_exit_size, 100.0, rel_tol=1e-9):
                         raise ValueError(f"Total exit size must be 100%, got {total_exit_size}%")
 
-                    # Validate required order types
-                    if has_protection and has_profit:
-                        has_valid_exit_strategy = True
-                        logfire.info("Valid exit strategy found in child_orders",
-                                     order_id=order.id,
-                                     child_count=len(order.child_orders),
-                                     total_exit_size=total_exit_size)
+                # Validate essential order properties
+                if order.order.type == "limit" and (order.order.entry.price is None or order.order.entry.price <= 0):
+                    raise ValueError(f"Limit order {order.id} requires a valid price")
 
-                # Verifica finale che ci sia almeno una strategia di uscita valida
-                if not has_valid_exit_strategy:
-                    logfire.error("No valid exit strategy found",
-                                  order_id=order.id,
-                                  has_exit=hasattr(order.order, 'exit'),
-                                  has_child_orders=bool(order.child_orders))
-                    raise ValueError(
-                        f"Order {order.id} ({order.order_link_id}) requires a valid exit strategy. "
-                        "This can be defined either in order.exit or through child_orders, "
-                        "and must include both take profit and stop loss levels."
-                    )
+                if order.order.entry.budget < 0:
+                    raise ValueError(f"Order {order.id} has invalid budget")
+
+                logfire.info("Order validation completed",
+                             order_id=order.id,
+                             type=order.order.type,
+                             child_count=len(order.child_orders) if hasattr(order, 'child_orders') else 0)
 
         except Exception as e:
             logfire.error("Order relationship validation failed", error=str(e))

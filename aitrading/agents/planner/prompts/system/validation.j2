@@ -96,74 +96,42 @@ Strategic Context Requirements:
    - Include both price and structure based invalidations
 
 Exit Strategy Requirements:
-1. Primary Exit Parameters:
-   - Define exact price target levels
-   - Specify size percentage for each exit
-   - List required market conditions
-   - Set execution type and risk level
-   - Include condition triggers
+1. Create Independent Reduce-Only Orders:
+   - Each exit/tp/sl must be a separate reduce-only order
+   - Do not attach exit strategies to entry orders
+   - Use market orders for critical exits (stop loss)
+   - Use limit orders for take profit levels
 
-2. Fallback Planning:
-   - Define secondary price levels
-   - Specify market condition overrides
-   - Adjust execution types if needed
-   - Set alternative exit criteria
+2. Order Management:
+   - Entry orders: Used to open new positions
+     * Must have price for limit orders
+     * Must have valid budget > 0
+     * Never include TP/SL in entry orders
+   - Exit orders: Used to close existing positions
+     * Must set reduceOnly=true
+     * Must specify exact price level
+     * Not counted against available budget
+     * Can be market or limit type
 
-3. Take Profit Strategy:
-   - Multiple take profit levels based on:
-     * Key resistance/support levels
-     * Fibonacci extensions
-     * Prior swing highs/lows
-     * Risk/reward ratio targets
-   - For each level specify:
-     * Exit price level
-     * Position size percentage
-     * Execution type selection
-     * Risk level assignment
-     * Market conditions needed
-     * Fallback scenarios
+3. Position Management:
+   - Monitor existing positions
+   - Create/update/cancel reduce-only orders based on analysis
+   - Adjust exit levels based on market conditions
+   - Use market orders for immediate risk management
+   - Use limit orders for profit targets
 
-4. Stop Loss Strategy:
-   - Define initial stop loss:
-     * Technical invalidation level
-     * Risk per trade limits
-     * Volatility adjustments (ATR)
-   - Additional protection levels:
-     * Break-even after partial profits
-     * Key structure levels
-     * Trailing stop parameters
-   - Execution Controls:
-     * Priority based on risk level
-     * Condition triggers
-     * Fallback scenarios
+Order Relationship Rules:
+1. Entry Orders:
+   - Focus on entry execution only
+   - Do not include exit strategy
+   - Must have valid price for limit orders
+   - Must have valid budget > 0
 
-Child Order Requirements:
-1. Order Relationships:
-   - Each entry must have associated exit orders
-   - Exit orders must be tagged with correct roles:
-     * "protect" for stop loss orders
-     * "profit" for take profit orders
-     * "exit" for general exit orders
-   - Child orders must reference parent order ID
-
-2. Order Properties:
-   - All child orders must be reduce-only
-   - Must specify size as percentage of parent
-   - Must include appropriate trigger conditions
-   - Must set execution type and risk level
-   - Include fallback scenarios
-
-3. Budget Handling:
-   - Child orders do not require new budget
-   - Must track remaining position size
-   - Ensure total exit sizes equal entry size
-
-4. Execution Control:
-   - Specify execution type for each order
-   - Set appropriate risk level
-   - Define condition triggers
-   - Include fallback scenarios
-   - Consider market impact
+2. Exit Orders:
+   - Always use reduceOnly flag
+   - Independent from entry orders
+   - Can be created/modified/cancelled based on analysis
+   - Not counted in budget calculations
 
 Exit Size Distribution:
 1. Risk Reduction Exits (20-30%):
