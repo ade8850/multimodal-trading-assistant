@@ -35,7 +35,7 @@ class Container(containers.DeclarativeContainer):
             config
         ),
         password=providers.Callable(
-            lambda config: config.get("redis", {}).get("password", None),
+            lambda config: config.get("redis", {}).get("password", ""),  # Changed from None to ""
             config
         ),
         ssl=providers.Callable(
@@ -65,14 +65,14 @@ class Container(containers.DeclarativeContainer):
 
     chart_generator = providers.Singleton(ChartGeneratorTool)
 
-    # Stop Loss Manager - ora disabilitato di default
+    # Stop Loss Manager
     stop_loss_manager = providers.Singleton(
         StopLossManager,
         market_data=market_data,
         orders=orders,
-        config=config.config.get("stop_loss", {}),
+        config=config.get("stop_loss", {}),
         enabled=providers.Callable(
-            lambda config: config.get("stop_loss", {}).get("enabled", False),  # default False
+            lambda config: config.get("stop_loss", {}).get("enabled", True),
             config
         )
     )
