@@ -153,35 +153,35 @@ def _prepare_base_order_params(session, order, instrument_info: Dict) -> Dict:
         raise Exception(f"Error preparing order params for Order #{order.id}: {str(e)}")
 
 
-def _add_tp_sl_params(session, base_params: Dict, exit_orders) -> Dict:
-    """Add take profit and stop loss parameters."""
-    try:
-        order_params = base_params.copy()
-
-        if not (exit_orders.take_profit or exit_orders.stop_loss):
-            return order_params
-
-        # Set tpslMode if we have either TP or SL
-        order_params["tpslMode"] = "Full"
-
-        if exit_orders.take_profit:
-            order_params.update({
-                "takeProfit": round_price(exit_orders.take_profit.price, order_params["symbol"], session),
-                "tpTriggerBy": "LastPrice",
-                "tpOrderType": "Market",
-            })
-
-        if exit_orders.stop_loss:
-            order_params.update({
-                "stopLoss": round_price(exit_orders.stop_loss.price, order_params["symbol"], session),
-                "slTriggerBy": "LastPrice",
-                "slOrderType": "Market",
-            })
-
-        return order_params
-
-    except Exception as e:
-        raise Exception(f"Error adding TP/SL params for {base_params.get('orderLinkId')}: {str(e)}")
+# def _add_tp_sl_params(session, base_params: Dict, exit_orders) -> Dict:
+#     """Add take profit and stop loss parameters."""
+#     try:
+#         order_params = base_params.copy()
+#
+#         if not (exit_orders.take_profit or exit_orders.stop_loss):
+#             return order_params
+#
+#         # Set tpslMode if we have either TP or SL
+#         order_params["tpslMode"] = "Full"
+#
+#         if exit_orders.take_profit:
+#             order_params.update({
+#                 "takeProfit": round_price(exit_orders.take_profit.price, order_params["symbol"], session),
+#                 "tpTriggerBy": "LastPrice",
+#                 "tpOrderType": "Market",
+#             })
+#
+#         if exit_orders.stop_loss:
+#             order_params.update({
+#                 "stopLoss": round_price(exit_orders.stop_loss.price, order_params["symbol"], session),
+#                 "slTriggerBy": "LastPrice",
+#                 "slOrderType": "Market",
+#             })
+#
+#         return order_params
+#
+#     except Exception as e:
+#         raise Exception(f"Error adding TP/SL params for {base_params.get('orderLinkId')}: {str(e)}")
 
 
 def verify_order_status(session, symbol: str, order_id: str) -> None:
