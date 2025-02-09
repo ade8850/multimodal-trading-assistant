@@ -49,7 +49,7 @@ class TradingScheduler:
         try:
             with open(self.config_path, 'r') as f:
                 config = yaml.safe_load(f)
-            logfire.info(f"Loaded configuration from {self.config_path}")
+            logfire.info(f"Loaded configuration from {self.config_path}", config=config)
             return config
         except Exception as e:
             logfire.error(f"Error loading configuration: {str(e)}")
