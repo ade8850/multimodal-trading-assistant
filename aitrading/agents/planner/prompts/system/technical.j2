@@ -1,4 +1,3 @@
-
 # TECHNICALS
 
 Trading Parameters:
@@ -6,17 +5,7 @@ Symbol: {{ symbol }}
 Current Price: {{ current_price }}
 Leverage: {{ leverage }}x
 
-Budget Analysis:
-Total Budget: {{ total_budget }} USDT
-Budget in Positions: {{ positions_budget }} USDT
-Budget in Pending Orders: {{ orders_budget }} USDT
-Available Base Budget: {{ total_budget - positions_budget - orders_budget }} USDT
-
-# for order_link_id
-Plan ID: {{ plan_id }}
-Session ID: {{ session_id }}
-
-Current Datetime: {{ current_datetime }}
+# MARKET CONTEXT
 
 {#{% if volatility_metrics %}#}
 {#{%  if false %}#}
@@ -112,6 +101,26 @@ Current Datetime: {{ current_datetime }}
 {#Based on current market conditions: {{ "%.0f"|format(summary.position_sizing * 100) }}% of normal size#}
 {#{% endif %}#}
 
+Budget Analysis:
+Total Budget: {{ total_budget }} USDT
+Budget in Positions: {{ positions_budget }} USDT
+Budget in Pending Orders: {{ orders_budget }} USDT
+Available Base Budget: {{ total_budget - positions_budget - orders_budget }} USDT
+
+Position-Based Limits:
+Available for Reduce-Only:
+  * Long: {{ position_limits.total_long_available if position_limits else 0 }} USDT
+  * Short: {{ position_limits.total_short_available if position_limits else 0 }} USDT
+Maximum Single Exit:
+  * Long: {{ position_limits.max_long_reduce if position_limits else 0 }} USDT
+  * Short: {{ position_limits.max_short_reduce if position_limits else 0 }} USDT
+
+# for order_link_id
+Plan ID: {{ plan_id }}
+Session ID: {{ session_id }}
+
+Current Datetime: {{ current_datetime }}
+
 {% if current_positions %}
 # Current Positions:
 {% for position in current_positions %}
@@ -123,6 +132,8 @@ Current Datetime: {{ current_datetime }}
   Unrealized PNL: {{ position.unrealized_pnl }}
   Stop Loss: {{ position.stop_loss }}
   Created: {{ position.created_at }}
+  Age: {{ "%.1f"|format(position.age_hours if position.age_hours else 0) }} hours
+  Status: {% if position.is_in_profit() %}In Profit{% else %}In Loss{% endif %}
 
 {% endfor %}
 {% endif %}
@@ -138,6 +149,7 @@ Current Datetime: {{ current_datetime }}
   Quantity: {{ order.qty }}
   Status: {{ order.status }}
   Created: {{ order.created_at }}
+  Age: {{ "%.1f"|format(order.age_hours if order.age_hours else 0) }} hours
 
 Strategic Context:
   Setup Rationale: {{ order.strategic_context.setup_rationale if order.strategic_context else "Not available" }}
@@ -145,8 +157,19 @@ Strategic Context:
   Key Levels: {{ order.strategic_context.key_levels if order.strategic_context else [] }}
   Catalysts: {{ order.strategic_context.catalysts if order.strategic_context else [] }}
   Invalidation Conditions: {{ order.strategic_context.invalidation_conditions if order.strategic_context else [] }}
-{% endfor %}
 
+{% if order.child_orders %}
+Child Orders:
+{% for child in order.child_orders %}
+  - Role: {{ child.role }}
+    Side: {{ child.parameters.side }}
+    Size: {{ child.parameters.size_percentage }}%
+    Price: {{ child.parameters.price }}
+    Type: {{ child.parameters.type }}
+{% endfor %}
+{% endif %}
+
+{% endfor %}
 
 Order Cancellation Requirements:
 1. For EACH order to be cancelled, you MUST provide:
@@ -163,4 +186,3 @@ Order Cancellation Requirements:
     "reason": "Direction score reversed from entry premise, opportunity score below threshold"
   }
 {% endif %}
-

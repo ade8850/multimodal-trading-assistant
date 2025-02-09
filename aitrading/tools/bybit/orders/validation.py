@@ -2,65 +2,190 @@
 
 import math
 from datetime import datetime, timezone
-from typing import Dict
-from rich.console import Console
-from .utils import get_current_price
+from typing import Dict, Optional
+import logfire
 
-console = Console()
 
-def calculate_quantity(budget: float, leverage: float, price: float, instrument_info: Dict) -> str:
-    """Calculate order quantity considering lot size filters."""
+def calculate_quantity(
+        budget: float,
+        leverage: float,
+        price: float,
+        instrument_info: Dict,
+        is_reduce_only: bool = False,
+        base_position_size: Optional[float] = None,
+        size_percentage: Optional[float] = None
+) -> str:
+    """Calculate order quantity considering lot size filters and order type.
+
+    Args:
+        budget: Available budget for the order
+        leverage: Trading leverage
+        price: Entry price for calculation
+        instrument_info: Trading pair information from exchange
+        is_reduce_only: Whether this is a reduce-only order
+        base_position_size: Base position size for reduce-only orders
+        size_percentage: Percentage of base position to use (for partial exits)
+
+    Returns:
+        Formatted quantity string that satisfies lot size requirements
+    """
     try:
-        lot_size = instrument_info["lotSizeFilter"]
-        min_qty = float(lot_size["minOrderQty"])
-        qty_step = float(lot_size["qtyStep"])
+        with logfire.span("calculate_quantity") as span:
+            span.set_attributes({
+                "budget": budget,
+                "leverage": leverage,
+                "price": price,
+                "is_reduce_only": is_reduce_only
+            })
 
-        console.print("\n[yellow]Lot size filters:[/yellow]")
-        console.print(f"Min quantity: {min_qty}")
-        console.print(f"Quantity step: {qty_step}")
+            lot_size = instrument_info["lotSizeFilter"]
+            min_qty = float(lot_size["minOrderQty"])
+            qty_step = float(lot_size["qtyStep"])
 
-        # Calculate base quantity
-        base_qty = budget / float(price)
-        leveraged_qty = base_qty * leverage
+            logfire.debug("Lot size filters",
+                          min_quantity=min_qty,
+                          quantity_step=qty_step)
 
-        console.print(f"Base quantity: {base_qty}")
-        console.print(f"Leveraged quantity: {leveraged_qty}")
+            if is_reduce_only:
+                if not base_position_size:
+                    raise ValueError("Base position size required for reduce-only orders")
 
-        # Adjust to lot size
-        decimal_places = str(qty_step)[::-1].find(".")
-        if decimal_places > 0:
-            qty = round(math.floor(leveraged_qty / qty_step) * qty_step, decimal_places)
-        else:
-            qty = math.floor(leveraged_qty / qty_step) * qty_step
+                # Calculate quantity based on percentage of base position
+                if size_percentage:
+                    raw_qty = base_position_size * (size_percentage / 100.0)
+                else:
+                    raw_qty = base_position_size
 
-        final_qty = str(max(qty, min_qty))
-        console.print(f"[green]Final quantity: {final_qty}[/green]")
-        return final_qty
+                logfire.debug("Reduce-only quantity calculation",
+                              base_size=base_position_size,
+                              percentage=size_percentage,
+                              raw_quantity=raw_qty)
+            else:
+                # Calculate standard entry quantity
+                base_qty = budget / float(price)
+                raw_qty = base_qty * leverage
+
+                logfire.debug("Standard quantity calculation",
+                              base_quantity=base_qty,
+                              leveraged_quantity=raw_qty)
+
+            # Adjust to lot size constraints
+            decimal_places = str(qty_step)[::-1].find(".")
+            if decimal_places > 0:
+                qty = round(math.floor(raw_qty / qty_step) * qty_step, decimal_places)
+            else:
+                qty = math.floor(raw_qty / qty_step) * qty_step
+
+            # Ensure minimum quantity
+            final_qty = str(max(qty, min_qty))
+
+            logfire.info("Quantity calculation completed",
+                         raw_quantity=raw_qty,
+                         final_quantity=final_qty,
+                         is_reduce_only=is_reduce_only)
+
+            return final_qty
 
     except Exception as e:
-        raise Exception(f"Error calculating quantity: {str(e)}")
+        logfire.exception("Error calculating quantity",
+                          error=str(e),
+                          budget=budget,
+                          leverage=leverage,
+                          price=price)
+        raise ValueError(f"Error calculating quantity: {str(e)}")
+
+
+def validate_trigger_price(
+        trigger_price: float,
+        current_price: float,
+        order_side: str,
+        order_type: str
+) -> None:
+    """Validate trigger price for conditional orders.
+
+    Args:
+        trigger_price: Trigger price to validate
+        current_price: Current market price
+        order_side: Order side (Buy/Sell)
+        order_type: Order type (e.g. 'Limit', 'Market')
+
+    Raises:
+        ValueError: If trigger price validation fails
+    """
+    try:
+        with logfire.span("validate_trigger_price") as span:
+            span.set_attributes({
+                "trigger_price": trigger_price,
+                "current_price": current_price,
+                "order_side": order_side,
+                "order_type": order_type
+            })
+
+        if order_side == "Buy":
+            if trigger_price <= current_price:
+                raise ValueError(
+                    "Buy stop orders must have trigger price above current price"
+                )
+        else:  # Sell
+            if trigger_price >= current_price:
+                raise ValueError(
+                    "Sell stop orders must have trigger price below current price"
+                )
+
+        logfire.info("Trigger price validated successfully",
+                     trigger_price=trigger_price,
+                     current_price=current_price,
+                     order_side=order_side)
+
+    except Exception as e:
+        logfire.error("Trigger price validation failed",
+                      error=str(e),
+                      trigger_price=trigger_price,
+                      current_price=current_price,
+                      order_side=order_side)
+        raise
 
 
 def verify_order_status(session, symbol: str, order_id: str) -> None:
-    """Verify order status after placement."""
-    try:
-        # Check order status
-        order_status = session.get_order_history(
-            category="linear",
-            symbol=symbol,
-            orderId=order_id
-        )
-        console.print("\n[yellow]Order Status:[/yellow]")
-        console.print(order_status)
+    """Verify order status after placement.
 
-        # Check updated positions
-        positions = session.get_positions(
-            category="linear",
-            symbol=symbol
-        )
-        console.print("\n[yellow]Updated Positions:[/yellow]")
-        console.print(positions)
+    Args:
+        session: Trading session
+        symbol: Trading pair symbol
+        order_id: Order ID to verify
+    """
+    try:
+        with logfire.span("verify_order_status") as span:
+            span.set_attributes({
+                "symbol": symbol,
+                "order_id": order_id
+            })
+
+            # Check order status
+            order_status = session.get_order_history(
+                category="linear",
+                symbol=symbol,
+                orderId=order_id
+            )
+
+            logfire.info("Order status retrieved",
+                         symbol=symbol,
+                         order_id=order_id,
+                         status=order_status["result"]["orderStatus"])
+
+            # Check updated positions
+            positions = session.get_positions(
+                category="linear",
+                symbol=symbol
+            )
+
+            logfire.info("Position status checked",
+                         symbol=symbol,
+                         positions_count=len(positions["result"]["list"]))
 
     except Exception as e:
-        console.print(f"[red]Error verifying order status: {str(e)}[/red]")
+        logfire.exception("Failed to verify order status",
+                          symbol=symbol,
+                          order_id=order_id,
+                          error=str(e))
         raise

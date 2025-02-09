@@ -1,19 +1,53 @@
 # aitrading/models/orders.py
 
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 from pydantic import BaseModel, Field, validator
+from enum import Enum
 
 from .time_base import TimeBasedModel
 
-# class OrderExitLevel(BaseModel):
-#     """Single exit level with price and size."""
-#     price: float
-#     size_percentage: float
 
-# class OrderExit(BaseModel):
-#     """Exit conditions including take profit and stop loss."""
-#     take_profit: OrderExitLevel
-#     stop_loss: OrderExitLevel
+class OrderRole(str, Enum):
+    """Role of the order in the trading strategy."""
+    ENTRY = "entry"  # Main entry order
+    PROTECT = "protect"  # Protection order (stop loss)
+    PROFIT = "profit"  # Take profit order
+    EXIT = "exit"  # Generic exit order
+
+
+class OrderExitLevel(BaseModel):
+    """Single exit level with price and size."""
+    price: float
+    size_percentage: float = Field(
+        gt=0,
+        le=100,
+        description="Percentage of position to exit at this level"
+    )
+    trigger_price: Optional[float] = Field(
+        None,
+        description="Optional trigger price for conditional orders"
+    )
+
+
+class OrderExit(BaseModel):
+    """Exit conditions including take profit and stop loss."""
+    take_profit: List[OrderExitLevel] = Field(
+        default_factory=list,
+        description="List of take profit levels with partial sizes"
+    )
+    stop_loss: List[OrderExitLevel] = Field(
+        default_factory=list,
+        description="List of stop loss levels with partial sizes"
+    )
+
+    @validator('take_profit', 'stop_loss')
+    def validate_total_percentage(cls, v):
+        """Ensure total size percentage doesn't exceed 100%."""
+        total = sum(level.size_percentage for level in v)
+        if total > 100:
+            raise ValueError(f"Total size percentage ({total}%) exceeds 100%")
+        return v
+
 
 class OrderEntry(BaseModel):
     """Entry order details."""
@@ -21,11 +55,38 @@ class OrderEntry(BaseModel):
     budget: float
     leverage: int
 
+
+class OrderParameters(BaseModel):
+    """Common parameters for all order types."""
+    symbol: str
+    type: Literal["market", "limit"]
+    side: Literal["Buy", "Sell"]
+    size: float
+    price: Optional[float] = None
+    trigger_price: Optional[float] = None
+    reduce_only: bool = False
+    close_on_trigger: bool = False
+    position_idx: int = 0
+
+
+class ChildOrder(BaseModel):
+    """Definition of a child order (TP/SL) related to a parent order."""
+    role: OrderRole
+    parameters: OrderParameters
+    parent_order_id: Optional[str] = None
+    parent_link_id: Optional[str] = None
+
+
 class Order(BaseModel):
     """Complete order specification."""
     type: Literal["market", "limit"]
     entry: OrderEntry
-    # exit: OrderExit
+    exit: OrderExit
+    child_orders: List[ChildOrder] = Field(
+        default_factory=list,
+        description="List of child orders (TP/SL) associated with this order"
+    )
+
 
 class ExistingOrder(TimeBasedModel):
     """Representation of an existing order on the exchange."""
@@ -39,6 +100,15 @@ class ExistingOrder(TimeBasedModel):
     status: str
     take_profit: Optional[float]
     stop_loss: Optional[float]
+    role: Optional[OrderRole] = Field(
+        None,
+        description="Role of the order in the strategy"
+    )
+    parent_order_id: Optional[str] = Field(
+        None,
+        description="ID of parent order if this is a child order"
+    )
+    reduce_only: bool = False
 
     @classmethod
     def from_exchange_data(cls, data: dict) -> "ExistingOrder":
@@ -55,14 +125,16 @@ class ExistingOrder(TimeBasedModel):
             "status": data["orderStatus"],
             "take_profit": float(data["takeProfit"]) if data.get("takeProfit") else None,
             "stop_loss": float(data["stopLoss"]) if data.get("stopLoss") else None,
+            "reduce_only": data.get("reduceOnly", False),
         }
-        
+
         # Use updatedTime for both created_at and updated_at
         if "updatedTime" in data:
             timestamp = int(data["updatedTime"])
             return cls.from_timestamp(timestamp, **order_data)
-            
+
         return cls(**order_data)
+
 
 class OrderCancellation(BaseModel):
     """Specification for an order to be cancelled."""

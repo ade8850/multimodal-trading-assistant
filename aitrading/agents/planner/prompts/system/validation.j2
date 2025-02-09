@@ -1,4 +1,3 @@
-
 # VALIDATION
 
 Your response must:
@@ -37,9 +36,44 @@ Analysis Requirements:
    - Volume profile validation
    - Volatility regime analysis
 6. Budget analysis:
-  - Calculate current budget allocation across positions and orders
-  - Consider budget freed by any planned order cancellations
-  - Ensure new orders respect remaining available budget
+  - Calculate budget requirement excluding reduce-only orders
+  - Track available position size for reduce-only orders
+  - Consider execution types in budget allocation
+  - Account for bracket order relationships
+  - Ensure total allocation respects available budget
+
+Order Execution Requirements:
+1. Execution Types:
+   - IMMEDIATE: Market orders requiring quick execution
+     * Use when immediate risk management needed
+     * When capturing strong momentum moves
+     * For critical stop loss placement
+   - PASSIVE: Limit orders at specific levels
+     * For planned entries at support/resistance
+     * When building positions gradually
+     * For non-urgent take profit orders
+   - TRIGGER: Conditional execution
+     * For stop entry orders
+     * Breakout trade entries
+     * Trailing stop management
+   - BRACKET: Complete bracket order setups
+     * Entry + Stop Loss + Take Profit combination
+     * Multi-level exit strategies
+     * Full position management plan
+
+2. Risk Levels:
+   - CRITICAL: High priority execution needed
+     * Stop loss orders in volatile conditions
+     * Risk management adjustments
+     * Emergency position exits
+   - NORMAL: Standard execution priority
+     * Regular entry orders
+     * Standard take profit orders
+     * Position adjustments
+   - MINIMAL: Can wait for optimal conditions
+     * Additional position building
+     * Far target take profits
+     * Non-critical adjustments
 
 Strategic Context Requirements:
 1. Setup Rationale:
@@ -60,6 +94,92 @@ Strategic Context Requirements:
    - List specific conditions that would invalidate the setup
    - Focus on measurable market conditions
    - Include both price and structure based invalidations
+
+Exit Strategy Requirements:
+1. Primary Exit Parameters:
+   - Define exact price target levels
+   - Specify size percentage for each exit
+   - List required market conditions
+   - Set execution type and risk level
+   - Include condition triggers
+
+2. Fallback Planning:
+   - Define secondary price levels
+   - Specify market condition overrides
+   - Adjust execution types if needed
+   - Set alternative exit criteria
+
+3. Take Profit Strategy:
+   - Multiple take profit levels based on:
+     * Key resistance/support levels
+     * Fibonacci extensions
+     * Prior swing highs/lows
+     * Risk/reward ratio targets
+   - For each level specify:
+     * Exit price level
+     * Position size percentage
+     * Execution type selection
+     * Risk level assignment
+     * Market conditions needed
+     * Fallback scenarios
+
+4. Stop Loss Strategy:
+   - Define initial stop loss:
+     * Technical invalidation level
+     * Risk per trade limits
+     * Volatility adjustments (ATR)
+   - Additional protection levels:
+     * Break-even after partial profits
+     * Key structure levels
+     * Trailing stop parameters
+   - Execution Controls:
+     * Priority based on risk level
+     * Condition triggers
+     * Fallback scenarios
+
+Child Order Requirements:
+1. Order Relationships:
+   - Each entry must have associated exit orders
+   - Exit orders must be tagged with correct roles:
+     * "protect" for stop loss orders
+     * "profit" for take profit orders
+     * "exit" for general exit orders
+   - Child orders must reference parent order ID
+
+2. Order Properties:
+   - All child orders must be reduce-only
+   - Must specify size as percentage of parent
+   - Must include appropriate trigger conditions
+   - Must set execution type and risk level
+   - Include fallback scenarios
+
+3. Budget Handling:
+   - Child orders do not require new budget
+   - Must track remaining position size
+   - Ensure total exit sizes equal entry size
+
+4. Execution Control:
+   - Specify execution type for each order
+   - Set appropriate risk level
+   - Define condition triggers
+   - Include fallback scenarios
+   - Consider market impact
+
+Exit Size Distribution:
+1. Risk Reduction Exits (20-30%):
+   - Initial scale out at first targets
+   - Risk level: NORMAL
+   - Execution: PASSIVE preferred
+
+2. Major Target Exits (40-50%):
+   - Primary profit taking levels
+   - Risk level: Based on market conditions
+   - Execution: Mix of PASSIVE and TRIGGER
+
+3. Runner Position (20-30%):
+   - Final trend following portion
+   - Risk level: MINIMAL
+   - Execution: TRIGGER with trailing stops
 
 Guidelines for Plan Creation:
 1. Each plan must have a unique ID

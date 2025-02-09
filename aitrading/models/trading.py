@@ -1,9 +1,10 @@
-from typing import List, Optional, Dict, Literal
+from typing import List, Optional, Dict, Literal, Union, Any
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
+from enum import Enum
 
 from .base import generate_uuid_short
-from .orders import Order, OrderCancellation
+from .orders import Order, OrderCancellation, OrderRole
 
 class Range24h(BaseModel):
     """24-hour price range."""
@@ -28,6 +29,34 @@ class StrategicContext(BaseModel):
         description="Specific market conditions that would invalidate this setup"
     )
 
+class OrderExecutionType(str, Enum):
+    """Specifies how the order should be executed."""
+    IMMEDIATE = "immediate"    # Execute immediately at market
+    PASSIVE = "passive"        # Wait for price to reach level
+    TRIGGER = "trigger"        # Execute when condition met
+    BRACKET = "bracket"        # Part of a bracket order setup
+
+class RiskLevel(str, Enum):
+    """Risk level for the order."""
+    CRITICAL = "critical"      # Must execute quickly
+    NORMAL = "normal"         # Standard execution
+    MINIMAL = "minimal"       # Can wait for better price
+
+class ExitStrategy(BaseModel):
+    """Detailed exit strategy specification."""
+    price_level: float
+    size_percentage: float = Field(gt=0, le=100)
+    execution_type: OrderExecutionType
+    risk_level: RiskLevel
+    conditions: List[str] = Field(
+        default_factory=list,
+        description="Market conditions that should be met"
+    )
+    fallback_price: Optional[float] = Field(
+        None,
+        description="Fallback price if primary level missed"
+    )
+
 class PlannedOrder(BaseModel):
     """Complete planned order specification."""
     id: int = Field(default=0, description="Progressive number starting from 1")
@@ -40,9 +69,21 @@ class PlannedOrder(BaseModel):
         ...,
         description="Strategic context for evaluating order validity"
     )
+    child_orders: List['ChildOrder'] = Field(
+        default_factory=list,
+        description="Associated exit and protection orders"
+    )
     order_link_id: Optional[str] = Field(
         None,
         description="Must be in format '{plan_id}-{session_id}-{order_number}' using the provided plan_id and session_id"
+    )
+    execution_type: OrderExecutionType = Field(
+        default=OrderExecutionType.PASSIVE,
+        description="How the order should be executed"
+    )
+    risk_level: RiskLevel = Field(
+        default=RiskLevel.NORMAL,
+        description="Risk level affecting execution priority"
     )
 
     def set_order_link_id(self, plan_id: str, session_id: str, order_num: int) -> None:
@@ -51,6 +92,28 @@ class PlannedOrder(BaseModel):
             self.order_link_id = f"{plan_id}-{session_id}-{order_num}"
             self.id = order_num
 
+    @validator('child_orders')
+    def validate_child_orders(cls, v: List['ChildOrder'], values: Dict[str, Any]) -> List['ChildOrder']:
+        """Validate that child orders form a complete exit strategy."""
+        if not v:
+            return v
+
+        # Check total exit percentage
+        total_percentage = sum(order.parameters.size_percentage for order in v)
+        if not (99.9 <= total_percentage <= 100.1):  # Allow small floating point differences
+            raise ValueError(f"Total exit percentage must be 100%, got {total_percentage}%")
+
+        # Check for required order types
+        has_protection = any(order.role == OrderRole.PROTECT for order in v)
+        has_profit = any(order.role == OrderRole.PROFIT for order in v)
+
+        if not has_protection:
+            raise ValueError("Missing protection (stop loss) orders")
+        if not has_profit:
+            raise ValueError("Missing profit taking orders")
+
+        return v
+
 class TradingParameters(BaseModel):
     """Input parameters for trading plan generation."""
     symbol: str
@@ -58,7 +121,11 @@ class TradingParameters(BaseModel):
     leverage: int = Field(ge=1, le=100)
     stop_loss_config: Optional[Dict] = Field(
         default=None,
-        description="Optional configuration for automatic stop loss management"
+        description="Optional configuration for automated stop loss management"
+    )
+    exit_strategies: Optional[List[ExitStrategy]] = Field(
+        default=None,
+        description="Pre-defined exit strategies to consider"
     )
 
 class TradingPlan(BaseModel):
@@ -88,6 +155,49 @@ class TradingPlan(BaseModel):
         # Set order_link_id for each order using plan_id, session_id and order number
         for i, order in enumerate(self.orders, 1):
             order.set_order_link_id(self.id, self.session_id, i)
+
+    @validator('orders')
+    def validate_orders(cls, v: List[PlannedOrder], values: Dict[str, Any]) -> List[PlannedOrder]:
+        """Validate the complete set of orders in the plan."""
+        if not v:
+            return v
+
+        # Track order IDs to ensure uniqueness
+        order_ids = set()
+        order_link_ids = set()
+
+        for order in v:
+            # Check ID uniqueness
+            if order.id in order_ids:
+                raise ValueError(f"Duplicate order ID: {order.id}")
+            order_ids.add(order.id)
+
+            # Check order link ID uniqueness
+            if order.order_link_id:
+                if order.order_link_id in order_link_ids:
+                    raise ValueError(f"Duplicate order link ID: {order.order_link_id}")
+                order_link_ids.add(order.order_link_id)
+
+            # Ensure child orders are properly set for reduce-only
+            if order.child_orders:
+                for child in order.child_orders:
+                    if not child.parameters.reduce_only:
+                        raise ValueError(f"Child order {child.role} must be reduce-only")
+
+        # Ensure IDs are sequential starting from 1
+        expected_ids = set(range(1, len(v) + 1))
+        if order_ids != expected_ids:
+            raise ValueError("Order IDs must be sequential starting from 1")
+
+        return v
+
+    def get_total_budget_required(self) -> float:
+        """Calculate total budget required for all orders."""
+        return sum(
+            order.order.entry.budget
+            for order in self.orders
+            if not any(child.parameters.reduce_only for child in order.child_orders)
+        )
 
     model_config = {
         "json_schema_extra": {

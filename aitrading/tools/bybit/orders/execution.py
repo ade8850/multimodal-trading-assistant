@@ -11,26 +11,32 @@ def execute_order_operations(session, order, instrument_info: Dict) -> Dict:
     results = {"entry": None, "errors": []}
 
     try:
-        # Prepare base order parameters
-        base_params = _prepare_base_order_params(session, order, instrument_info)
+        with logfire.span("execute_order_operations") as span:
+            span.set_attributes({
+                "order_id": order.id,
+                "order_link_id": order.order_link_id,
+                "symbol": order.symbol
+            })
 
-        # Add TP/SL parameters if present
-        #order_params = _add_tp_sl_params(session, base_params, order.order.exit)
-        order_params = base_params  # NO SL/TP (managed independently)
+            # Prepare base order parameters
+            base_params = _prepare_base_order_params(session, order, instrument_info)
 
-        # Place the order
-        logfire.info("Placing order...")
-        results["entry"] = session.place_order(**order_params)
-        logfire.info(f"Order placed successfully", **results)
+            # Add order parameters based on order type
+            order_params = _prepare_order_params(base_params, order)
 
-        # Verify order status
-        verify_order_status(session, order.symbol, results["entry"]["result"]["orderId"])
+            # Place the order
+            logfire.info("Placing order...", **order_params)
+            results["entry"] = session.place_order(**order_params)
+            logfire.info("Order placed successfully", result=results["entry"])
 
-        return results
+            # Verify order status
+            verify_order_status(session, order.symbol, results["entry"]["result"]["orderId"])
+
+            return results
 
     except Exception as e:
         error_msg = str(e)
-        logfire.exception(f"Error in execute_order_operations: {error_msg}")
+        logfire.exception("Error in execute_order_operations", error=error_msg)
         results["errors"].append(error_msg)
         return results
 
@@ -43,162 +49,200 @@ def round_price(price: float, symbol: str, session) -> str:
         rounded = round(float(price), price_scale)
         return f"{rounded:.{price_scale}f}"
     except Exception as e:
-        logfire.error(f"Error rounding price: {str(e)}")
+        logfire.error("Error rounding price", error=str(e))
         raise
 
 
 def set_trading_stops(session, symbol: str, position_idx: int = 0, **kwargs) -> Dict:
     """Set or update trading stop levels for a position."""
     try:
-        # Prepare parameters
-        params = {
-            "category": "linear",
-            "symbol": symbol,
-            "positionIdx": position_idx
-        }
+        with logfire.span("set_trading_stops") as span:
+            span.set_attributes({
+                "symbol": symbol,
+                "position_idx": position_idx
+            })
 
-        # Add optional parameters if provided
-        price_params = ["takeProfit", "stopLoss", "tpLimitPrice", "slLimitPrice"]
-        other_params = ["tpTriggerBy", "slTriggerBy", "tpSize", "slSize"]
+            # Prepare parameters
+            params = {
+                "category": "linear",
+                "symbol": symbol,
+                "positionIdx": position_idx
+            }
 
-        # Handle price parameters with proper rounding
-        for param in price_params:
-            if param in kwargs and kwargs[param] is not None:
-                params[param] = round_price(kwargs[param], symbol, session)
-                logfire.info(f"Rounded {param}", original=kwargs[param], rounded=params[param])
+            # Add optional parameters if provided
+            price_params = ["takeProfit", "stopLoss", "tpLimitPrice", "slLimitPrice"]
+            other_params = ["tpTriggerBy", "slTriggerBy", "tpSize", "slSize", "tpslMode"]
 
-        # Handle non-price parameters
-        for param in other_params:
-            if param in kwargs and kwargs[param] is not None:
-                params[param] = str(kwargs[param])
+            # Handle price parameters with proper rounding
+            for param in price_params:
+                if param in kwargs and kwargs[param] is not None:
+                    params[param] = round_price(kwargs[param], symbol, session)
+                    logfire.info(f"Rounded {param}",
+                              original=kwargs[param],
+                              rounded=params[param])
 
-        # Make API request
-        response = session.set_trading_stop(**params)
+            # Handle non-price parameters
+            for param in other_params:
+                if param in kwargs and kwargs[param] is not None:
+                    params[param] = str(kwargs[param])
 
-        if response["retCode"] != 0:
-            raise ValueError(f"API error: {response['retMsg']}")
+            logfire.info("Setting trading stops", params=params)
 
-        logfire.info(f"Successfully updated trading stops for {symbol}")
-        return response["result"]
+            # Make API request
+            response = session.set_trading_stop(**params)
+
+            if response["retCode"] != 0:
+                raise ValueError(f"API error: {response['retMsg']}")
+
+            logfire.info(f"Successfully updated trading stops",
+                       symbol=symbol,
+                       response=response["result"])
+            return response["result"]
 
     except Exception as e:
+        logfire.exception("Error setting trading stops",
+                       symbol=symbol,
+                       error=str(e))
         raise Exception(f"Error setting trading stops for {symbol}: {str(e)}")
 
 
 def cancel_order(session, symbol: str, order_id: str = None, order_link_id: str = None) -> Dict:
     """Cancel an order by order_id or order_link_id."""
     try:
-        if not (order_id or order_link_id):
-            raise ValueError("Either order_id or order_link_id must be provided")
+        with logfire.span("cancel_order") as span:
+            span.set_attributes({
+                "symbol": symbol,
+                "order_id": order_id,
+                "order_link_id": order_link_id
+            })
 
-        params = {
-            "category": "linear",
-            "symbol": symbol
-        }
+            if not (order_id or order_link_id):
+                raise ValueError("Either order_id or order_link_id must be provided")
 
-        if order_id:
-            params["orderId"] = order_id
-        if order_link_id:
-            params["orderLinkId"] = order_link_id
+            params = {
+                "category": "linear",
+                "symbol": symbol
+            }
 
-        response = session.cancel_order(**params)
+            if order_id:
+                params["orderId"] = order_id
+            if order_link_id:
+                params["orderLinkId"] = order_link_id
 
-        if response["retCode"] != 0:
-            raise ValueError(f"API error: {response['retMsg']}")
+            logfire.info("Cancelling order", params=params)
+            response = session.cancel_order(**params)
 
-        logfire.info(f"Successfully cancelled order", order=(order_id or order_link_id))
-        return response["result"]
+            if response["retCode"] != 0:
+                raise ValueError(f"API error: {response['retMsg']}")
+
+            logfire.info("Order cancelled successfully",
+                       order=(order_id or order_link_id))
+            return response["result"]
 
     except Exception as e:
+        logfire.exception("Error cancelling order", error=str(e))
         raise Exception(f"Error cancelling order: {str(e)}")
 
 
 def _prepare_base_order_params(session, order, instrument_info: Dict) -> Dict:
     """Prepare base order parameters."""
     try:
-        # Calculate quantity
-        price_for_qty = (
-            order.order.entry.price
-            if order.order.type == "limit"
-            else get_current_price(session, order.symbol)
-        )
+        with logfire.span("prepare_base_params"):
+            # Calculate quantity
+            price_for_qty = (
+                order.order.entry.price
+                if order.order.type == "limit"
+                else get_current_price(session, order.symbol)
+            )
 
-        quantity = calculate_quantity(
-            budget=order.order.entry.budget,
-            leverage=order.order.entry.leverage,
-            price=price_for_qty,
-            instrument_info=instrument_info,
-        )
+            quantity = calculate_quantity(
+                budget=order.order.entry.budget,
+                leverage=order.order.entry.leverage,
+                price=price_for_qty,
+                instrument_info=instrument_info,
+            )
 
-        # Base parameters
-        params = {
-            "category": "linear",
-            "symbol": order.symbol,
-            "side": "Buy" if order.type == "long" else "Sell",
-            "orderType": order.order.type.title(),
-            "qty": quantity,
-            "isLeverage": 1,
-            "timeInForce": "GTC",
-            "positionIdx": 0,
-            "orderLinkId": order.order_link_id
-        }
+            # Base parameters
+            params = {
+                "category": "linear",
+                "symbol": order.symbol,
+                "side": "Buy" if order.type == "long" else "Sell",
+                "orderType": order.order.type.title(),
+                "qty": quantity,
+                "isLeverage": 1,
+                "timeInForce": "GTC",
+                "positionIdx": 0,
+                "orderLinkId": order.order_link_id
+            }
 
-        # Add price for limit orders only
-        if order.order.type == "limit":
-            params["price"] = round_price(order.order.entry.price, order.symbol, session)
+            # Add reduceOnly and closeOnTrigger for exit orders
+            if hasattr(order, 'role') and order.role in ['protect', 'profit', 'exit']:
+                params["reduceOnly"] = True
+                params["closeOnTrigger"] = True
 
-        return params
+            # Add price for limit orders only
+            if order.order.type == "limit":
+                params["price"] = round_price(order.order.entry.price, order.symbol, session)
+
+            logfire.info("Prepared base parameters", params=params)
+            return params
 
     except Exception as e:
+        logfire.exception("Error preparing order params",
+                       order_id=order.id,
+                       error=str(e))
         raise Exception(f"Error preparing order params for Order #{order.id}: {str(e)}")
 
 
-# def _add_tp_sl_params(session, base_params: Dict, exit_orders) -> Dict:
-#     """Add take profit and stop loss parameters."""
-#     try:
-#         order_params = base_params.copy()
-#
-#         if not (exit_orders.take_profit or exit_orders.stop_loss):
-#             return order_params
-#
-#         # Set tpslMode if we have either TP or SL
-#         order_params["tpslMode"] = "Full"
-#
-#         if exit_orders.take_profit:
-#             order_params.update({
-#                 "takeProfit": round_price(exit_orders.take_profit.price, order_params["symbol"], session),
-#                 "tpTriggerBy": "LastPrice",
-#                 "tpOrderType": "Market",
-#             })
-#
-#         if exit_orders.stop_loss:
-#             order_params.update({
-#                 "stopLoss": round_price(exit_orders.stop_loss.price, order_params["symbol"], session),
-#                 "slTriggerBy": "LastPrice",
-#                 "slOrderType": "Market",
-#             })
-#
-#         return order_params
-#
-#     except Exception as e:
-#         raise Exception(f"Error adding TP/SL params for {base_params.get('orderLinkId')}: {str(e)}")
+def _prepare_order_params(base_params: Dict, order) -> Dict:
+    """Prepare final order parameters including any conditional parameters."""
+    try:
+        with logfire.span("prepare_order_params"):
+            order_params = base_params.copy()
+
+            # Add trigger parameters for conditional orders
+            if hasattr(order, 'trigger_price') and order.trigger_price:
+                order_params["triggerPrice"] = str(order.trigger_price)
+                order_params["triggerBy"] = "LastPrice"
+                # Convert to trigger order type if needed
+                if order_params["orderType"] == "Limit":
+                    order_params["orderType"] = "Trigger"
+
+            logfire.info("Prepared order parameters", params=order_params)
+            return order_params
+
+    except Exception as e:
+        logfire.exception("Error preparing order parameters", error=str(e))
+        raise Exception(f"Error preparing order parameters: {str(e)}")
 
 
 def verify_order_status(session, symbol: str, order_id: str) -> None:
     """Verify order status after placement."""
     try:
-        # Check order status
-        order_status = session.get_order_history(
-            category="linear",
-            symbol=symbol,
-            orderId=order_id
-        )
+        with logfire.span("verify_order_status") as span:
+            span.set_attributes({
+                "symbol": symbol,
+                "order_id": order_id
+            })
 
-        # Check updated positions
-        positions = session.get_positions(
-            category="linear",
-            symbol=symbol
-        )
+            # Check order status
+            order_status = session.get_order_history(
+                category="linear",
+                symbol=symbol,
+                orderId=order_id
+            )
+            logfire.info("Order status verified", status=order_status)
+
+            # Check updated positions
+            positions = session.get_positions(
+                category="linear",
+                symbol=symbol
+            )
+            logfire.info("Position status checked", positions=positions)
 
     except Exception as e:
+        logfire.exception("Error verifying order status",
+                       symbol=symbol,
+                       order_id=order_id,
+                       error=str(e))
         raise
