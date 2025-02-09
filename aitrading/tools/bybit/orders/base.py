@@ -1,8 +1,11 @@
 # aitrading/tools/bybit/orders/base.py
-
+import random
+import string
 from typing import Dict, List, Any, Optional
 from pybit.unified_trading import HTTP
 import logfire
+
+from aitrading.models.position import Position
 from .execution import execute_order_operations, set_trading_stops, cancel_order
 from .utils import get_current_price, get_active_orders, get_positions, verify_account_status, get_instrument_info
 
@@ -195,6 +198,9 @@ class OrdersTool:
                 current_position = positions[0]
                 exit_size = float(current_position.size) * (size_percentage / 100)
 
+                chrs = string.ascii_letters + string.digits
+                rndstr = ''.join(random.choice(chrs) for _ in range(4))
+
                 # Prepare order parameters
                 params = {
                     "category": "linear",
@@ -205,7 +211,7 @@ class OrdersTool:
                     "price": str(price),
                     "reduceOnly": True,
                     "closeOnTrigger": True,
-                    "orderLinkId": f"{parent_link_id}-{exit_type}-{size_percentage}"
+                    "orderLinkId": f"{parent_link_id}-{exit_type}-{size_percentage}-{rndstr}"
                 }
 
                 if trigger_price:
