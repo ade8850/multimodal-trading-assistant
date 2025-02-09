@@ -59,7 +59,7 @@ class TradingScheduler:
         """Initialize the dependency injection container."""
         container = Container()
 
-        # Configure container with default provider
+        # Configure container with all configurations
         container.config.update({
             "bybit": {
                 "api_key": os.getenv("BYBIT_API_KEY"),
@@ -73,10 +73,16 @@ class TradingScheduler:
                     else os.getenv("GEMINI_API_KEY") if self.config.get("ai_provider") == "gemini"
                     else os.getenv("OPENAI_API_KEY")
                 )
-            }
+            },
+            # Aggiungiamo la configurazione dello stop loss
+            "stop_loss": self.config.get("stop_loss", {}),
+            # Aggiungiamo anche la configurazione redis se presente
+            "redis": self.config.get("redis", {})
         })
 
-        logfire.debug("Container initialized")
+        logfire.debug("Container initialized",
+                     stop_loss_config=self.config.get("stop_loss"),
+                     redis_config=self.config.get("redis"))
 
         container.wire(modules=["__main__"])
         return container
