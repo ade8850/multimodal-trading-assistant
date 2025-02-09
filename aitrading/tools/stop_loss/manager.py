@@ -31,9 +31,10 @@ class StopLossManager:
 
     def update_position_stops(self, symbol: str) -> Dict[str, Any]:
         """Update stop losses for all positions in the given symbol."""
-        if not self.enabled:
-            logfire.info("Stop loss manager disabled, skipping updates", symbol=symbol)
-            return {"symbol": symbol, "updates": [], "errors": []}
+        # TODO: forced, for now
+        #if not self.enabled:
+        #    logfire.info("Stop loss manager disabled, skipping updates", symbol=symbol)
+        #    return {"symbol": symbol, "updates": [], "errors": []}
 
         results = {
             "symbol": symbol,
