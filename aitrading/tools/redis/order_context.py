@@ -37,7 +37,7 @@ class OrderContext:
             if not self.redis.enabled or not self.redis.client:
                 logfire.info("Redis not enabled, context not saved",
                              order_link_id=order_link_id)
-                return False
+                return True
 
             key = self._get_key(order_link_id)
 
