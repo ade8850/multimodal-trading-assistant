@@ -116,7 +116,8 @@ class OrdersTool:
             # Check if we have successful entry order placement
             if not entry_result.get("errors") and entry_result.get("entry"):
                 # Handle exit order configuration if present
-                if hasattr(order.order, "exit") and order.order.exit:
+                if False:  ## EXIT ORDER SHOULD NOT BE PLACED HERE
+                #if hasattr(order.order, "exit") and order.order.exit:
                     try:
                         with logfire.span("setup_exit_orders") as span:
                             span.set_attributes({
