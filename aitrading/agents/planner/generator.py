@@ -12,6 +12,7 @@ from ...tools.charts import ChartGeneratorTool
 from ...tools.volatility import VolatilityCalculator, TimeframeVolatility
 from .analysis import MarketAnalyzer
 from .base import BaseAIClient
+from datetime import datetime, UTC
 
 
 def _convert_pydantic_to_dict(obj: Any) -> Any:
@@ -56,16 +57,7 @@ class PlanGenerator:
                  volatility_calculator: VolatilityCalculator,
                  ai_client: BaseAIClient,
                  system_template: Template):
-        """Initialize the plan generator.
-
-        Args:
-            market_data: Service for market data operations
-            orders: Service for order management
-            chart_generator: Service for chart generation
-            volatility_calculator: Service for volatility metrics
-            ai_client: AI provider client
-            system_template: Jinja template for system prompt
-        """
+        """Initialize the plan generator."""
         self.market_analyzer = MarketAnalyzer(
             market_data=market_data,
             chart_generator=chart_generator,
@@ -79,22 +71,37 @@ class PlanGenerator:
         """Calculate total budget allocated in open positions."""
         total_budget = 0.0
         for position in positions:
-            # Calculate position value using entry price
-            position_size = float(position["size"])
-            entry_price = float(position["entry_price"])
-            leverage = float(position["leverage"])
+            try:
+                if isinstance(position, dict):
+                    # Legacy dictionary format
+                    position_size = float(position["size"])
+                    entry_price = float(position["entry_price"])
+                    leverage = float(position["leverage"])
+                else:
+                    # New Position object
+                    position_size = position.size
+                    entry_price = position.entry_price
+                    leverage = position.leverage
 
-            # Calculate actual budget (position value / leverage)
-            position_value = position_size * entry_price
-            position_budget = position_value / leverage
-            total_budget += position_budget
+                # Calculate actual budget (position value / leverage)
+                position_value = position_size * entry_price
+                position_budget = position_value / leverage
+                total_budget += position_budget
 
-            logfire.debug(f"Position budget calculation",
-                          size=position_size,
-                          entry_price=entry_price,
-                          leverage=leverage,
-                          position_value=position_value,
-                          position_budget=position_budget)
+                logfire.debug("Position budget calculation",
+                            size=position_size,
+                            entry_price=entry_price,
+                            leverage=leverage,
+                            position_value=position_value,
+                            position_budget=position_budget,
+                            age_hours=getattr(position, 'age_hours', None),
+                            is_in_profit=getattr(position, 'is_in_profit', lambda: None)())
+
+            except Exception as e:
+                logfire.error("Error calculating position budget",
+                            error=str(e),
+                            position=str(position))
+                continue
 
         return total_budget
 
@@ -104,34 +111,34 @@ class PlanGenerator:
         for order in orders:
             try:
                 # Per gli oggetti ExistingOrder dobbiamo usare accesso agli attributi
-                # For market orders use qty directly
-                if order.type.lower() == "market":
+                if isinstance(order, ExistingOrder):
+                    # For market orders use qty directly
                     qty = float(order.qty)
                     price = float(order.price) if order.price is not None else 0
                     # Nota: ExistingOrder potrebbe non avere leverage, usiamo 1 come default
-                    leverage = float(getattr(order, 'leverage', 1))
+                    leverage = 1  # Default leverage if not available
                     order_budget = (qty * price) / leverage if price > 0 else 0
-                # For limit orders use price * qty
                 else:
-                    qty = float(order.qty)
-                    price = float(order.price)
-                    leverage = float(getattr(order, 'leverage', 1))
-                    order_budget = (qty * price) / leverage
+                    # For limit orders use price * qty
+                    qty = float(order["qty"])
+                    price = float(order["price"]) if order["price"] is not None else 0
+                    leverage = float(order.get("leverage", 1))  # Default to 1 if not present
+                    order_budget = (qty * price) / leverage if price > 0 else 0
 
                 total_budget += order_budget
 
-                logfire.debug(f"Order budget calculation",
-                              type=order.type,
-                              qty=qty,
-                              price=price,
-                              leverage=leverage,
-                              order_budget=order_budget)
+                logfire.debug("Order budget calculation",
+                            type=order.type if isinstance(order, ExistingOrder) else order.get("type"),
+                            qty=qty,
+                            price=price,
+                            leverage=leverage,
+                            order_budget=order_budget,
+                            age_hours=getattr(order, 'age_hours', None))
 
             except Exception as e:
-                logfire.error(f"Error calculating order budget",
-                              error=str(e),
-                              order=str(order))
-                # Continuiamo con il prossimo ordine invece di far fallire tutto
+                logfire.error("Error calculating order budget",
+                            error=str(e),
+                            order=str(order))
                 continue
 
         return total_budget
@@ -149,14 +156,7 @@ class PlanGenerator:
         return positions_budget, orders_budget
 
     def generate(self, params: TradingParameters) -> TradingPlan:
-        """Generate a complete trading plan.
-
-        Args:
-            params: Trading parameters for plan generation
-
-        Returns:
-            Complete trading plan with analysis and orders
-        """
+        """Generate a complete trading plan."""
         try:
             with logfire.span("generate_trading_plan") as span:
                 span.set_attributes({
@@ -229,9 +229,8 @@ class PlanGenerator:
                 positions = self.orders.get_positions(symbol)
                 logfire.info("Current positions fetched", count=len(positions))
 
-                # Get active orders
-                active_orders = self.orders.get_active_orders(symbol)
-                existing_orders = [ExistingOrder(**order) for order in active_orders]
+                # Get active orders - questi sono già oggetti ExistingOrder
+                existing_orders = self.orders.get_active_orders(symbol)
                 logfire.info("Active orders fetched", count=len(existing_orders))
 
         except Exception as e:
@@ -243,11 +242,11 @@ class PlanGenerator:
         }
 
     def _prepare_template_vars(self,
-                               params: TradingParameters,
-                               market_data: Dict,
-                               positions_orders: Dict,
-                               positions_budget: float,
-                               orders_budget: float) -> Dict[str, Any]:
+                             params: TradingParameters,
+                             market_data: Dict,
+                             positions_orders: Dict,
+                             positions_budget: float,
+                             orders_budget: float) -> Dict[str, Any]:
         """Prepare variables for template rendering."""
         from ...models import generate_uuid_short
 
@@ -271,7 +270,7 @@ class PlanGenerator:
 
         # Convert existing orders to plain dicts
         existing_orders = [_convert_pydantic_to_dict(order)
-                           for order in positions_orders["existing_orders"]]
+                         for order in positions_orders["existing_orders"]]
 
         template_vars = {
             "plan_id": plan_id,
@@ -286,12 +285,10 @@ class PlanGenerator:
             "current_positions": positions_orders["current_positions"],
             "atr_timeframe": params.stop_loss_config.get("timeframe") if params.stop_loss_config else "1H",
             "volatility_metrics": volatility_metrics,
+            "current_datetime": datetime.now(UTC).isoformat(),
         }
 
-        # Log info excluding volatility_metrics to avoid recursion issues
-        log_vars = template_vars.copy()
-        log_vars["volatility_metrics"] = "TimeframeVolatility object"  # Just log presence
-        logfire.info("Template variables prepared", template_vars=log_vars)
+        logfire.info("Template variables prepared", template_vars=template_vars)
 
         return template_vars
 

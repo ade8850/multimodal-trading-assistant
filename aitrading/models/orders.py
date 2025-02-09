@@ -1,7 +1,9 @@
-# aitrading/agents/models/orders.py
+# aitrading/models/orders.py
 
 from typing import Optional, Literal
 from pydantic import BaseModel, Field, validator
+
+from .time_base import TimeBasedModel
 
 class OrderExitLevel(BaseModel):
     """Single exit level with price and size."""
@@ -25,7 +27,7 @@ class Order(BaseModel):
     entry: OrderEntry
     exit: OrderExit
 
-class ExistingOrder(BaseModel):
+class ExistingOrder(TimeBasedModel):
     """Representation of an existing order on the exchange."""
     id: str  # Exchange-assigned order ID
     order_link_id: str  # Custom order link ID
@@ -34,11 +36,33 @@ class ExistingOrder(BaseModel):
     side: str
     price: Optional[float]
     qty: float
-    created_time: str
-    updated_time: str
     status: str
     take_profit: Optional[float]
     stop_loss: Optional[float]
+
+    @classmethod
+    def from_exchange_data(cls, data: dict) -> "ExistingOrder":
+        """Create an instance from exchange API response data."""
+        # Extract required fields
+        order_data = {
+            "id": data["orderId"],
+            "order_link_id": data.get("orderLinkId", ""),
+            "symbol": data["symbol"],
+            "type": data["orderType"],
+            "side": data["side"],
+            "price": float(data["price"]) if data["price"] != "0" else None,
+            "qty": float(data["qty"]),
+            "status": data["orderStatus"],
+            "take_profit": float(data["takeProfit"]) if data.get("takeProfit") else None,
+            "stop_loss": float(data["stopLoss"]) if data.get("stopLoss") else None,
+        }
+        
+        # Use updatedTime for both created_at and updated_at
+        if "updatedTime" in data:
+            timestamp = int(data["updatedTime"])
+            return cls.from_timestamp(timestamp, **order_data)
+            
+        return cls(**order_data)
 
 class OrderCancellation(BaseModel):
     """Specification for an order to be cancelled."""

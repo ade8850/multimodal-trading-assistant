@@ -2,9 +2,11 @@
 
 from typing import Dict, List
 import logfire
+from ....models.orders import ExistingOrder
+from ....models.position import Position
 
 
-def get_active_orders(session, symbol: str) -> List[Dict]:
+def get_active_orders(session, symbol: str) -> List[ExistingOrder]:
     """Get active orders for a symbol."""
     try:
         # Get open orders
@@ -22,21 +24,20 @@ def get_active_orders(session, symbol: str) -> List[Dict]:
         # Format orders
         formatted_orders = []
         for order in orders:
-            formatted = {
-                "id": order["orderId"],
-                "order_link_id": order.get("orderLinkId", ""),
-                "symbol": order["symbol"],
-                "type": order["orderType"],
-                "side": order["side"],
-                "price": float(order["price"]) if order["price"] != "0" else None,
-                "qty": float(order["qty"]),
-                "created_time": order["createdTime"],
-                "updated_time": order["updatedTime"],
-                "status": order["orderStatus"],
-                "take_profit": float(order["takeProfit"]) if order.get("takeProfit") else None,
-                "stop_loss": float(order["stopLoss"]) if order.get("stopLoss") else None
-            }
-            formatted_orders.append(formatted)
+            try:
+                formatted_order = ExistingOrder.from_exchange_data(order)
+                formatted_orders.append(formatted_order)
+                
+                logfire.debug("Processed order", 
+                            order_id=formatted_order.id,
+                            age_seconds=formatted_order.age_seconds,
+                            status=formatted_order.status)
+                
+            except Exception as e:
+                logfire.error("Failed to process order",
+                            order=order,
+                            error=str(e))
+                continue
 
         logfire.info(f"Found {len(formatted_orders)} active orders", formatted_orders=formatted_orders)
         return formatted_orders
@@ -45,7 +46,7 @@ def get_active_orders(session, symbol: str) -> List[Dict]:
         raise Exception(f"Error fetching active orders for {symbol}: {str(e)}")
 
 
-def get_positions(session, symbol: str) -> List[Dict]:
+def get_positions(session, symbol: str) -> List[Position]:
     """Get current positions for a symbol."""
     try:
         response = session.get_positions(
@@ -57,27 +58,52 @@ def get_positions(session, symbol: str) -> List[Dict]:
             raise ValueError(f"API error: {response['retMsg']}")
 
         positions = response["result"]["list"]
+        
+        # Log raw response
+        logfire.debug("Raw positions response", 
+                     positions=positions,
+                     response_type=str(type(positions)))
 
         # Format positions
         formatted_positions = []
         for pos in positions:
-            if float(pos["size"]) == 0:  # Skip empty positions
+            try:
+                # Skip empty positions
+                if float(pos["size"]) == 0:
+                    continue
+
+                logfire.debug("Processing position data", 
+                            raw_position=pos,
+                            created_time=pos.get("createdTime"),
+                            created_time_type=str(type(pos.get("createdTime"))))
+
+                position = Position.from_exchange_data(pos)
+                formatted_positions.append(position)
+
+                logfire.debug("Processed position",
+                            symbol=position.symbol,
+                            side=position.side,
+                            created_at=position.created_at.isoformat() if position.created_at else None,
+                            age_seconds=position.age_seconds,
+                            is_in_profit=position.is_in_profit(),
+                            margin_used=position.margin_used)
+
+            except Exception as e:
+                logfire.error("Failed to process position",
+                            position=pos,
+                            error=str(e))
                 continue
 
-            formatted = {
-                "symbol": pos["symbol"],
-                "side": pos["side"],
-                "size": float(pos["size"]),
-                "entry_price": float(pos["avgPrice"]),
-                "leverage": float(pos["leverage"]),
-                "unrealized_pnl": float(pos["unrealisedPnl"]),
-                "take_profit": float(pos["takeProfit"]) if pos.get("takeProfit") else None,
-                "stop_loss": float(pos["stopLoss"]) if pos.get("stopLoss") else None,
-                "created_time": pos["createdTime"]
-            }
-            formatted_positions.append(formatted)
-
-        logfire.info(f"Found {len(formatted_positions)} active positions", formatted_positions=formatted_positions)
+        logfire.info(f"Found {len(formatted_positions)} active positions", 
+                    count=len(formatted_positions),
+                    positions=[{
+                        "symbol": p.symbol,
+                        "side": p.side,
+                        "size": p.size,
+                        "created_at": p.created_at.isoformat() if p.created_at else None,
+                        "is_in_profit": p.is_in_profit()
+                    } for p in formatted_positions])
+        
         return formatted_positions
 
     except Exception as e:

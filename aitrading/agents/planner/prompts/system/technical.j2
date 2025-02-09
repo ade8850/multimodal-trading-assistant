@@ -16,6 +16,8 @@ Available Base Budget: {{ total_budget - positions_budget - orders_budget }} USD
 Plan ID: {{ plan_id }}
 Session ID: {{ session_id }}
 
+Current Datetime: {{ current_datetime }}
+
 {#{% if volatility_metrics %}#}
 {#{%  if false %}#}
 {## Market Volatility Analysis#}
@@ -120,7 +122,7 @@ Session ID: {{ session_id }}
   Leverage: {{ position.leverage }}
   Unrealized PNL: {{ position.unrealized_pnl }}
   Take Profit: {{ position.take_profit }}
-  Created: {{ position.created_time }}
+  Created: {{ position.created_at }}
 
 Note: Stop losses are managed automatically by the system based on {{ atr_timeframe }} ATR.
 {% endfor %}
@@ -136,8 +138,7 @@ Note: Stop losses are managed automatically by the system based on {{ atr_timefr
   Price: {{ order.price }}
   Quantity: {{ order.qty }}
   Status: {{ order.status }}
-  Created: {{ order.created_time }}
-  Take Profit: {{ order.take_profit }}
+  Created: {{ order.created_at }}
 {% endfor %}
 
 

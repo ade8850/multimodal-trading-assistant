@@ -13,17 +13,41 @@ class Container(containers.DeclarativeContainer):
 
     config = providers.Configuration()
 
-    # Redis provider
+    # Redis provider (optional)
     redis_provider = providers.Singleton(
         RedisProvider,
-        enabled=config.redis.enabled.as_bool(default=False),
-        host=config.redis.host.as_str(default="localhost"),
-        port=config.redis.port.as_int(default=6379),
-        db=config.redis.db.as_int(default=0),
-        password=config.redis.password.as_str(default=None),
-        ssl=config.redis.ssl.as_bool(default=False),
-        key_prefix=config.redis.key_prefix.as_str(default="trading:"),
-        ttl=config.redis.ttl.as_int(default=3600)
+        enabled=providers.Callable(
+            lambda config: config.get("redis", {}).get("enabled", False),
+            config
+        ),
+        host=providers.Callable(
+            lambda config: config.get("redis", {}).get("host", "localhost"),
+            config
+        ),
+        port=providers.Callable(
+            lambda config: config.get("redis", {}).get("port", 6379),
+            config
+        ),
+        db=providers.Callable(
+            lambda config: config.get("redis", {}).get("db", 0),
+            config
+        ),
+        password=providers.Callable(
+            lambda config: config.get("redis", {}).get("password", None),
+            config
+        ),
+        ssl=providers.Callable(
+            lambda config: config.get("redis", {}).get("ssl", False),
+            config
+        ),
+        key_prefix=providers.Callable(
+            lambda config: config.get("redis", {}).get("key_prefix", "trading:"),
+            config
+        ),
+        ttl=providers.Callable(
+            lambda config: config.get("redis", {}).get("ttl", 3600),
+            config
+        )
     )
 
     # Tools
