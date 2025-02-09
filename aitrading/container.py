@@ -70,6 +70,7 @@ class Container(containers.DeclarativeContainer):
         StopLossManager,
         market_data=market_data,
         orders=orders,
+        config=config.config.get("stop_loss", {}),
         enabled=providers.Callable(
             lambda config: config.get("stop_loss", {}).get("enabled", False),  # default False
             config
