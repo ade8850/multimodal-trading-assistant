@@ -202,9 +202,9 @@ class OrdersTool:
                 rndstr = ''.join(random.choice(chrs) for _ in range(4))
 
                 # always opposite
-                if side == "Buy":
+                if current_position.side == "Buy":
                     side = "Sell"
-                elif side == "Sell":
+                elif current_position.side == "Sell":
                     side = "Buy"
 
                 # Prepare order parameters
