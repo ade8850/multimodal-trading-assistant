@@ -201,6 +201,12 @@ class OrdersTool:
                 chrs = string.ascii_letters + string.digits
                 rndstr = ''.join(random.choice(chrs) for _ in range(4))
 
+                # always opposite
+                if side == "Buy":
+                    side = "Sell"
+                elif side == "Sell":
+                    side = "Buy"
+
                 # Prepare order parameters
                 params = {
                     "category": "linear",
