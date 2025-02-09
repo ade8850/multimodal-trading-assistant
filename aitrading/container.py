@@ -18,7 +18,7 @@ class Container(containers.DeclarativeContainer):
     redis_provider = providers.Singleton(
         RedisProvider,
         enabled=providers.Callable(
-            lambda config: config.get("redis", {}).get("enabled", False),
+            lambda config: config.get("redis", {}).get("enabled", True),
             config
         ),
         host=providers.Callable(
