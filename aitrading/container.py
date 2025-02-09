@@ -104,5 +104,6 @@ class Container(containers.DeclarativeContainer):
                 "vertex_region": config["llm"].get("vertex_region")
             } if config["llm"]["provider"] == "anthropic-vertex" else None,
             config
-        )
+        ),
+        stop_loss_manager=stop_loss_manager,
     )

@@ -9,6 +9,7 @@ from .openai import OpenAIClient
 from ...tools.bybit.market_data import MarketDataTool
 from ...tools.bybit.orders import OrdersTool
 from ...tools.charts import ChartGeneratorTool
+from ...tools.stop_loss import StopLossManager
 from ...tools.volatility import VolatilityCalculator
 from ...tools.redis.order_context import OrderContext
 from ...models import TradingParameters, TradingPlan
@@ -17,12 +18,15 @@ class TradingPlanner:
     def __init__(self, market_data: MarketDataTool, orders: OrdersTool,
                 chart_generator: ChartGeneratorTool, provider_name: str,
                 api_key: str, order_context: OrderContext,
-                vertex_params: Optional[Dict] = None):
+                vertex_params: Optional[Dict] = None,
+                stop_loss_manager: Optional[StopLossManager] = None
+                ) :
         self.market_data = market_data
         self.orders = orders
         self.chart_generator = chart_generator
         self.volatility_calculator = VolatilityCalculator()
         self.order_context = order_context
+        self.stop_loss_manager = stop_loss_manager,
 
         if provider_name.startswith("anthropic"):
             self.ai_client = create_anthropic_client(provider_name, api_key, **(vertex_params or {}))

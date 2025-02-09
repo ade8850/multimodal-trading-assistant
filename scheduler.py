@@ -99,6 +99,8 @@ class TradingScheduler:
 
             # Generate and execute trading plan
             planner = self.container.trading_planner()
+            stop_loss_manager = self.container.stop_loss_manager()
+
             trading_plan = planner.create_plan(trading_params)
 
             if trading_plan:
@@ -106,6 +108,8 @@ class TradingScheduler:
                     span.set_attribute("symbol", symbol)
                     # Execute the plan
                     result = planner.execute_plan(trading_plan)
+
+                    result["stop_loss_updates"] = stop_loss_manager.update_position_stops(symbol)
 
                     logfire.info("Executing results", extra=result)
                     if result.get("cancellations"):
