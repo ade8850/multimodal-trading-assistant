@@ -35,7 +35,7 @@ class Container(containers.DeclarativeContainer):
             config
         ),
         password=providers.Callable(
-            lambda config: config.get("redis", {}).get("password", ""),  # Changed from None to ""
+            lambda config: config.get("redis", {}).get("password", ""),
             config
         ),
         ssl=providers.Callable(
@@ -70,7 +70,14 @@ class Container(containers.DeclarativeContainer):
         StopLossManager,
         market_data=market_data,
         orders=orders,
-        config=config.get("stop_loss", {}),
+        config=providers.Callable(
+            lambda config: {
+                "timeframe": config.get("stop_loss", {}).get("timeframe", "1H"),
+                "initial_multiplier": config.get("stop_loss", {}).get("initial_multiplier", 1.5),
+                "in_profit_multiplier": config.get("stop_loss", {}).get("in_profit_multiplier", 2.0)
+            },
+            config
+        ),
         enabled=providers.Callable(
             lambda config: config.get("stop_loss", {}).get("enabled", True),
             config
