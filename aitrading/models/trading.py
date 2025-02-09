@@ -4,7 +4,29 @@ from pydantic import BaseModel, Field
 
 from .base import generate_uuid_short
 from .orders import Order, OrderCancellation
-from .validity import Validity, Range24h, Rationale
+
+class Range24h(BaseModel):
+    """24-hour price range."""
+    high: float
+    low: float
+
+class StrategicContext(BaseModel):
+    """Strategic context for order evaluation and management."""
+    setup_rationale: str = Field(
+        description="Original market setup and key technical conditions"
+    )
+    market_bias: str = Field(
+        description="Overall market bias and trend context"
+    )
+    key_levels: List[float] = Field(
+        description="Critical price levels for this setup"
+    )
+    catalysts: List[str] = Field(
+        description="Market conditions or events supporting this setup"
+    )
+    invalidation_conditions: List[str] = Field(
+        description="Specific market conditions that would invalidate this setup"
+    )
 
 class PlannedOrder(BaseModel):
     """Complete planned order specification."""
@@ -13,9 +35,11 @@ class PlannedOrder(BaseModel):
     symbol: str
     current_price: float
     range_24h: Range24h
-    rationale: Rationale
     order: Order
-    validity: Validity
+    strategic_context: StrategicContext = Field(
+        ...,
+        description="Strategic context for evaluating order validity"
+    )
     order_link_id: Optional[str] = Field(
         None,
         description="Must be in format '{plan_id}-{session_id}-{order_number}' using the provided plan_id and session_id"
