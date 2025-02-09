@@ -5,10 +5,10 @@ from pydantic import BaseModel, Field, validator
 
 from .time_base import TimeBasedModel
 
-class OrderExitLevel(BaseModel):
-    """Single exit level with price and size."""
-    price: float
-    size_percentage: float
+# class OrderExitLevel(BaseModel):
+#     """Single exit level with price and size."""
+#     price: float
+#     size_percentage: float
 
 # class OrderExit(BaseModel):
 #     """Exit conditions including take profit and stop loss."""
