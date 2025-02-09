@@ -185,9 +185,9 @@ class TradingPlan(BaseModel):
                         raise ValueError(f"Child order {child.role} must be reduce-only")
 
         # Ensure IDs are sequential starting from 1
-        expected_ids = set(range(1, len(v) + 1))
-        if order_ids != expected_ids:
-            raise ValueError("Order IDs must be sequential starting from 1")
+        #expected_ids = set(range(1, len(v) + 1))
+        #if order_ids != expected_ids:
+        #    raise ValueError("Order IDs must be sequential starting from 1")
 
         return v
 
