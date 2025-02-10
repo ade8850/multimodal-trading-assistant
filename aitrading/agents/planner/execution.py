@@ -80,7 +80,10 @@ class PlanExecutor:
             raise Exception(f"Error executing trading plan: {str(e)}")
 
     def _execute_orders_with_children(self, plan: TradingPlan) -> List[Dict]:
-        """Execute parent orders and their associated child orders."""
+        """Execute parent orders and their associated child orders.
+        NOTE: the concept of child orders has been removed, the function name is historical
+        """
+
         results = []
 
         for order in plan.orders:
@@ -91,7 +94,6 @@ class PlanExecutor:
                         "order_link_id": order.order_link_id,
                         "symbol": order.symbol,
                         "type": order.type,
-                        "child_orders_count": len(order.child_orders)
                     })
 
                     # Configure position settings first
@@ -123,26 +125,6 @@ class PlanExecutor:
                         "child_orders": []
                     }
 
-                    # Get the exchange-assigned order ID for parent reference
-                    parent_order_id = entry_result.get("entry", {}).get("result", {}).get("orderId")
-
-                    if parent_order_id:
-                        # Place child orders (TP/SL)
-                        child_results = self._execute_child_orders(
-                            order.child_orders,
-                            parent_order_id,
-                            order.order_link_id,
-                            order.symbol
-                        )
-                        main_order_result["child_orders"] = child_results
-
-                        logfire.info("Order group execution completed",
-                                     parent_order_id=parent_order_id,
-                                     successful_children=sum(1 for c in child_results if "error" not in c),
-                                     failed_children=sum(1 for c in child_results if "error" in c))
-                    else:
-                        logfire.warning("No parent order ID received, skipping child orders")
-
                     results.append(main_order_result)
 
             except Exception as e:
@@ -156,78 +138,6 @@ class PlanExecutor:
                 results.append({
                     "order_id": order.id,
                     "order_link_id": order.order_link_id,
-                    "error": str(e)
-                })
-
-        return results
-
-    def _execute_child_orders(
-            self,
-            child_orders: List[ChildOrder],
-            parent_order_id: str,
-            parent_link_id: str,
-            symbol: str
-    ) -> List[Dict]:
-        """Execute child orders (TP/SL) associated with a parent order."""
-        results = []
-
-        for child in child_orders:
-            try:
-                with logfire.span("execute_child_order") as span:
-                    span.set_attributes({
-                        "role": child.role,
-                        "symbol": symbol,
-                        "parent_order_id": parent_order_id
-                    })
-
-                    # Prepare child order parameters
-                    params = {
-                        "category": "linear",
-                        "symbol": symbol,
-                        "side": child.parameters.side,
-                        "orderType": child.parameters.type.title(),
-                        "qty": str(child.parameters.size),
-                        "reduceOnly": True,
-                        "closeOnTrigger": True,
-                        "orderLinkId": f"{parent_link_id}-{child.role.value}"
-                    }
-
-                    # Add price for limit orders
-                    if child.parameters.type == "limit" and child.parameters.price:
-                        params["price"] = str(child.parameters.price)
-
-                    # Add trigger price if specified
-                    if child.parameters.trigger_price:
-                        params["triggerPrice"] = str(child.parameters.trigger_price)
-
-                    logfire.info("Placing child order",
-                                 role=child.role,
-                                 parent_id=parent_order_id,
-                                 params=params)
-
-                    response = self.orders.session.place_order(**params)
-
-                    if response["retCode"] != 0:
-                        raise ValueError(f"Child order placement failed: {response['retMsg']}")
-
-                    results.append({
-                        "role": child.role,
-                        "order_link_id": params["orderLinkId"],
-                        "result": response["result"]
-                    })
-
-                    logfire.info("Child order placed successfully",
-                                 role=child.role,
-                                 order_id=response["result"].get("orderId"))
-
-            except Exception as e:
-                logfire.error("Child order placement failed",
-                              role=child.role,
-                              parent_id=parent_order_id,
-                              error=str(e))
-
-                results.append({
-                    "role": child.role,
                     "error": str(e)
                 })
 
