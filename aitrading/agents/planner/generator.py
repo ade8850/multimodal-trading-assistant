@@ -363,8 +363,6 @@ class PlanGenerator:
             tags = ["plan", params.symbol]
             if trading_plan.orders and len(trading_plan.orders):
                 tags.append("orders")
-                if any(order.child_orders for order in trading_plan.orders):
-                    tags.append("child_orders")
             if trading_plan.cancellations and len(trading_plan.cancellations):
                 tags.append("cancellations")
 
