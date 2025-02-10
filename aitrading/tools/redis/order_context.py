@@ -1,7 +1,7 @@
 import json
 import logfire
 from typing import Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, UTC
 from pydantic import BaseModel
 
 
@@ -45,7 +45,7 @@ class OrderContext:
             context_data = {
                 "model": context.__class__.__name__,
                 "data": context.model_dump(),
-                "saved_at": datetime.utcnow().isoformat()
+                "saved_at": datetime.now(UTC).isoformat()
             }
 
             # Serialize to JSON
@@ -98,7 +98,7 @@ class OrderContext:
                 return None
 
             # Parse JSON data
-            context_data = json.loads(raw_data.decode('utf-8'))
+            context_data = json.loads(raw_data)
 
             logfire.info("Retrieved order context",
                          order_link_id=order_link_id,
