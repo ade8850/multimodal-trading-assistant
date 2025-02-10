@@ -333,141 +333,7 @@ class PlanGenerator:
 
             if 'plan' not in response_dict:
                 raise ValueError("AI response missing plan data")
-
             return response_dict['plan']
-
-
-    def _validate_exit_strategies(self, orders: List[PlannedOrder]) -> None:
-        """Validate exit strategies for all orders."""
-        try:
-            for order in orders:
-                if not order.order.exit:
-                    raise ValueError(f"Order {order.id} missing exit strategy")
-
-                # Validate take profit levels
-                total_tp_size = sum(level.size_percentage for level in order.order.exit.take_profit)
-                if not 0 < total_tp_size <= 100:
-                    raise ValueError(f"Invalid total take profit size: {total_tp_size}%")
-
-                # Validate stop loss levels
-                total_sl_size = sum(level.size_percentage for level in order.order.exit.stop_loss)
-                if not 0 < total_sl_size <= 100:
-                    raise ValueError(f"Invalid total stop loss size: {total_sl_size}%")
-
-                # Validate child orders match exit strategy
-                if order.child_orders:
-                    self._validate_child_orders_match_strategy(order)
-
-                logfire.info("Exit strategy validated",
-                             order_id=order.id,
-                             tp_levels=len(order.order.exit.take_profit),
-                             sl_levels=len(order.order.exit.stop_loss))
-
-        except Exception as e:
-            logfire.error("Exit strategy validation failed", error=str(e))
-            raise
-
-    def _validate_child_orders_match_strategy(self, order: PlannedOrder) -> None:
-        """Validate child orders match the defined exit strategy."""
-        try:
-            # Group child orders by role
-            tp_orders = [c for c in order.child_orders if c.role == OrderRole.PROFIT]
-            sl_orders = [c for c in order.child_orders if c.role == OrderRole.PROTECT]
-
-            # Validate take profit orders
-            if len(tp_orders) != len(order.order.exit.take_profit):
-                raise ValueError("Mismatch between take profit levels and orders")
-
-            for tp_level, tp_order in zip(order.order.exit.take_profit, tp_orders):
-                if not math.isclose(tp_level.size_percentage, tp_order.parameters.size_percentage, rel_tol=1e-9):
-                    raise ValueError(
-                        f"Take profit size mismatch: {tp_level.size_percentage}% vs {tp_order.parameters.size_percentage}%")
-
-            # Validate stop loss orders
-            if len(sl_orders) != len(order.order.exit.stop_loss):
-                raise ValueError("Mismatch between stop loss levels and orders")
-
-            for sl_level, sl_order in zip(order.order.exit.stop_loss, sl_orders):
-                if not math.isclose(sl_level.size_percentage, sl_order.parameters.size_percentage, rel_tol=1e-9):
-                    raise ValueError(
-                        f"Stop loss size mismatch: {sl_level.size_percentage}% vs {sl_order.parameters.size_percentage}%")
-
-            logfire.info("Child orders match strategy",
-                         order_id=order.id,
-                         tp_orders=len(tp_orders),
-                         sl_orders=len(sl_orders))
-
-        except Exception as e:
-            logfire.error("Child order validation failed", error=str(e))
-            raise
-
-    def _derive_child_context(self, parent_context: StrategicContext, role: OrderRole) -> StrategicContext:
-        """Derive strategic context for child orders based on parent context and role."""
-        try:
-            if role == OrderRole.PROTECT:
-                rationale = f"Protection order based on parent setup: {parent_context.setup_rationale}"
-                conditions = parent_context.invalidation_conditions
-            elif role == OrderRole.PROFIT:
-                rationale = f"Profit taking order based on parent setup: {parent_context.setup_rationale}"
-                conditions = [f"Price reaches target level"]
-            else:
-                rationale = f"Exit order based on parent setup: {parent_context.setup_rationale}"
-                conditions = parent_context.invalidation_conditions + ["Price reaches target level"]
-
-            return StrategicContext(
-                setup_rationale=rationale,
-                market_bias=parent_context.market_bias,
-                key_levels=parent_context.key_levels,
-                catalysts=parent_context.catalysts,
-                invalidation_conditions=conditions
-            )
-
-        except Exception as e:
-            logfire.error("Failed to derive child context", error=str(e))
-            raise
-
-    def _validate_order_relationships(self, orders: List[PlannedOrder]) -> None:
-        """Validate relationships between parent and child orders."""
-        try:
-            for order in orders:
-                # Non validiamo più la presenza obbligatoria di child orders
-                if not hasattr(order, 'child_orders'):
-                    continue
-
-                # Se ci sono child orders, li validiano
-                if order.child_orders:
-                    total_exit_size = 0.0
-                    for child in order.child_orders:
-                        # Validate child order properties
-                        if not child.parameters.reduce_only:
-                            raise ValueError(f"Child order {child.role} must be reduce-only")
-
-                        if not 0 < child.parameters.size_percentage <= 100:
-                            raise ValueError(
-                                f"Invalid size percentage for {child.role}: {child.parameters.size_percentage}"
-                            )
-
-                        total_exit_size += child.parameters.size_percentage
-
-                    # Validate total exit size for child orders
-                    if not math.isclose(total_exit_size, 100.0, rel_tol=1e-9):
-                        raise ValueError(f"Total exit size must be 100%, got {total_exit_size}%")
-
-                # Validate essential order properties
-                if order.order.type == "limit" and (order.order.entry.price is None or order.order.entry.price <= 0):
-                    raise ValueError(f"Limit order {order.id} requires a valid price")
-
-                if order.order.entry.budget < 0:
-                    raise ValueError(f"Order {order.id} has invalid budget")
-
-                logfire.info("Order validation completed",
-                             order_id=order.id,
-                             type=order.order.type,
-                             child_count=len(order.child_orders) if hasattr(order, 'child_orders') else 0)
-
-        except Exception as e:
-            logfire.error("Order relationship validation failed", error=str(e))
-            raise
 
     def _create_trading_plan(self, plan_data: Dict, params: TradingParameters) -> TradingPlan:
         """Create and validate trading plan from AI response."""
@@ -482,11 +348,6 @@ class PlanGenerator:
                 analysis=plan_data['analysis']
             )
 
-            # Validate order relationships and exit strategies
-            if trading_plan.orders:
-                self._validate_order_relationships(trading_plan.orders)
-                self._validate_exit_strategies(trading_plan.orders)
-
             # Save strategic context for each new order and its children
             for order in trading_plan.orders:
                 if hasattr(order, 'strategic_context'):
@@ -497,23 +358,6 @@ class PlanGenerator:
                     if not success:
                         logfire.warning("Failed to save strategic context",
                                         order_link_id=order.order_link_id)
-
-                    # Save context for child orders
-                    if hasattr(order, 'child_orders'):
-                        for child in order.child_orders:
-                            child_context = self._derive_child_context(
-                                order.strategic_context,
-                                child.role
-                            )
-                            child_link_id = f"{order.order_link_id}-{child.role.value}"
-                            success = self.order_context.save_context(
-                                order_link_id=child_link_id,
-                                context=child_context
-                            )
-                            if not success:
-                                logfire.warning("Failed to save child order context",
-                                                parent_id=order.order_link_id,
-                                                child_role=child.role)
 
             # Add tags for logging
             tags = ["plan", params.symbol]
