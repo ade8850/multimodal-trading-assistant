@@ -96,26 +96,27 @@ docker rm trading-scheduler 2>/dev/null || true
 
 # Run the container
 echo "Starting scheduler container..."
-eval "docker run -d \
+eval docker run -d \
     --name trading-scheduler \
     --restart unless-stopped \
-    -v \"$(pwd)/scheduler_config.yaml:/app/config.yaml:ro\" \
-    -v \"$(pwd)/.logs/scheduler.log:/app/scheduler.log\" \
-    -v \"$(pwd)/.graphs:/app/.graphs\" \
-    -e BYBIT_API_KEY=\"$BYBIT_API_KEY\" \
-    -e BYBIT_API_SECRET=\"$BYBIT_API_SECRET\" \
-    -e BYBIT_TESTNET=\"${BYBIT_TESTNET:-False}\" \
-    -e ANTHROPIC_API_KEY=\"${ANTHROPIC_API_KEY:-}\" \
-    -e VERTEX_PROJECT_ID=\"${VERTEX_PROJECT_ID:-}\" \
-    -e VERTEX_REGION=\"${VERTEX_REGION:-}\" \
-    -e GEMINI_API_KEY=\"${GEMINI_API_KEY:-}\" \
-    -e OPENAI_API_KEY=\"${OPENAI_API_KEY:-}\" \
-    -e DUMP_CHARTS=\"${DUMP_CHARTS:-False}\" \
-    -e CONFIG_PATH=\"/app/config.yaml\" \
-    -e LOGFIRE_TOKEN=\"${LOGFIRE_TOKEN:-}\" \
-    -e LOGFIRE_ENVIRONMENT=\"${LOGFIRE_ENVIRONMENT:-production}\" \
+    --add-host=host.docker.internal:host-gateway \
+    -v "$(pwd)/scheduler_config.yaml:/app/config.yaml:ro" \
+    -v "$(pwd)/.logs/scheduler.log:/app/scheduler.log" \
+    -v "$(pwd)/.graphs:/app/.graphs" \
+    -e BYBIT_API_KEY="$BYBIT_API_KEY" \
+    -e BYBIT_API_SECRET="$BYBIT_API_SECRET" \
+    -e BYBIT_TESTNET="${BYBIT_TESTNET:-False}" \
+    -e ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}" \
+    -e VERTEX_PROJECT_ID="${VERTEX_PROJECT_ID:-}" \
+    -e VERTEX_REGION="${VERTEX_REGION:-}" \
+    -e GEMINI_API_KEY="${GEMINI_API_KEY:-}" \
+    -e OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
+    -e DUMP_CHARTS="${DUMP_CHARTS:-False}" \
+    -e CONFIG_PATH="/app/config.yaml" \
+    -e LOGFIRE_TOKEN="${LOGFIRE_TOKEN:-}" \
+    -e LOGFIRE_ENVIRONMENT="${LOGFIRE_ENVIRONMENT:-production}" \
     $redis_vars \
-    trading-scheduler"
+    trading-scheduler
 
 # Wait a moment for the container to start
 sleep 2
