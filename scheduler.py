@@ -47,8 +47,16 @@ class TradingScheduler:
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration from YAML file."""
         try:
+            # First read the raw content
             with open(self.config_path, 'r') as f:
-                config = yaml.safe_load(f)
+                content = f.read()
+
+            # Expand environment variables
+            content = os.path.expandvars(content)
+
+            # Parse YAML
+            config = yaml.safe_load(content)
+
             logfire.info(f"Loaded configuration from {self.config_path}", config=config)
             return config
         except Exception as e:

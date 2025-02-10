@@ -94,12 +94,14 @@ echo "Stopping existing scheduler container (if any)..."
 docker stop trading-scheduler 2>/dev/null || true
 docker rm trading-scheduler 2>/dev/null || true
 
+HOST_IP=$(ip route get 1 | awk '{print $(NF-2);exit}')
+
 # Run the container
 echo "Starting scheduler container..."
 eval docker run -d \
     --name trading-scheduler \
     --restart unless-stopped \
-    --add-host=host.docker.internal:host-gateway \
+    --add-host=host.docker.internal:$HOST_IP \
     -v "$(pwd)/scheduler_config.yaml:/app/config.yaml:ro" \
     -v "$(pwd)/.logs/scheduler.log:/app/scheduler.log" \
     -v "$(pwd)/.graphs:/app/.graphs" \
