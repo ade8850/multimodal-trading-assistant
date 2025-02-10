@@ -15,40 +15,6 @@ class OrderRole(str, Enum):
     EXIT = "exit"  # Generic exit order
 
 
-class OrderExitLevel(BaseModel):
-    """Single exit level with price and size."""
-    price: float
-    size_percentage: float = Field(
-        gt=0,
-        le=100,
-        description="Percentage of position to exit at this level"
-    )
-    trigger_price: Optional[float] = Field(
-        None,
-        description="Optional trigger price for conditional orders"
-    )
-
-
-class OrderExit(BaseModel):
-    """Exit conditions including take profit and stop loss."""
-    take_profit: List[OrderExitLevel] = Field(
-        default_factory=list,
-        description="List of take profit levels with partial sizes"
-    )
-    stop_loss: List[OrderExitLevel] = Field(
-        default_factory=list,
-        description="List of stop loss levels with partial sizes"
-    )
-
-    @validator('take_profit', 'stop_loss')
-    def validate_total_percentage(cls, v):
-        """Ensure total size percentage doesn't exceed 100%."""
-        total = sum(level.size_percentage for level in v)
-        if total > 100:
-            raise ValueError(f"Total size percentage ({total}%) exceeds 100%")
-        return v
-
-
 class OrderEntry(BaseModel):
     """Entry order details."""
     price: Optional[float] = None
@@ -81,7 +47,6 @@ class Order(BaseModel):
     """Complete order specification."""
     type: Literal["market", "limit"]
     entry: OrderEntry
-    exit: OrderExit
     child_orders: List[ChildOrder] = Field(
         default_factory=list,
         description="List of child orders (TP/SL) associated with this order"

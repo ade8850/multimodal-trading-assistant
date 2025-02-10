@@ -36,44 +36,38 @@ Analysis Requirements:
    - Volume profile validation
    - Volatility regime analysis
 6. Budget analysis:
-  - Calculate budget requirement excluding reduce-only orders
-  - Track available position size for reduce-only orders
+  - Calculate budget requirement for new entry orders
   - Consider execution types in budget allocation
-  - Account for bracket order relationships
   - Ensure total allocation respects available budget
 
 Order Execution Requirements:
 1. Execution Types:
    - IMMEDIATE: Market orders requiring quick execution
-     * Use when immediate risk management needed
+     * Use when immediate entry needed
      * When capturing strong momentum moves
-     * For critical stop loss placement
+     * Clear invalidation levels identified
    - PASSIVE: Limit orders at specific levels
      * For planned entries at support/resistance
      * When building positions gradually
-     * For non-urgent take profit orders
+     * Clear market structure provides entry zones
    - TRIGGER: Conditional execution
-     * For stop entry orders
-     * Breakout trade entries
-     * Trailing stop management
-   - BRACKET: Complete bracket order setups
-     * Entry + Stop Loss + Take Profit combination
-     * Multi-level exit strategies
-     * Full position management plan
+     * For breakout trade entries
+     * When specific price level must be reached
+     * Clear market structure confirmation required
 
 2. Risk Levels:
    - CRITICAL: High priority execution needed
-     * Stop loss orders in volatile conditions
-     * Risk management adjustments
-     * Emergency position exits
+     * Clear invalidation levels
+     * Strong momentum conditions
+     * High confidence setups
    - NORMAL: Standard execution priority
      * Regular entry orders
-     * Standard take profit orders
-     * Position adjustments
+     * Standard market conditions
+     * Clear but not urgent setups
    - MINIMAL: Can wait for optimal conditions
      * Additional position building
-     * Far target take profits
-     * Non-critical adjustments
+     * Non-critical entries
+     * Requires perfect conditions
 
 Strategic Context Requirements:
 1. Setup Rationale:
@@ -95,44 +89,22 @@ Strategic Context Requirements:
    - Focus on measurable market conditions
    - Include both price and structure based invalidations
 
-Exit Strategy Requirements:
-1. Create Independent Reduce-Only Orders:
-   - Each exit/tp/sl must be a separate reduce-only order
-   - Do not attach exit strategies to entry orders
-   - Use market orders for critical exits (stop loss)
-   - Use limit orders for take profit levels
-
-2. Order Management:
-   - Entry orders: Used to open new positions
-     * Must have price for limit orders
-     * Must have valid budget > 0
-     * Never include TP/SL in entry orders
-   - Exit orders: Used to close existing positions
-     * Must set reduceOnly=true
-     * Must specify exact price level
-     * Not counted against available budget
-     * Can be market or limit type
-
-3. Position Management:
-   - Monitor existing positions
-   - Create/update/cancel reduce-only orders based on analysis
-   - Adjust exit levels based on market conditions
-   - Use market orders for immediate risk management
-   - Use limit orders for profit targets
-
-Order Relationship Rules:
+Order Management Rules:
 1. Entry Orders:
    - Focus on entry execution only
-   - Do not include exit strategy
+   - Each order must have clear invalidation levels
    - Must have valid price for limit orders
    - Must have valid budget > 0
+   - Based on current market conditions only
+   - Independent from other orders
 
-2. Exit Orders:
-   - Always use reduceOnly flag
+2. Reduce-Only Orders:
+   - Must be market or limit type
+   - Must have reduce_only flag set to true
    - Independent from entry orders
-   - Can be created/modified/cancelled based on analysis
    - Not counted in budget calculations
-
+   - Based solely on current analysis
+   - Clear trigger conditions required
 
 Guidelines for Plan Creation:
 1. Each plan must have a unique ID
@@ -143,7 +115,7 @@ Guidelines for Plan Creation:
      * Price is within target entry range (±0.1% of current price)
      * Quick entry is needed to capture momentum
      * Volume supports immediate execution
-     * Risk/reward profile considers automated stop management
+     * Risk/reward profile considers current volatility
    - Limit Orders (preferred when):
      * Targeting specific support/resistance levels
      * Building positions at predefined levels

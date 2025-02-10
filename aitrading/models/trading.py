@@ -42,21 +42,6 @@ class RiskLevel(str, Enum):
     NORMAL = "normal"         # Standard execution
     MINIMAL = "minimal"       # Can wait for better price
 
-class ExitStrategy(BaseModel):
-    """Detailed exit strategy specification."""
-    price_level: float
-    size_percentage: float = Field(gt=0, le=100)
-    execution_type: OrderExecutionType
-    risk_level: RiskLevel
-    conditions: List[str] = Field(
-        default_factory=list,
-        description="Market conditions that should be met"
-    )
-    fallback_price: Optional[float] = Field(
-        None,
-        description="Fallback price if primary level missed"
-    )
-
 class PlannedOrder(BaseModel):
     """Complete planned order specification."""
     id: int = Field(default=0, description="Progressive number starting from 1")
@@ -68,10 +53,6 @@ class PlannedOrder(BaseModel):
     strategic_context: StrategicContext = Field(
         ...,
         description="Strategic context for evaluating order validity"
-    )
-    child_orders: List['ChildOrder'] = Field(
-        default_factory=list,
-        description="Associated exit and protection orders"
     )
     order_link_id: Optional[str] = Field(
         None,
@@ -92,28 +73,6 @@ class PlannedOrder(BaseModel):
             self.order_link_id = f"{plan_id}-{session_id}-{order_num}"
             self.id = order_num
 
-    @validator('child_orders')
-    def validate_child_orders(cls, v: List['ChildOrder'], values: Dict[str, Any]) -> List['ChildOrder']:
-        """Validate that child orders form a complete exit strategy."""
-        if not v:
-            return v
-
-        # Check total exit percentage
-        total_percentage = sum(order.parameters.size_percentage for order in v)
-        if not (99.9 <= total_percentage <= 100.1):  # Allow small floating point differences
-            raise ValueError(f"Total exit percentage must be 100%, got {total_percentage}%")
-
-        # Check for required order types
-        has_protection = any(order.role == OrderRole.PROTECT for order in v)
-        has_profit = any(order.role == OrderRole.PROFIT for order in v)
-
-        if not has_protection:
-            raise ValueError("Missing protection (stop loss) orders")
-        if not has_profit:
-            raise ValueError("Missing profit taking orders")
-
-        return v
-
 class TradingParameters(BaseModel):
     """Input parameters for trading plan generation."""
     symbol: str
@@ -122,10 +81,6 @@ class TradingParameters(BaseModel):
     stop_loss_config: Optional[Dict] = Field(
         default=None,
         description="Optional configuration for automated stop loss management"
-    )
-    exit_strategies: Optional[List[ExitStrategy]] = Field(
-        default=None,
-        description="Pre-defined exit strategies to consider"
     )
 
 class TradingPlan(BaseModel):
@@ -178,26 +133,11 @@ class TradingPlan(BaseModel):
                     raise ValueError(f"Duplicate order link ID: {order.order_link_id}")
                 order_link_ids.add(order.order_link_id)
 
-            # Ensure child orders are properly set for reduce-only
-            if order.child_orders:
-                for child in order.child_orders:
-                    if not child.parameters.reduce_only:
-                        raise ValueError(f"Child order {child.role} must be reduce-only")
-
-        # Ensure IDs are sequential starting from 1
-        #expected_ids = set(range(1, len(v) + 1))
-        #if order_ids != expected_ids:
-        #    raise ValueError("Order IDs must be sequential starting from 1")
-
         return v
 
     def get_total_budget_required(self) -> float:
         """Calculate total budget required for all orders."""
-        return sum(
-            order.order.entry.budget
-            for order in self.orders
-            if not any(child.parameters.reduce_only for child in order.child_orders)
-        )
+        return sum(order.order.entry.budget for order in self.orders)
 
     model_config = {
         "json_schema_extra": {
@@ -213,8 +153,7 @@ class TradingPlan(BaseModel):
                         "stop_loss_config": {
                             "timeframe": "1H",
                             "initial_multiplier": 1.5,
-                            "first_profit_multiplier": 2.0,
-                            "second_profit_multiplier": 2.5
+                            "in_profit_multiplier": 2.0
                         }
                     },
                     "cancellations": [
