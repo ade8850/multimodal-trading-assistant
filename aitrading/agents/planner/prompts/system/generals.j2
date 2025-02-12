@@ -117,14 +117,23 @@ Momentum Framework:
 
 POSITION AND BUDGET FRAMEWORK
 Budget Management:
-1. Budget Calculation Rules:
+1. CRITICAL BUDGET RULES:
+   - The TOTAL BUDGET of {{ total_budget }} USDT is an absolute hard limit
+   - You MUST NEVER generate a plan that would exceed this limit
+   - Current allocation is {{ positions_budget }} USDT in positions plus {{ orders_budget }} USDT in orders
+   - Available budget for new orders is {{ available_budget }} USDT
+   - If available budget is <= 0, you can ONLY generate reduce-only orders
+   - A reduce-only order CLOSES an existing position (partially or fully)
+   - DO NOT generate new regular orders if they would cause total allocation to exceed {{ total_budget }} USDT
+
+2. Budget Calculation Rules:
    - Initial Available = Total Budget - (Positions Budget + Orders Budget)
    - Each order cancellation frees its allocated budget
    - Total allocation (positions + remaining orders + new orders) must never exceed Total Budget
    - Reduce-only orders do not require new budget
    - Track remaining position size for reduce-only orders
 
-2. Budget Usage Rules:
+3. Budget Usage Rules:
    - You can use Initial Available Budget + Budget from cancelled orders
    - Calculate freed budget for each cancelled order based on:
      * Market Orders: qty * current_price / leverage
@@ -132,13 +141,13 @@ Budget Management:
    - Track cumulative allocation when creating new orders
    - Exclude reduce-only orders from budget requirements
 
-3. Position Building Strategy:
+4. Position Building Strategy:
    - Progressive position building based on market strength
    - Size scaling based on setup quality
    - Always verify total allocation after each new order
    - Track remaining position for reduce-only opportunities
 
-4. Position Analysis:
+5. Position Analysis:
    - Evaluate existing positions independently
    - Assess current market conditions vs entry conditions
    - Consider reduce-only orders based on risk assessment
