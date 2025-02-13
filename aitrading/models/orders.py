@@ -4,6 +4,7 @@ from typing import Optional, Literal, List
 from pydantic import BaseModel, Field, validator
 from enum import Enum
 
+from .strategy import StrategicContext
 from .time_base import TimeBasedModel
 
 
@@ -74,6 +75,10 @@ class ExistingOrder(TimeBasedModel):
         description="ID of parent order if this is a child order"
     )
     reduce_only: bool = False
+    strategic_context: Optional[StrategicContext] = Field(
+        None,
+        description="Strategic context and rationale for this order"
+    )
 
     @classmethod
     def from_exchange_data(cls, data: dict) -> "ExistingOrder":

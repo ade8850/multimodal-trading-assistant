@@ -46,6 +46,13 @@ def init_container(llm_provider: str) -> Container:
             "api_key": (os.getenv("ANTHROPIC_API_KEY") if llm_provider == "anthropic"
                         else os.getenv("GEMINI_API_KEY") if llm_provider == "gemini"
             else os.getenv("OPENAI_API_KEY"))
+        },
+        "redis": {
+            "enabled": True,
+            "host": os.getenv("REDIS_HOST", "localhost"),
+            "port": int(os.getenv("REDIS_PORT", 6379)),
+            "db": int(os.getenv("REDIS_DB", 0)),
+            "password": os.getenv("REDIS_PASSWORD", ""),
         }
     })
 

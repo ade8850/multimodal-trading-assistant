@@ -5,29 +5,12 @@ from enum import Enum
 
 from .base import generate_uuid_short
 from .orders import Order, OrderCancellation, OrderRole
+from .strategy import StrategicContext
 
 class Range24h(BaseModel):
     """24-hour price range."""
     high: float
     low: float
-
-class StrategicContext(BaseModel):
-    """Strategic context for order evaluation and management."""
-    setup_rationale: str = Field(
-        description="Original market setup and key technical conditions"
-    )
-    market_bias: str = Field(
-        description="Overall market bias and trend context"
-    )
-    key_levels: List[float] = Field(
-        description="Critical price levels for this setup"
-    )
-    catalysts: List[str] = Field(
-        description="Market conditions or events supporting this setup"
-    )
-    invalidation_conditions: List[str] = Field(
-        description="Specific market conditions that would invalidate this setup"
-    )
 
 class OrderExecutionType(str, Enum):
     """Specifies how the order should be executed."""

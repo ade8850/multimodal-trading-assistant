@@ -150,6 +150,7 @@ class PlanGenerator:
 
                 # Fetch strategic context for each order
                 for order in raw_orders:
+                    order: ExistingOrder
                     try:
                         context_data = self.order_context.get_context(order.order_link_id)
                         if context_data and "data" in context_data:
@@ -195,22 +196,30 @@ class PlanGenerator:
                     context_data = self.order_context.get_context(order.order_link_id)
                     if context_data and "data" in context_data:
                         context = StrategicContext(**context_data["data"])
-                        order_dict["strategic_context"] = _convert_pydantic_to_dict(context)
-
-                        # Load child order contexts if this is a parent order
-                        if hasattr(order, 'child_orders') and order.child_orders:
-                            child_contexts = []
-                            for child in order.child_orders:
-                                child_link_id = f"{order.order_link_id}-{child.role.value}"
-                                child_context = self.order_context.get_context(child_link_id)
-                                if child_context and "data" in child_context:
-                                    child_contexts.append({
-                                        "role": child.role.value,
-                                        "context": child_context["data"]
-                                    })
-                            order_dict["child_contexts"] = child_contexts
+                        # Ensure strategic context is properly structured
+                        order_dict["strategic_context"] = {
+                            "setup_rationale": context.setup_rationale,
+                            "market_bias": context.market_bias,
+                            "key_levels": context.key_levels,
+                            "catalysts": context.catalysts,
+                            "invalidation_conditions": context.invalidation_conditions
+                        }
+                    else:
+                        # Provide empty but structured strategic context
+                        order_dict["strategic_context"] = {
+                            "setup_rationale": "Not available",
+                            "market_bias": "Not available",
+                            "key_levels": [],
+                            "catalysts": [],
+                            "invalidation_conditions": []
+                        }
 
                     processed_orders.append(order_dict)
+
+                    logfire.debug("Processed order with context",
+                                  order_id=order.id,
+                                  order_link_id=order.order_link_id,
+                                  has_context=bool(context_data))
 
                 except Exception as e:
                     logfire.error("Failed to process order",

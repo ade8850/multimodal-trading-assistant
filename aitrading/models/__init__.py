@@ -6,8 +6,9 @@ from .orders import (
     ExistingOrder, OrderCancellation
 )
 from .trading import (
-    TradingParameters, TradingPlan, PlanResponse, PlannedOrder, StrategicContext
+    TradingParameters, TradingPlan, PlanResponse, PlannedOrder
 )
+from .strategy import StrategicContext
 from .validity import (
     PriceLevel, Range24h, Rationale,
     InvalidationConditions, Validity

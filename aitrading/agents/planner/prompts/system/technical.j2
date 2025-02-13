@@ -155,8 +155,7 @@ Current stop loss levels provide important context for risk assessment and posit
   Status: {{ order.status }}
   Created: {{ order.created_at }}
   Age: {{ "%.1f"|format(order.age_hours if order.age_hours else 0) }} hours
-
-Strategic Context:
+  Strategic Context:
   Setup Rationale: {{ order.strategic_context.setup_rationale if order.strategic_context else "Not available" }}
   Market Bias: {{ order.strategic_context.market_bias if order.strategic_context else "Not available" }}
   Key Levels: {{ order.strategic_context.key_levels if order.strategic_context else [] }}
