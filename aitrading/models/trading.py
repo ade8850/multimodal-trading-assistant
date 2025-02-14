@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, validator
 from enum import Enum
 
 from .base import generate_uuid_short
-from .orders import Order, OrderCancellation, OrderRole
+from .orders import Order, OrderCancellation
 from .strategy import StrategicContext
 
 class ExecutionMode(str, Enum):
