@@ -31,6 +31,12 @@ and must be in the opposite direction of the position being reduced.
 No open positions. Reduce-only orders are not available.
 {% endif %}
 
+# for order_link_id
+Plan ID: {{ plan_id }}
+Session ID: {{ session_id }}
+
+Current Datetime: {{ current_datetime }}
+
 {% if current_positions %}
 # Current Positions:
 {% for position in current_positions %}
