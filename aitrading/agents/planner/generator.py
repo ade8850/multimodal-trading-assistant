@@ -67,6 +67,7 @@ class PlanGenerator:
         self.ai_client = ai_client
         self.system_template = system_template
         self.order_context = order_context
+        self.positions_orders = None
 
     def generate(self, params: TradingParameters) -> TradingPlan:
         """Generate a complete trading plan."""
@@ -82,12 +83,12 @@ class PlanGenerator:
                 market_data = self._analyze_market(params.symbol)
 
                 # Get current positions and orders
-                positions_orders = self._fetch_positions_orders(params.symbol)
+                self.positions_orders = self._fetch_positions_orders(params.symbol)
 
                 # Calculate allocated budgets
                 positions_budget, orders_budget = self._calculate_allocated_budget(
-                    positions_orders["current_positions"],
-                    positions_orders["existing_orders"],
+                    self.positions_orders["current_positions"],
+                    self.positions_orders["existing_orders"],
                     market_data["current_price"]
                 )
 
@@ -95,7 +96,7 @@ class PlanGenerator:
                 template_vars = self._prepare_template_vars(
                     params=params,
                     market_data=market_data,
-                    positions_orders=positions_orders,
+                    positions_orders=self.positions_orders,
                     positions_budget=positions_budget,
                     orders_budget=orders_budget
                 )
@@ -116,8 +117,7 @@ class PlanGenerator:
                 # Create and validate trading plan
                 trading_plan = self._create_trading_plan(
                     plan_data=plan_data,
-                    params=params,
-                    current_positions=positions_orders["current_positions"]
+                    params=params
                 )
 
                 logfire.info("Trading plan generated", symbol=params.symbol)
@@ -132,35 +132,36 @@ class PlanGenerator:
         with logfire.span("market_analysis"):
             return self.market_analyzer.analyze_market(symbol)
 
-    def _create_trading_plan(self, plan_data: Dict, params: TradingParameters, current_positions: List[Position]) -> TradingPlan:
+    def _create_trading_plan(self, plan_data: Dict, params: TradingParameters) -> TradingPlan:
         """Create and validate trading plan from AI response."""
         try:
-            # Validate and process each order before creating the plan
+            # Process orders - check for reduce-only conditions
             processed_orders = []
+
             for order_data in plan_data.get('orders', []):
-                # Determina se l'ordine deve essere reduce-only basandosi sulla presenza di posizioni esistenti
-                # e sulla direzione dell'ordine rispetto alla posizione
+                # Determine if the order should be reduce-only by checking against current positions
+                current_positions = self.positions_orders["current_positions"]
                 if current_positions:
                     current_position = current_positions[0]
                     is_reduce_only = (
-                        (current_position.side == "Buy" and order_data["type"] == "short") or
-                        (current_position.side == "Sell" and order_data["type"] == "long")
+                            (current_position.side == "Buy" and order_data["type"] == "short") or
+                            (current_position.side == "Sell" and order_data["type"] == "long")
                     )
                     if is_reduce_only:
                         order_data["reduce_only"] = True
-                        # Assicurati che l'ordine abbia i parametri corretti per un reduce-only
+                        # Make sure reduce-only orders use position's leverage
                         order_data["order"]["entry"]["leverage"] = current_position.leverage
                 else:
                     order_data["reduce_only"] = False
 
-                # Crea l'ordine pianificato con la proprietà reduce_only
+                # Create the planned order with reduce_only property
                 planned_order = PlannedOrder(**order_data)
                 processed_orders.append(planned_order)
 
                 logfire.debug("Processed order",
-                            order_id=planned_order.id,
-                            type=planned_order.type,
-                            reduce_only=planned_order.reduce_only)
+                              order_id=planned_order.id,
+                              type=planned_order.type,
+                              reduce_only=planned_order.reduce_only)
 
             # Create trading plan with processed orders
             trading_plan = TradingPlan(
@@ -181,7 +182,7 @@ class PlanGenerator:
                     )
                     if not success:
                         logfire.warning("Failed to save strategic context",
-                                      order_link_id=order.order_link_id)
+                                        order_link_id=order.order_link_id)
 
             # Add tags for logging
             tags = ["plan", params.symbol]
@@ -248,7 +249,6 @@ class PlanGenerator:
             "existing_orders": existing_orders
         }
 
-
     def _process_existing_orders(self, orders: List[ExistingOrder]) -> List[Dict[str, Any]]:
         """Process existing orders and their strategic context."""
         try:
@@ -299,7 +299,6 @@ class PlanGenerator:
         except Exception as e:
             logfire.exception("Failed to process existing orders", error=str(e))
             raise
-
     def _calculate_position_limits(self, positions: List[Position]) -> Dict[str, float]:
         """Calculate position-based limits for reduce-only orders."""
         try:
@@ -415,45 +414,6 @@ class PlanGenerator:
                 raise ValueError("AI response missing plan data")
             return response_dict['plan']
 
-    def _create_trading_plan(self, plan_data: Dict, params: TradingParameters) -> TradingPlan:
-        """Create and validate trading plan from AI response."""
-        try:
-            # Create trading plan using only the fields we need
-            trading_plan = TradingPlan(
-                id=plan_data['id'],
-                session_id=plan_data['session_id'],
-                parameters=params,
-                orders=plan_data.get('orders', []),
-                cancellations=plan_data.get('cancellations'),
-                analysis=plan_data['analysis']
-            )
-
-            # Save strategic context for each new order and its children
-            for order in trading_plan.orders:
-                if hasattr(order, 'strategic_context'):
-                    success = self.order_context.save_context(
-                        order_link_id=order.order_link_id,
-                        context=order.strategic_context
-                    )
-                    if not success:
-                        logfire.warning("Failed to save strategic context",
-                                        order_link_id=order.order_link_id)
-
-            # Add tags for logging
-            tags = ["plan", params.symbol]
-            if trading_plan.orders and len(trading_plan.orders):
-                tags.append("orders")
-            if trading_plan.cancellations and len(trading_plan.cancellations):
-                tags.append("cancellations")
-
-            logfire.info("Trading plan created",
-                         _tags=tags,
-                         **_convert_pydantic_to_dict(trading_plan))
-            return trading_plan
-
-        except Exception as e:
-            logfire.error("Failed to create trading plan", error=str(e))
-            raise
     def _calculate_positions_budget(self, positions: list, current_price: float) -> float:
         """Calculate total budget allocated in open positions."""
         total_budget = 0.0
