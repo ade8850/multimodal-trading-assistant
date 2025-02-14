@@ -2,7 +2,7 @@ from typing import Dict, List
 import time
 import logfire
 
-from ...models import TradingPlan, OrderCancellation, ChildOrder, OrderRole
+from ...models import TradingPlan, OrderCancellation
 from ...tools.bybit.market_data import MarketDataTool
 from ...tools.bybit.orders import OrdersTool
 from ...tools.stop_loss import StopLossManager, StopLossConfig
@@ -54,7 +54,7 @@ class PlanExecutor:
                 if plan.orders:
                     logfire.info("Processing orders",
                                  count=len(plan.orders))
-                    results["orders"] = self._execute_orders_with_children(plan)
+                    results["orders"] = self._execute_orders(plan)
 
                 # Log execution summary
                 success_metrics = {
@@ -79,16 +79,13 @@ class PlanExecutor:
                               error=str(e))
             raise Exception(f"Error executing trading plan: {str(e)}")
 
-    def _execute_orders_with_children(self, plan: TradingPlan) -> List[Dict]:
-        """Execute parent orders and their associated child orders.
-        NOTE: the concept of child orders has been removed, the function name is historical
-        """
-
+    def _execute_orders(self, plan: TradingPlan) -> List[Dict]:
+        """Execute orders in the trading plan."""
         results = []
 
         for order in plan.orders:
             try:
-                with logfire.span("execute_order_group") as span:
+                with logfire.span("execute_order") as span:
                     span.set_attributes({
                         "order_id": order.id,
                         "order_link_id": order.order_link_id,
@@ -106,8 +103,8 @@ class PlanExecutor:
                         leverage=order.order.entry.leverage
                     )
 
-                    # Place main entry order
-                    logfire.info("Placing main order",
+                    # Place main order
+                    logfire.info("Placing order",
                                  order_id=order.id,
                                  order_link_id=order.order_link_id,
                                  symbol=order.symbol,
@@ -116,16 +113,15 @@ class PlanExecutor:
                     entry_result = self.orders.place_strategy_orders(order)
 
                     if entry_result.get("errors"):
-                        raise ValueError(f"Entry order execution failed: {entry_result['errors']}")
+                        raise ValueError(f"Order execution failed: {entry_result['errors']}")
 
-                    main_order_result = {
+                    order_result = {
                         "order_id": order.id,
                         "order_link_id": order.order_link_id,
-                        "result": entry_result,
-                        "child_orders": []
+                        "result": entry_result
                     }
 
-                    results.append(main_order_result)
+                    results.append(order_result)
 
             except Exception as e:
                 logfire.error("Order execution failed",

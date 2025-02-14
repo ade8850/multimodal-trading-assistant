@@ -109,31 +109,37 @@ class OrdersTool:
             # Get instrument info
             instrument_info = get_instrument_info(self.session, order.symbol)
 
-            # Determine if this is a reduce-only order by checking position direction
-            is_reduce_only = False
-            base_position_size = None
+            # Se l'ordine è reduce-only, verifica che esista una posizione e che la direzione sia corretta
             current_positions = self.get_positions(order.symbol)
+            if order.reduce_only:  # Assumiamo che questa proprietà sia definita nell'ordine
+                if not current_positions:
+                    raise ValueError("Cannot place reduce-only order: no position exists")
 
-            if current_positions:
-                current_position = current_positions[0]  # Get first position
-                # Reduce-only if order direction is opposite to position
-                is_reduce_only = (
-                        (current_position.side == "Buy" and order.type == "short") or
-                        (current_position.side == "Sell" and order.type == "long")
+                current_position = current_positions[0]
+                valid_direction = (
+                    (current_position.side == "Buy" and order.type == "short") or
+                    (current_position.side == "Sell" and order.type == "long")
                 )
-                if is_reduce_only:
-                    base_position_size = current_position.size
-                    logfire.info("Processing reduce-only order",
-                                 position_side=current_position.side,
-                                 order_type=order.type,
-                                 position_size=base_position_size)
+                if not valid_direction:
+                    raise ValueError(
+                        f"Invalid reduce-only order direction: order {order.type} "
+                        f"for position {current_position.side}"
+                    )
 
-            # Execute main order with reduce-only parameters if applicable
+                base_position_size = current_position.size
+                logfire.info("Processing reduce-only order",
+                             position_side=current_position.side,
+                             order_type=order.type,
+                             position_size=base_position_size)
+            else:
+                base_position_size = None
+
+            # Execute order
             entry_result = execute_order_operations(
                 self.session,
                 order,
                 instrument_info,
-                is_reduce_only=is_reduce_only,
+                is_reduce_only=order.reduce_only,
                 base_position_size=base_position_size
             )
             results["entry"] = entry_result
@@ -141,7 +147,7 @@ class OrdersTool:
             # Check if we have successful entry order placement
             if not entry_result.get("errors") and entry_result.get("entry"):
                 logfire.info("Order placed successfully",
-                             is_reduce_only=is_reduce_only,
+                             is_reduce_only=order.reduce_only,
                              order_id=order.order_link_id)
 
             return results
@@ -153,87 +159,6 @@ class OrdersTool:
                               error=str(e))
             results["errors"].append(str(e))
             return results
-
-    def _place_exit_order(
-            self,
-            symbol: str,
-            parent_id: str,
-            parent_link_id: str,
-            exit_type: str,
-            side: str,
-            price: float,
-            size_percentage: float,
-            trigger_price: Optional[float] = None
-    ) -> Dict:
-        """Place an exit order (take profit or stop loss) with size as percentage of position."""
-        try:
-            with logfire.span("place_exit_order") as span:
-                span.set_attributes({
-                    "symbol": symbol,
-                    "exit_type": exit_type,
-                    "parent_id": parent_id,
-                    "size_percentage": size_percentage
-                })
-
-                # Get current position size to calculate exit order size
-                positions = self.get_positions(symbol)
-                if not positions:
-                    raise ValueError("No position found for exit order")
-
-                current_position = positions[0]
-                exit_size = float(current_position.size) * (size_percentage / 100)
-
-                chrs = string.ascii_letters + string.digits
-                rndstr = ''.join(random.choice(chrs) for _ in range(4))
-
-                # Ensure side is opposite to position
-                if current_position.side == "Buy":
-                    side = "Sell"
-                elif current_position.side == "Sell":
-                    side = "Buy"
-
-                # Prepare order parameters
-                params = {
-                    "category": "linear",
-                    "symbol": symbol,
-                    "side": side,
-                    "orderType": "Limit" if not trigger_price else "Trigger",
-                    "qty": str(exit_size),
-                    "price": str(price),
-                    "reduceOnly": True,
-                    "closeOnTrigger": True,
-                    "orderLinkId": f"{parent_link_id}-{exit_type}-{size_percentage}-{rndstr}"
-                }
-
-                if trigger_price:
-                    params["triggerPrice"] = str(trigger_price)
-                    params["triggerBy"] = "LastPrice"
-
-                logfire.info("Placing exit order",
-                             symbol=symbol,
-                             exit_type=exit_type,
-                             size_percentage=size_percentage,
-                             params=params)
-
-                # Place the order
-                response = self.session.place_order(**params)
-
-                if response["retCode"] != 0:
-                    raise ValueError(f"Failed to place exit order: {response['retMsg']}")
-
-                logfire.info("Exit order placed successfully",
-                             symbol=symbol,
-                             exit_type=exit_type,
-                             order_id=response["result"].get("orderId"))
-
-                return response["result"]
-
-        except Exception as e:
-            logfire.exception("Failed to place exit order",
-                              symbol=symbol,
-                              exit_type=exit_type,
-                              error=str(e))
-            raise Exception(f"Error placing exit order: {str(e)}")
 
     def set_trading_stops(self, symbol: str, position_idx: int = 0, **kwargs) -> Dict:
         """Set or update trading stop levels for a position."""

@@ -1,23 +1,20 @@
-import math
-import os
+from datetime import datetime, UTC
 from typing import Dict, Any, Tuple, List
-from jinja2 import Template
+
 import logfire
 
-from ...models import (
-    TradingParameters, TradingPlan, ExistingOrder,
-    PlannedOrder, StrategicContext
-)
-from ...models.orders import OrderRole
-from ...models.position import Position
+from ...models import TradingParameters, TradingPlan, ExistingOrder
+from ...models.orders import PlannedOrder, StrategicContext
 from ...tools.bybit.market_data import MarketDataTool
 from ...tools.bybit.orders import OrdersTool
 from ...tools.charts import ChartGeneratorTool
-from ...tools.volatility import VolatilityCalculator, TimeframeVolatility
 from ...tools.redis.order_context import OrderContext
-from .analysis import MarketAnalyzer
+from ...tools.volatility import VolatilityCalculator, TimeframeVolatility
+import os
+from jinja2 import Template
 from .base import BaseAIClient
-from datetime import datetime, UTC
+from .analysis import MarketAnalyzer
+from ...models.position import Position
 
 
 def _convert_pydantic_to_dict(obj: Any) -> Any:
@@ -119,7 +116,8 @@ class PlanGenerator:
                 # Create and validate trading plan
                 trading_plan = self._create_trading_plan(
                     plan_data=plan_data,
-                    params=params
+                    params=params,
+                    current_positions=positions_orders["current_positions"]
                 )
 
                 logfire.info("Trading plan generated", symbol=params.symbol)
@@ -133,6 +131,73 @@ class PlanGenerator:
         """Get complete market analysis including charts."""
         with logfire.span("market_analysis"):
             return self.market_analyzer.analyze_market(symbol)
+
+    def _create_trading_plan(self, plan_data: Dict, params: TradingParameters, current_positions: List[Position]) -> TradingPlan:
+        """Create and validate trading plan from AI response."""
+        try:
+            # Validate and process each order before creating the plan
+            processed_orders = []
+            for order_data in plan_data.get('orders', []):
+                # Determina se l'ordine deve essere reduce-only basandosi sulla presenza di posizioni esistenti
+                # e sulla direzione dell'ordine rispetto alla posizione
+                if current_positions:
+                    current_position = current_positions[0]
+                    is_reduce_only = (
+                        (current_position.side == "Buy" and order_data["type"] == "short") or
+                        (current_position.side == "Sell" and order_data["type"] == "long")
+                    )
+                    if is_reduce_only:
+                        order_data["reduce_only"] = True
+                        # Assicurati che l'ordine abbia i parametri corretti per un reduce-only
+                        order_data["order"]["entry"]["leverage"] = current_position.leverage
+                else:
+                    order_data["reduce_only"] = False
+
+                # Crea l'ordine pianificato con la proprietà reduce_only
+                planned_order = PlannedOrder(**order_data)
+                processed_orders.append(planned_order)
+
+                logfire.debug("Processed order",
+                            order_id=planned_order.id,
+                            type=planned_order.type,
+                            reduce_only=planned_order.reduce_only)
+
+            # Create trading plan with processed orders
+            trading_plan = TradingPlan(
+                id=plan_data['id'],
+                session_id=plan_data['session_id'],
+                parameters=params,
+                orders=processed_orders,
+                cancellations=plan_data.get('cancellations'),
+                analysis=plan_data['analysis']
+            )
+
+            # Save strategic context for each order
+            for order in trading_plan.orders:
+                if hasattr(order, 'strategic_context'):
+                    success = self.order_context.save_context(
+                        order_link_id=order.order_link_id,
+                        context=order.strategic_context
+                    )
+                    if not success:
+                        logfire.warning("Failed to save strategic context",
+                                      order_link_id=order.order_link_id)
+
+            # Add tags for logging
+            tags = ["plan", params.symbol]
+            if trading_plan.orders and len(trading_plan.orders):
+                tags.append("orders")
+            if trading_plan.cancellations and len(trading_plan.cancellations):
+                tags.append("cancellations")
+
+            logfire.info("Trading plan created",
+                         _tags=tags,
+                         **_convert_pydantic_to_dict(trading_plan))
+            return trading_plan
+
+        except Exception as e:
+            logfire.error("Failed to create trading plan", error=str(e))
+            raise
 
     def _fetch_positions_orders(self, symbol: str) -> Dict[str, Any]:
         """Fetch current positions and orders with their strategic context."""
@@ -182,6 +247,7 @@ class PlanGenerator:
             "current_positions": positions,
             "existing_orders": existing_orders
         }
+
 
     def _process_existing_orders(self, orders: List[ExistingOrder]) -> List[Dict[str, Any]]:
         """Process existing orders and their strategic context."""

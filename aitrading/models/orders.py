@@ -1,19 +1,24 @@
 # aitrading/models/orders.py
-
-from typing import Optional, Literal, List
-from pydantic import BaseModel, Field, validator
 from enum import Enum
+from typing import Optional, Literal
+from pydantic import BaseModel, Field, validator
 
 from .strategy import StrategicContext
 from .time_base import TimeBasedModel
 
+class OrderExecutionType(str, Enum):
+    """Specifies how the order should be executed."""
+    IMMEDIATE = "immediate"    # Execute immediately at market
+    PASSIVE = "passive"        # Wait for price to reach level
+    TRIGGER = "trigger"        # Execute when condition met
 
-class OrderRole(str, Enum):
-    """Role of the order in the trading strategy."""
-    ENTRY = "entry"  # Main entry order
-    PROTECT = "protect"  # Protection order (stop loss)
-    PROFIT = "profit"  # Take profit order
-    EXIT = "exit"  # Generic exit order
+
+class RiskLevel(str, Enum):
+    """Risk level for the order."""
+    CRITICAL = "critical"      # Must execute quickly
+    NORMAL = "normal"         # Standard execution
+    MINIMAL = "minimal"       # Can wait for better price
+
 
 
 class OrderEntry(BaseModel):
@@ -21,6 +26,12 @@ class OrderEntry(BaseModel):
     price: Optional[float] = None
     budget: float
     leverage: int
+    size_percentage: Optional[float] = Field(
+        None,
+        ge=0.0,
+        le=100.0,
+        description="Percentage of position to close, only for reduce-only orders"
+    )
 
 
 class OrderParameters(BaseModel):
@@ -36,22 +47,66 @@ class OrderParameters(BaseModel):
     position_idx: int = 0
 
 
-class ChildOrder(BaseModel):
-    """Definition of a child order (TP/SL) related to a parent order."""
-    role: OrderRole
-    parameters: OrderParameters
-    parent_order_id: Optional[str] = None
-    parent_link_id: Optional[str] = None
-
-
 class Order(BaseModel):
     """Complete order specification."""
     type: Literal["market", "limit"]
     entry: OrderEntry
-    child_orders: List[ChildOrder] = Field(
-        default_factory=list,
-        description="List of child orders (TP/SL) associated with this order"
+
+
+class Range24h(BaseModel):
+    """24-hour price range."""
+    high: float
+    low: float
+
+
+class PlannedOrder(BaseModel):
+    """Complete planned order specification."""
+    id: int = Field(default=0, description="Progressive number starting from 1")
+    type: Literal["long", "short"]
+    symbol: str
+    current_price: float
+    range_24h: Range24h
+    order: Order
+    strategic_context: StrategicContext = Field(
+        ...,
+        description="Strategic context for evaluating order validity"
     )
+    order_link_id: Optional[str] = Field(
+        None,
+        description="Must be in format '{plan_id}-{session_id}-{order_number}-{timestamp}'"
+    )
+    execution_type: OrderExecutionType = Field(
+        default=OrderExecutionType.PASSIVE,
+        description="How the order should be executed"
+    )
+    risk_level: RiskLevel = Field(
+        default=RiskLevel.NORMAL,
+        description="Risk level affecting execution priority"
+    )
+    reduce_only: bool = Field(
+        default=False,
+        description="If True, this order can only reduce an existing position"
+    )
+
+    @validator('reduce_only')
+    def validate_reduce_only(cls, v, values):
+        """Validate reduce-only orders."""
+        if not v:
+            return v
+
+        if not all(field in values for field in ['type', 'symbol']):
+            raise ValueError("Reduce-only orders must have type and symbol specified")
+
+        if 'order' not in values:
+            raise ValueError("Reduce-only orders must have order details")
+
+        # Validate size_percentage if present
+        entry = values['order'].entry
+        if hasattr(entry, 'size_percentage') and entry.size_percentage is not None:
+            if entry.size_percentage <= 0 or entry.size_percentage > 100:
+                raise ValueError("Size percentage must be between 0 and 100")
+
+        return v
 
 
 class ExistingOrder(TimeBasedModel):
@@ -66,14 +121,6 @@ class ExistingOrder(TimeBasedModel):
     status: str
     take_profit: Optional[float]
     stop_loss: Optional[float]
-    role: Optional[OrderRole] = Field(
-        None,
-        description="Role of the order in the strategy"
-    )
-    parent_order_id: Optional[str] = Field(
-        None,
-        description="ID of parent order if this is a child order"
-    )
     reduce_only: bool = False
     strategic_context: Optional[StrategicContext] = Field(
         None,
