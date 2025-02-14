@@ -1,7 +1,9 @@
 # aitrading/models/trading.py
-
+import time
 from typing import List, Optional, Dict, Literal, Union, Any
 from datetime import datetime
+
+import logfire
 from pydantic import BaseModel, Field, validator
 from enum import Enum
 
@@ -61,6 +63,7 @@ class RiskLevel(str, Enum):
     NORMAL = "normal"         # Standard execution
     MINIMAL = "minimal"       # Can wait for better price
 
+
 class PlannedOrder(BaseModel):
     """Complete planned order specification."""
     id: int = Field(default=0, description="Progressive number starting from 1")
@@ -75,7 +78,7 @@ class PlannedOrder(BaseModel):
     )
     order_link_id: Optional[str] = Field(
         None,
-        description="Must be in format '{plan_id}-{session_id}-{order_number}' using the provided plan_id and session_id"
+        description="Must be in format '{plan_id}-{session_id}-{order_number}-{timestamp}'"
     )
     execution_type: OrderExecutionType = Field(
         default=OrderExecutionType.PASSIVE,
@@ -87,9 +90,25 @@ class PlannedOrder(BaseModel):
     )
 
     def set_order_link_id(self, plan_id: str, session_id: str, order_num: int) -> None:
-        """Set the order_link_id using plan_id, session_id and order number and update id."""
+        """Set the order_link_id using plan_id, session_id, order number and timestamp.
+
+        Args:
+            plan_id: Unique plan identifier
+            session_id: Session identifier
+            order_num: Progressive order number
+
+        The order_link_id will be in format: {plan_id}-{session_id}-{order_num}-{timestamp}
+        where timestamp is in milliseconds to ensure global uniqueness.
+        """
         if not self.order_link_id:
-            self.order_link_id = f"{plan_id}-{session_id}-{order_num}"
+            timestamp = int(time.time() * 1000)  # millisecondi per unicità
+            self.order_link_id = f"{plan_id}-{session_id}-{order_num}-{timestamp}"
+            logfire.info("Generated order link id",
+                         order_link_id=self.order_link_id,
+                         plan_id=plan_id,
+                         session_id=session_id,
+                         order_num=order_num,
+                         timestamp=timestamp)
             self.id = order_num
 
 class TradingPlan(BaseModel):
