@@ -319,6 +319,11 @@ class PlanGenerator:
                     "atr_timeframe": params.stop_loss_config.get("timeframe") if params.stop_loss_config else "1H",
                     "volatility_metrics": volatility_metrics,
                     "current_datetime": datetime.now(UTC).isoformat(),
+                    # Add execution context parameters
+                    "parameters": {
+                        "execution_mode": params.execution_mode,
+                        "analysis_interval": params.analysis_interval
+                    }
                 }
 
                 logfire.info("Template variables prepared",
@@ -476,23 +481,47 @@ class PlanGenerator:
                                     positions_budget: float,
                                     orders_budget: float,
                                     position_limits: Dict[str, float]) -> Dict[str, float]:
-        """Calculate available budget considering reduce-only orders."""
+        """Calculate available budget considering reduce-only orders.
+
+        Args:
+            total_budget: Total trading budget
+            positions_budget: Budget allocated in positions
+            orders_budget: Budget allocated in pending orders
+            position_limits: Current position sizes and limits
+
+        Returns:
+            Dict containing:
+            - standard: Available budget for new positions
+            - reduce_only_long: Available size for reducing long positions
+            - reduce_only_short: Available size for reducing short positions
+            - total_long_available: Total long position size
+            - total_short_available: Total short position size
+        """
         try:
-            # Calculate standard available budget
+            # Calculate standard available budget (for new positions)
             base_available = total_budget - positions_budget - orders_budget
 
-            # Calculate available for reduce-only orders based on position sizes
+            # Calculate available for reduce-only based on position sizes
             available = {
+                # Standard budget can't go below 0
                 "standard": max(0.0, base_available),
+
+                # Reduce-only limits are based on position sizes
                 "reduce_only_long": position_limits["max_long_reduce"],
                 "reduce_only_short": position_limits["max_short_reduce"],
+
+                # Total position sizes for reference
                 "total_long_available": position_limits["total_long_size"],
                 "total_short_available": position_limits["total_short_size"]
             }
 
             logfire.info("Available budget calculated",
                          base_available=base_available,
-                         available=available)
+                         standard=available["standard"],
+                         reduce_only_long=available["reduce_only_long"],
+                         reduce_only_short=available["reduce_only_short"],
+                         total_long=available["total_long_available"],
+                         total_short=available["total_short_available"])
 
             return available
 

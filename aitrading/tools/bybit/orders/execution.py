@@ -1,13 +1,27 @@
 # aitrading/tools/bybit/orders/execution.py
 
-from typing import Dict
+from typing import Dict, Optional
 import logfire
 from .utils import get_current_price, get_instrument_info
 from .validation import calculate_quantity
 
 
-def execute_order_operations(session, order, instrument_info: Dict) -> Dict:
-    """Execute order operations including base params preparation and order placement."""
+def execute_order_operations(
+        session,
+        order,
+        instrument_info: Dict,
+        is_reduce_only: bool = False,
+        base_position_size: Optional[float] = None
+) -> Dict:
+    """Execute order operations including base params preparation and order placement.
+
+    Args:
+        session: Trading session
+        order: Order to execute
+        instrument_info: Instrument trading rules
+        is_reduce_only: Whether this is a reduce-only order
+        base_position_size: Base position size for reduce-only orders
+    """
     results = {"entry": None, "errors": []}
 
     try:
@@ -15,17 +29,26 @@ def execute_order_operations(session, order, instrument_info: Dict) -> Dict:
             span.set_attributes({
                 "order_id": order.id,
                 "order_link_id": order.order_link_id,
-                "symbol": order.symbol
+                "symbol": order.symbol,
+                "is_reduce_only": is_reduce_only
             })
 
             # Prepare base order parameters
-            base_params = _prepare_base_order_params(session, order, instrument_info)
+            base_params = _prepare_base_order_params(
+                session,
+                order,
+                instrument_info,
+                is_reduce_only=is_reduce_only,
+                base_position_size=base_position_size
+            )
 
             # Add order parameters based on order type
             order_params = _prepare_order_params(base_params, order)
 
             # Place the order
-            logfire.info("Placing order...", **order_params)
+            logfire.info("Placing order...",
+                         is_reduce_only=is_reduce_only,
+                         **order_params)
             results["entry"] = session.place_order(**order_params)
             logfire.info("Order placed successfully", result=results["entry"])
 
@@ -144,8 +167,22 @@ def cancel_order(session, symbol: str, order_id: str = None, order_link_id: str 
         raise Exception(f"Error cancelling order: {str(e)}")
 
 
-def _prepare_base_order_params(session, order, instrument_info: Dict) -> Dict:
-    """Prepare base order parameters."""
+def _prepare_base_order_params(
+        session,
+        order,
+        instrument_info: Dict,
+        is_reduce_only: bool = False,
+        base_position_size: Optional[float] = None
+) -> Dict:
+    """Prepare base order parameters.
+
+    Args:
+        session: Trading session
+        order: Order to prepare parameters for
+        instrument_info: Instrument trading rules
+        is_reduce_only: Whether this is a reduce-only order
+        base_position_size: Base position size for reduce-only orders
+    """
     try:
         with logfire.span("prepare_base_params"):
             # Calculate quantity
@@ -155,11 +192,16 @@ def _prepare_base_order_params(session, order, instrument_info: Dict) -> Dict:
                 else get_current_price(session, order.symbol)
             )
 
+            size_percentage = getattr(order.order.entry, 'size_percentage', None)
+
             quantity = calculate_quantity(
                 budget=order.order.entry.budget,
                 leverage=order.order.entry.leverage,
                 price=price_for_qty,
                 instrument_info=instrument_info,
+                is_reduce_only=is_reduce_only,
+                base_position_size=base_position_size,
+                size_percentage=size_percentage
             )
 
             # Base parameters
@@ -169,28 +211,31 @@ def _prepare_base_order_params(session, order, instrument_info: Dict) -> Dict:
                 "side": "Buy" if order.type == "long" else "Sell",
                 "orderType": order.order.type.title(),
                 "qty": quantity,
-                "isLeverage": 1,
+                "isLeverage": 0 if is_reduce_only else 1,  # No leverage for reduce-only
                 "timeInForce": "GTC",
                 "positionIdx": 0,
                 "orderLinkId": order.order_link_id
             }
 
-            # Add reduceOnly and closeOnTrigger for exit orders
-            if hasattr(order, 'role') and order.role in ['protect', 'profit', 'exit']:
+            # Add reduce-only flags if applicable
+            if is_reduce_only:
                 params["reduceOnly"] = True
                 params["closeOnTrigger"] = True
+                logfire.info("Adding reduce-only flags to order")
 
             # Add price for limit orders only
             if order.order.type == "limit":
                 params["price"] = round_price(order.order.entry.price, order.symbol, session)
 
-            logfire.info("Prepared base parameters", params=params)
+            logfire.info("Prepared base parameters",
+                         is_reduce_only=is_reduce_only,
+                         params=params)
             return params
 
     except Exception as e:
         logfire.exception("Error preparing order params",
-                       order_id=order.id,
-                       error=str(e))
+                          order_id=order.id,
+                          error=str(e))
         raise Exception(f"Error preparing order params for Order #{order.id}: {str(e)}")
 
 

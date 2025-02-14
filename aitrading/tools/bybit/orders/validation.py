@@ -79,6 +79,13 @@ def calculate_quantity(
             # Ensure minimum quantity
             final_qty = str(max(qty, min_qty))
 
+            # For reduce-only orders, ensure quantity doesn't exceed position size
+            if is_reduce_only and float(final_qty) > base_position_size:
+                logfire.warning("Reduce-only quantity exceeds position size, adjusting",
+                              calculated_qty=final_qty,
+                              position_size=base_position_size)
+                final_qty = str(base_position_size)
+
             logfire.info("Quantity calculation completed",
                          raw_quantity=raw_qty,
                          final_quantity=final_qty,

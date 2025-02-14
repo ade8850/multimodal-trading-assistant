@@ -1,3 +1,5 @@
+# aitrading/models/trading.py
+
 from typing import List, Optional, Dict, Literal, Union, Any
 from datetime import datetime
 from pydantic import BaseModel, Field, validator
@@ -7,6 +9,40 @@ from .base import generate_uuid_short
 from .orders import Order, OrderCancellation, OrderRole
 from .strategy import StrategicContext
 
+class ExecutionMode(str, Enum):
+    """Mode of execution for the trading system."""
+    SCHEDULER = "scheduler"  # Continuous monitoring with fixed intervals
+    MANUAL = "manual"     # One-time analysis via UI
+
+class TradingParameters(BaseModel):
+    """Input parameters for trading plan generation."""
+    symbol: str
+    budget: float = Field(ge=10)
+    leverage: int = Field(ge=1, le=100)
+    stop_loss_config: Optional[Dict] = Field(
+        default=None,
+        description="Optional configuration for automated stop loss management"
+    )
+    execution_mode: ExecutionMode = Field(
+        default=ExecutionMode.MANUAL,
+        description="Whether this is a scheduler run or manual analysis"
+    )
+    analysis_interval: Optional[int] = Field(
+        default=None,
+        description="Minutes between analyses for scheduler mode"
+    )
+
+    @validator('analysis_interval')
+    def validate_interval(cls, v, values):
+        """Validate that interval is set for scheduler mode."""
+        if values.get('execution_mode') == ExecutionMode.SCHEDULER and v is None:
+            raise ValueError("analysis_interval must be set when execution_mode is scheduler")
+        return v
+
+    class Config:
+        use_enum_values = True
+
+# Il resto delle classi rimane invariato
 class Range24h(BaseModel):
     """24-hour price range."""
     high: float
@@ -55,16 +91,6 @@ class PlannedOrder(BaseModel):
         if not self.order_link_id:
             self.order_link_id = f"{plan_id}-{session_id}-{order_num}"
             self.id = order_num
-
-class TradingParameters(BaseModel):
-    """Input parameters for trading plan generation."""
-    symbol: str
-    budget: float = Field(ge=10)
-    leverage: int = Field(ge=1, le=100)
-    stop_loss_config: Optional[Dict] = Field(
-        default=None,
-        description="Optional configuration for automated stop loss management"
-    )
 
 class TradingPlan(BaseModel):
     """Complete trading plan including parameters and planned orders."""

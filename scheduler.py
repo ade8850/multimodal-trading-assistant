@@ -16,7 +16,7 @@ import logfire
 
 from aitrading.models import TradingParameters
 from aitrading.container import Container
-
+from aitrading.models.trading import ExecutionMode
 
 # Install rich traceback handler
 install(show_locals=True)
@@ -108,7 +108,10 @@ class TradingScheduler:
                 symbol=symbol,
                 budget=float(params["budget"]),
                 leverage=int(params["leverage"]),
-                stop_loss_config=self.config.get("stop_loss")
+                stop_loss_config=self.config.get("stop_loss"),
+                # Add execution context
+                execution_mode=ExecutionMode.SCHEDULER,
+                analysis_interval=self.config.get("interval_minutes")
             )
 
             # Generate and execute trading plan
@@ -119,7 +122,12 @@ class TradingScheduler:
 
             if trading_plan:
                 with logfire.span("executing_plan") as span:
-                    span.set_attribute("symbol", symbol)
+                    span.set_attributes({
+                        "symbol": symbol,
+                        "execution_mode": trading_params.execution_mode,
+                        "interval": trading_params.analysis_interval
+                    })
+
                     # Execute the plan
                     result = planner.execute_plan(trading_plan)
 

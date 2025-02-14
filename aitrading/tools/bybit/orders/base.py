@@ -109,56 +109,40 @@ class OrdersTool:
             # Get instrument info
             instrument_info = get_instrument_info(self.session, order.symbol)
 
-            # Execute main order
-            entry_result = execute_order_operations(self.session, order, instrument_info)
+            # Determine if this is a reduce-only order by checking position direction
+            is_reduce_only = False
+            base_position_size = None
+            current_positions = self.get_positions(order.symbol)
+
+            if current_positions:
+                current_position = current_positions[0]  # Get first position
+                # Reduce-only if order direction is opposite to position
+                is_reduce_only = (
+                        (current_position.side == "Buy" and order.type == "short") or
+                        (current_position.side == "Sell" and order.type == "long")
+                )
+                if is_reduce_only:
+                    base_position_size = current_position.size
+                    logfire.info("Processing reduce-only order",
+                                 position_side=current_position.side,
+                                 order_type=order.type,
+                                 position_size=base_position_size)
+
+            # Execute main order with reduce-only parameters if applicable
+            entry_result = execute_order_operations(
+                self.session,
+                order,
+                instrument_info,
+                is_reduce_only=is_reduce_only,
+                base_position_size=base_position_size
+            )
             results["entry"] = entry_result
 
             # Check if we have successful entry order placement
             if not entry_result.get("errors") and entry_result.get("entry"):
-                # Handle exit order configuration if present
-                if False:  ## EXIT ORDER SHOULD NOT BE PLACED HERE
-                #if hasattr(order.order, "exit") and order.order.exit:
-                    try:
-                        with logfire.span("setup_exit_orders") as span:
-                            span.set_attributes({
-                                "symbol": order.symbol,
-                                "order_link_id": order.order_link_id
-                            })
-
-                            # Configure take profit levels
-                            if order.order.exit.take_profit:
-                                for tp_level in order.order.exit.take_profit:
-                                    self._place_exit_order(
-                                        symbol=order.symbol,
-                                        parent_id=entry_result["entry"]["result"]["orderId"],
-                                        parent_link_id=order.order_link_id,
-                                        exit_type="profit",
-                                        side="Sell" if order.type == "long" else "Buy",
-                                        price=tp_level.price,
-                                        size_percentage=tp_level.size_percentage,
-                                        trigger_price=tp_level.trigger_price
-                                    )
-
-                            # Configure stop loss levels
-                            if order.order.exit.stop_loss:
-                                for sl_level in order.order.exit.stop_loss:
-                                    self._place_exit_order(
-                                        symbol=order.symbol,
-                                        parent_id=entry_result["entry"]["result"]["orderId"],
-                                        parent_link_id=order.order_link_id,
-                                        exit_type="protect",
-                                        side="Sell" if order.type == "long" else "Buy",
-                                        price=sl_level.price,
-                                        size_percentage=sl_level.size_percentage,
-                                        trigger_price=sl_level.trigger_price
-                                    )
-
-                    except Exception as e:
-                        logfire.warning("Failed to set exit orders",
-                                        symbol=order.symbol,
-                                        order_link_id=order.order_link_id,
-                                        error=str(e))
-                        results["errors"].append(f"Exit orders setup failed: {str(e)}")
+                logfire.info("Order placed successfully",
+                             is_reduce_only=is_reduce_only,
+                             order_id=order.order_link_id)
 
             return results
 
@@ -202,7 +186,7 @@ class OrdersTool:
                 chrs = string.ascii_letters + string.digits
                 rndstr = ''.join(random.choice(chrs) for _ in range(4))
 
-                # always opposite
+                # Ensure side is opposite to position
                 if current_position.side == "Buy":
                     side = "Sell"
                 elif current_position.side == "Sell":

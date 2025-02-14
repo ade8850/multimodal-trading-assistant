@@ -6,7 +6,7 @@ from .orders import (
     ExistingOrder, OrderCancellation
 )
 from .trading import (
-    TradingParameters, TradingPlan, PlanResponse, PlannedOrder
+    TradingParameters, TradingPlan, PlanResponse, PlannedOrder, ExecutionMode
 )
 from .strategy import StrategicContext
 from .validity import (
@@ -22,4 +22,5 @@ __all__ = [
     'PriceLevel', 'Range24h', 'Rationale',
     'InvalidationConditions', 'Validity',
     'PlannedOrder', 'StrategicContext',
+    'ExecutionMode',
 ]

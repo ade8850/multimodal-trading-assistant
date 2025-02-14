@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 from dependency_injector.wiring import inject, Provide
 
-from aitrading.models import TradingParameters
+from aitrading.models import TradingParameters, ExecutionMode
 from aitrading.container import Container
 from app_state.redis_provider import RedisProvider
 from app_state.redis_state import RedisState
@@ -44,8 +44,8 @@ def init_container(llm_provider: str) -> Container:
         "llm": {
             "provider": llm_provider,
             "api_key": (os.getenv("ANTHROPIC_API_KEY") if llm_provider == "anthropic"
-                        else os.getenv("GEMINI_API_KEY") if llm_provider == "gemini"
-            else os.getenv("OPENAI_API_KEY"))
+                       else os.getenv("GEMINI_API_KEY") if llm_provider == "gemini"
+                       else os.getenv("OPENAI_API_KEY"))
         },
         "redis": {
             "enabled": True,
@@ -141,20 +141,29 @@ def render_strategy_ui(container: Container = Provide[Container]):
                     symbol=symbol,
                     budget=budget,
                     leverage=leverage,
-                    stop_loss_config={"timeframe": timeframe}  # Used only for analysis reference
+                    stop_loss_config={"timeframe": timeframe},  # Used only for analysis reference
+                    execution_mode=ExecutionMode.MANUAL,  # UI is always manual mode
+                    analysis_interval=None  # No interval in manual mode
                 )
 
+                logfire.info("Generating trading plan with parameters", params=params)
                 # Generate plan
                 trading_plan = container.trading_planner().create_plan(params)
+                logfire.info("Trading plan generated", plan_id=trading_plan.id)
 
                 # Store results
                 st.session_state.trading_plan = trading_plan
+                logfire.info("Trading plan stored in session",
+                            session_keys=list(st.session_state.keys()))
 
             except Exception as e:
+                logfire.exception("Error generating trading plan")
                 st.error(f"Error generating trading plan: {str(e)}")
                 return
 
     if st.session_state.trading_plan:
+        logfire.info("Rendering trading plan",
+                    plan_id=st.session_state.trading_plan.id)
         st.success("Trading plan generated successfully")
 
         plan = st.session_state.trading_plan
@@ -169,6 +178,9 @@ def render_strategy_ui(container: Container = Provide[Container]):
             st.write(f"- Primary Timeframe: {timeframe}")
             st.write(f"- Session ID: {plan.session_id}")
             st.write(f"- Created At: {plan.created_at.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+            st.write(f"- Execution Mode: {plan.parameters.execution_mode}")
+            if plan.parameters.execution_mode == ExecutionMode.SCHEDULER:
+                st.write(f"- Analysis Interval: {plan.parameters.analysis_interval} minutes")
 
         # Display cancellations with improved format
         if plan.cancellations:
