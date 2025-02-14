@@ -221,9 +221,6 @@ def _prepare_base_order_params(
             if is_reduce_only:
                 params["reduceOnly"] = True
                 params["closeOnTrigger"] = True
-                logfire.info("Adding reduce-only flags to order",
-                             order_link_id=order_link_id,
-                             original_link_id=order.order_link_id)
 
             # Add price for limit orders only
             if order.order.type == "limit":
