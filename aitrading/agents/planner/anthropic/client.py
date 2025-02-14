@@ -39,9 +39,8 @@ class AnthropicBaseClient(BaseAIClient):
             raise
 
     def _get_schema(self) -> Dict[str, Any]:
-        from ....models import PlanResponse, ChildOrder
-        ChildOrder.model_rebuild()
-        PlanResponse.model_rebuild()
+        from ....models import PlanResponse
+        #PlanResponse.model_rebuild()
         schema = PlanResponse.model_json_schema()
         try:
             return SchemaConverter.convert(schema, "anthropic")
