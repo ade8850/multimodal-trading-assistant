@@ -204,6 +204,14 @@ def _prepare_base_order_params(
                 size_percentage=size_percentage
             )
 
+            # Per ordini reduce-only, genera un order_link_id univoco aggiungendo un timestamp
+            if is_reduce_only:
+                timestamp = int(time.time() * 1000)  # Millisecondi
+                base_link_id = order.order_link_id or f"reduce-{timestamp}"
+                order_link_id = f"{base_link_id}-r{timestamp}"
+            else:
+                order_link_id = order.order_link_id
+
             # Base parameters
             params = {
                 "category": "linear",
@@ -214,14 +222,16 @@ def _prepare_base_order_params(
                 "isLeverage": 0 if is_reduce_only else 1,  # No leverage for reduce-only
                 "timeInForce": "GTC",
                 "positionIdx": 0,
-                "orderLinkId": order.order_link_id
+                "orderLinkId": order_link_id
             }
 
             # Add reduce-only flags if applicable
             if is_reduce_only:
                 params["reduceOnly"] = True
                 params["closeOnTrigger"] = True
-                logfire.info("Adding reduce-only flags to order")
+                logfire.info("Adding reduce-only flags to order",
+                             order_link_id=order_link_id,
+                             original_link_id=order.order_link_id)
 
             # Add price for limit orders only
             if order.order.type == "limit":
