@@ -198,7 +198,7 @@ def render_strategy_ui(container: Container = Provide[Container]):
         st.subheader(f"New Orders ({len(plan.orders)})")
         for order in plan.orders:
             with st.expander(
-                    f"Order {order.id} - {order.type.upper()} {order.symbol} ({order.execution_type})",
+                    f"Order {order.id} - {order.type.upper()} {order.symbol} ({order.execution_type}){' [REDUCE-ONLY]' if order.reduce_only else ''}",
                     expanded=True
             ):
                 cols = st.columns([1, 1])
