@@ -2,7 +2,7 @@ from typing import Dict, List
 import time
 import logfire
 
-from ...models import TradingPlan, OrderCancellation
+from ...models import TradingPlan, OrderCancellation, PlannedOrder
 from ...tools.bybit.market_data import MarketDataTool
 from ...tools.bybit.orders import OrdersTool
 from ...tools.stop_loss import StopLossManager, StopLossConfig
@@ -80,20 +80,18 @@ class PlanExecutor:
             raise Exception(f"Error executing trading plan: {str(e)}")
 
     def _execute_orders(self, plan: TradingPlan) -> List[Dict]:
-        """Execute orders in the trading plan."""
+        """Execute order operations."""
         results = []
-
         for order in plan.orders:
             try:
                 with logfire.span("execute_order") as span:
                     span.set_attributes({
                         "order_id": order.id,
                         "order_link_id": order.order_link_id,
-                        "symbol": order.symbol,
-                        "type": order.type,
+                        "symbol": order.symbol
                     })
 
-                    # Configure position settings first
+                    # Configura impostazioni posizione
                     logfire.info("Configuring position settings",
                                  symbol=order.symbol,
                                  leverage=order.order.entry.leverage)
@@ -103,13 +101,21 @@ class PlanExecutor:
                         leverage=order.order.entry.leverage
                     )
 
-                    # Place main order
+                    # Convert order to dictionary and ensure reduce_only is present
+                    order_data = order.model_dump()
+                    order_data["reduce_only"] = order_data.get("reduce_only", False)
+
+                    # Recreate order with reduce_only field
+                    order = PlannedOrder.model_validate(order_data)
+
                     logfire.info("Placing order",
                                  order_id=order.id,
                                  order_link_id=order.order_link_id,
                                  symbol=order.symbol,
-                                 type=order.type)
+                                 type=order.type,
+                                 reduce_only=order_data["reduce_only"])
 
+                    # Place order
                     entry_result = self.orders.place_strategy_orders(order)
 
                     if entry_result.get("errors"):

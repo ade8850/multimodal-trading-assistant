@@ -1,7 +1,9 @@
 # aitrading/models/orders.py
 from enum import Enum
-from typing import Optional, Literal
+from typing import List, Optional, Literal
 from pydantic import BaseModel, Field, validator
+import time
+import logfire
 
 from .strategy import StrategicContext
 from .time_base import TimeBasedModel
@@ -18,7 +20,6 @@ class RiskLevel(str, Enum):
     CRITICAL = "critical"      # Must execute quickly
     NORMAL = "normal"         # Standard execution
     MINIMAL = "minimal"       # Can wait for better price
-
 
 
 class OrderEntry(BaseModel):
@@ -87,6 +88,28 @@ class PlannedOrder(BaseModel):
         default=False,
         description="If True, this order can only reduce an existing position"
     )
+
+    def set_order_link_id(self, plan_id: str, session_id: str, order_num: int) -> None:
+        """Set the order_link_id using plan_id, session_id, order number and timestamp.
+
+        Args:
+            plan_id: Unique plan identifier
+            session_id: Session identifier
+            order_num: Progressive order number
+
+        The order_link_id will be in format: {plan_id}-{session_id}-{order_num}-{timestamp}
+        where timestamp is in milliseconds to ensure global uniqueness.
+        """
+        if not self.order_link_id:
+            timestamp = int(time.time() * 1000)  # millisecondi per unicità
+            self.order_link_id = f"{plan_id}-{session_id}-{order_num}-{timestamp}"
+            logfire.info("Generated order link id",
+                         order_link_id=self.order_link_id,
+                         plan_id=plan_id,
+                         session_id=session_id,
+                         order_num=order_num,
+                         timestamp=timestamp)
+            self.id = order_num
 
     @validator('reduce_only')
     def validate_reduce_only(cls, v, values):

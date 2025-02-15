@@ -2,13 +2,13 @@
 import time
 from typing import List, Optional, Dict, Literal, Union, Any
 from datetime import datetime
+from enum import Enum
 
 import logfire
 from pydantic import BaseModel, Field, validator
-from enum import Enum
 
 from .base import generate_uuid_short
-from .orders import Order, OrderCancellation
+from .orders import Order, OrderCancellation, PlannedOrder  # Aggiunto import di PlannedOrder
 from .strategy import StrategicContext
 
 class ExecutionMode(str, Enum):
@@ -44,7 +44,6 @@ class TradingParameters(BaseModel):
     class Config:
         use_enum_values = True
 
-# Il resto delle classi rimane invariato
 class Range24h(BaseModel):
     """24-hour price range."""
     high: float
@@ -62,54 +61,6 @@ class RiskLevel(str, Enum):
     CRITICAL = "critical"      # Must execute quickly
     NORMAL = "normal"         # Standard execution
     MINIMAL = "minimal"       # Can wait for better price
-
-
-class PlannedOrder(BaseModel):
-    """Complete planned order specification."""
-    id: int = Field(default=0, description="Progressive number starting from 1")
-    type: Literal["long", "short"]
-    symbol: str
-    current_price: float
-    range_24h: Range24h
-    order: Order
-    strategic_context: StrategicContext = Field(
-        ...,
-        description="Strategic context for evaluating order validity"
-    )
-    order_link_id: Optional[str] = Field(
-        None,
-        description="Must be in format '{plan_id}-{session_id}-{order_number}-{timestamp}'"
-    )
-    execution_type: OrderExecutionType = Field(
-        default=OrderExecutionType.PASSIVE,
-        description="How the order should be executed"
-    )
-    risk_level: RiskLevel = Field(
-        default=RiskLevel.NORMAL,
-        description="Risk level affecting execution priority"
-    )
-
-    def set_order_link_id(self, plan_id: str, session_id: str, order_num: int) -> None:
-        """Set the order_link_id using plan_id, session_id, order number and timestamp.
-
-        Args:
-            plan_id: Unique plan identifier
-            session_id: Session identifier
-            order_num: Progressive order number
-
-        The order_link_id will be in format: {plan_id}-{session_id}-{order_num}-{timestamp}
-        where timestamp is in milliseconds to ensure global uniqueness.
-        """
-        if not self.order_link_id:
-            timestamp = int(time.time() * 1000)  # millisecondi per unicità
-            self.order_link_id = f"{plan_id}-{session_id}-{order_num}-{timestamp}"
-            logfire.info("Generated order link id",
-                         order_link_id=self.order_link_id,
-                         plan_id=plan_id,
-                         session_id=session_id,
-                         order_num=order_num,
-                         timestamp=timestamp)
-            self.id = order_num
 
 class TradingPlan(BaseModel):
     """Complete trading plan including parameters and planned orders."""

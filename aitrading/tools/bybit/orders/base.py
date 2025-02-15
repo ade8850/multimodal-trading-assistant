@@ -9,6 +9,7 @@ from aitrading.models.position import Position
 from .execution import execute_order_operations, set_trading_stops, cancel_order
 from .utils import get_current_price, get_active_orders, get_positions, verify_account_status, get_instrument_info
 
+from ....models import PlannedOrder
 
 class OrdersTool:
     """Tool for managing orders on Bybit."""
@@ -111,14 +112,22 @@ class OrdersTool:
 
             # Se l'ordine è reduce-only, verifica che esista una posizione e che la direzione sia corretta
             current_positions = self.get_positions(order.symbol)
-            if order.reduce_only:  # Assumiamo che questa proprietà sia definita nell'ordine
+
+            # Convert order to dictionary and ensure reduce_only is present
+            order_data = order.model_dump()
+            order_data["reduce_only"] = order_data.get("reduce_only", False)
+
+            # Recreate order with reduce_only field
+            order = PlannedOrder.model_validate(order_data)
+
+            if order.reduce_only:
                 if not current_positions:
                     raise ValueError("Cannot place reduce-only order: no position exists")
 
                 current_position = current_positions[0]
                 valid_direction = (
-                    (current_position.side == "Buy" and order.type == "short") or
-                    (current_position.side == "Sell" and order.type == "long")
+                        (current_position.side == "Buy" and order.type == "short") or
+                        (current_position.side == "Sell" and order.type == "long")
                 )
                 if not valid_direction:
                     raise ValueError(

@@ -139,39 +139,57 @@ class PlanGenerator:
             processed_orders = []
 
             for order_data in plan_data.get('orders', []):
-                # Determine if the order should be reduce-only by checking against current positions
-                current_positions = self.positions_orders["current_positions"]
-                if current_positions:
-                    current_position = current_positions[0]
-                    is_reduce_only = (
-                            (current_position.side == "Buy" and order_data["type"] == "short") or
-                            (current_position.side == "Sell" and order_data["type"] == "long")
-                    )
-                    if is_reduce_only:
-                        order_data["reduce_only"] = True
-                        # Make sure reduce-only orders use position's leverage
-                        order_data["order"]["entry"]["leverage"] = current_position.leverage
-                else:
-                    order_data["reduce_only"] = False
+                try:
+                    # Assicuriamoci che order_data sia un dizionario
+                    if isinstance(order_data, PlannedOrder):
+                        order_data = order_data.model_dump()
+                    elif not isinstance(order_data, dict):
+                        raise ValueError(f"Invalid order data type: {type(order_data)}")
 
-                # Create the planned order with reduce_only property
-                planned_order = PlannedOrder(**order_data)
-                processed_orders.append(planned_order)
+                    # Determine if the order should be reduce-only by checking against current positions
+                    current_positions = self.positions_orders.get("current_positions", [])
+                    is_reduce_only = False
 
-                logfire.debug("Processed order",
-                              order_id=planned_order.id,
-                              type=planned_order.type,
-                              reduce_only=planned_order.reduce_only)
+                    # Verifica delle posizioni correnti e reduce_only
+                    if current_positions:
+                        current_position = current_positions[0]
+                        is_reduce_only = (
+                                (current_position.side == "Buy" and order_data["type"] == "short") or
+                                (current_position.side == "Sell" and order_data["type"] == "long")
+                        )
+
+                        if is_reduce_only and "order" in order_data and "entry" in order_data["order"]:
+                            order_data["order"]["entry"]["leverage"] = current_position.leverage
+
+                    # Impostiamo sempre reduce_only in modo esplicito
+                    order_data["reduce_only"] = is_reduce_only
+
+                    # Creiamo l'ordine come dict
+                    processed_orders.append(order_data)
+
+                    logfire.debug("Processed order",
+                                  order_data=order_data,
+                                  reduce_only=is_reduce_only)
+
+                except Exception as e:
+                    logfire.error("Error processing order",
+                                  error=str(e),
+                                  order_data=order_data)
+                    raise
 
             # Create trading plan with processed orders
-            trading_plan = TradingPlan(
+            trading_plan_kwargs = dict(
                 id=plan_data['id'],
                 session_id=plan_data['session_id'],
                 parameters=params,
-                orders=processed_orders,
+                orders=processed_orders,  # Passiamo i dict invece degli oggetti PlannedOrder
                 cancellations=plan_data.get('cancellations'),
                 analysis=plan_data['analysis']
             )
+
+            logfire.info("Trading Plan Params", **trading_plan_kwargs)
+
+            trading_plan = TradingPlan(**trading_plan_kwargs)
 
             # Save strategic context for each order
             for order in trading_plan.orders:
@@ -184,16 +202,6 @@ class PlanGenerator:
                         logfire.warning("Failed to save strategic context",
                                         order_link_id=order.order_link_id)
 
-            # Add tags for logging
-            tags = ["plan", params.symbol]
-            if trading_plan.orders and len(trading_plan.orders):
-                tags.append("orders")
-            if trading_plan.cancellations and len(trading_plan.cancellations):
-                tags.append("cancellations")
-
-            logfire.info("Trading plan created",
-                         _tags=tags,
-                         **_convert_pydantic_to_dict(trading_plan))
             return trading_plan
 
         except Exception as e:
