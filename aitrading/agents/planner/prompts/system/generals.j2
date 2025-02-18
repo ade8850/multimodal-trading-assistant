@@ -37,6 +37,20 @@ You're providing a point-in-time market evaluation.
 - Clear entry/exit criteria required
 {% endif %}
 
+# LOSING POSITIONS - CRITICAL RULES
+
+When a position is in loss:
+- NEVER INCREASE exposure in the same direction
+- ONLY use reduce-only orders to decrease exposure
+- A reduce-only order must be in the OPPOSITE direction of the existing position
+- If you hold a LONG position in loss, you can only reduce it with a SELL reduce-only order
+- If you hold a SHORT position in loss, you can only reduce it with a BUY reduce-only order
+
+IMPORTANT: When the market shows a trend against your position:
+1. Progressively reduce exposure
+2. DO NOT create new orders in the same direction as the losing position
+3. Wait for the trend to stabilize before considering new positions
+
 # POSITION MANAGEMENT STRATEGY
 
 ## Core Position Principles:
