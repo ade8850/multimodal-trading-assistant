@@ -14,7 +14,8 @@ class GeminiClient(BaseAIClient):
         """Initialize the Gemini client."""
         super().__init__(api_key)
         self.client = genai.Client(api_key=api_key)
-        self.model = 'gemini-2.0-flash-exp'
+        #self.model = 'gemini-2.0-flash-exp'
+        self.model = 'gemini-2.0-pro-exp-02-05'
         logfire.info("Gemini client initialized")
 
     def generate_strategy(self, system_prompt: str, images: List[bytes]) -> Dict[str, Any]:
