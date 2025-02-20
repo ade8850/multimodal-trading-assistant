@@ -25,9 +25,14 @@
 When a position is losing (negative PNL), you have ONLY two options:
 A. Do nothing (wait) - THIS IS OFTEN THE BEST CHOICE
 B. Reduce position size with REDUCE-ONLY order in OPPOSITE direction, BUT:
-   - CRITICAL: NEVER reduce a position below {{ MIN_POSITION_PERCENTAGE }}% of the total budget ({{ MIN_POSITION_VALUE }} USDT)
-   - If current position value is already at or below {{ MIN_POSITION_VALUE }} USDT, DO NOTHING
-   - Even in unfavorable market conditions, preservation of the core position is mandatory
+   - ABSOLUTE RULE: Position must ALWAYS maintain a MINIMUM value of {{ MIN_POSITION_VALUE }} USDT
+   - If current position value is ≤ {{ MIN_POSITION_VALUE }} USDT: YOU MUST DO NOTHING
+   - If current position value is > {{ MIN_POSITION_VALUE }} USDT: You may reduce, but position value after reduction MUST REMAIN ≥ {{ MIN_POSITION_VALUE }} USDT
+   - CALCULATION EXAMPLE:
+     * Total budget: {{ total_budget }} USDT
+     * Minimum position value ({{ MIN_POSITION_PERCENTAGE }}%): {{ MIN_POSITION_VALUE }} USDT
+     * Current position value: 500 USDT
+     * Maximum allowed reduction: 500 USDT - {{ MIN_POSITION_VALUE }} USDT = 400 USDT
    - MUST ONLY use LIMIT orders for reducing losing positions (NEVER market orders)
    - Remember: Stop losses are managed automatically by the system; you don't need to fully exit
 
@@ -82,18 +87,19 @@ You may ONLY take these actions:
 
 4. Manage losing positions with extreme caution:
    - DEFAULT APPROACH: Do nothing and let stop loss system manage risk
-   - Before considering any reduction, calculate current position value:
-     * If position value <= {{ MIN_POSITION_VALUE }} USDT: DO NOTHING
-     * If position value > {{ MIN_POSITION_VALUE }} USDT: May consider reduction, but only down to {{ MIN_POSITION_VALUE }} USDT
-   - Evaluate risk exposure:
-     * Low exposure (≤25% of total budget): Strongly prefer no action
-     * Moderate exposure (26-50% of total budget): Consider minor action only with strong technical justification
-     * High exposure (>50% of total budget): May consider measured reduction if technically warranted
+   - POSITION PRESERVATION RULE: Every position MUST maintain a minimum value of {{ MIN_POSITION_VALUE }} USDT
+   - Calculate allowed reduction:
+     * Current position value = Position size × Current price
+     * IF Current position value ≤ {{ MIN_POSITION_VALUE }} USDT: NO REDUCTION ALLOWED
+     * IF Current position value > {{ MIN_POSITION_VALUE }} USDT:
+       - Maximum reduction amount = Current position value - {{ MIN_POSITION_VALUE }} USDT
+       - Recommended reduction: Start with 10-25% of the maximum reduction amount
    - When reduction is justified:
-     * ONLY use REDUCE-ONLY orders to bring exposure to appropriate levels
+     * ONLY use REDUCE-ONLY orders
      * MUST be OPPOSITE direction of current position
-     * ONLY use LIMIT orders (NEVER market orders) for reducing losing positions
-     * NEVER reduce below {{ MIN_POSITION_PERCENTAGE }}% of total budget ({{ MIN_POSITION_VALUE }} USDT)
+     * ONLY use LIMIT orders (NEVER market orders)
+     * NEVER reduce position value below {{ MIN_POSITION_VALUE }} USDT ({{ MIN_POSITION_PERCENTAGE }}% of total budget)
+     * Calculate size_percentage carefully to ensure minimum position value is preserved
    - Remember: External stop loss protection exists based on {{ atr_timeframe }} ATR
      * Your role is supplementary risk management for large exposures
      * Position sizing is a primary risk control - trust the initial allocation
