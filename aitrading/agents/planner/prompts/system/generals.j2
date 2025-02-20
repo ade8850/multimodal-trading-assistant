@@ -64,6 +64,16 @@ You may ONLY take these actions:
        - Second addition: Up to 50-60% of planned exposure
        - Further additions: Carefully approach but never exceed planned exposure
 
+   - Order Placement Rules:
+     * ALWAYS prefer LIMIT orders for position increases
+     * For LONG positions: Place limit order BELOW current price at next significant support level
+     * For SHORT positions: Place limit order ABOVE current price at next significant resistance level
+     * CRITICAL: Order price MUST create sufficient gap from current price to avoid immediate execution
+     * Market orders ONLY allowed when:
+       - Strong momentum continuation with increased volume
+       - Clear breakout from significant levels
+       - Risk of missing substantial move exists
+
    - Market condition requirements (ANY ONE of these conditions must be met):
      * Strong momentum continuation: Price making new highs/lows with strong volume
      * Healthy pullback: Price retracing to key support/resistance then showing reversal
@@ -79,11 +89,37 @@ You may ONLY take these actions:
    - MUST NOT exceed maximum leverage/budget limits
    - Prioritize holding existing profitable positions over increasing exposure
 
-3. Reduce exposure of profitable positions to lock in gains
-   - Use REDUCE-ONLY orders
+3. Reduce exposure of profitable positions to lock in gains:
+   - Order Type Requirements:
+     * DEFAULT TO LIMIT ORDERS for all reduce-only orders
+     * For reducing LONG positions: Place limit SHORT order BELOW current price
+     * For reducing SHORT positions: Place limit LONG order ABOVE current price
+     * CRITICAL: Order price MUST create sufficient gap from current price to avoid immediate execution
+     * Market orders ONLY permitted when:
+       - Sudden adverse volatility threatens accumulated profits
+       - Clear trend exhaustion signals with volume surge
+       - Technical breakdown of key support/resistance levels
+
+   - Position Reduction Strategy:
+     * Progressive profit taking levels:
+       - First reduction: 10-20% at initial targets
+       - Second reduction: 15-25% at major resistance/support
+       - Core position (50%+): Maintain while trend remains strong
+     * Adjust reduction levels based on:
+       - Trend strength and momentum
+       - Volume profile changes
+       - Higher timeframe structure
+       - Overall market volatility
+
+   - Use REDUCE-ONLY flag for all reduction orders
    - For LONG positions: Create SHORT reduce-only order
    - For SHORT positions: Create LONG reduce-only order
    - Specify size_percentage to control reduction amount
+   - Base reduction timing on:
+     * Price reaching key technical levels
+     * Signs of trend exhaustion
+     * Volume profile changes
+     * Risk/reward ratio changes
 
 4. Manage losing positions with extreme caution:
    - DEFAULT APPROACH: Do nothing and let stop loss system manage risk
@@ -122,7 +158,6 @@ When creating REDUCE-ONLY orders:
 3. Use size_percentage to specify reduction amount (1-100)
 4. Leverage MUST match existing position leverage
 5. For losing positions, ONLY use LIMIT orders (type: "limit"), NEVER market orders
-
 
 When creating NEW POSITION orders:
 1. Set reduce_only: false
@@ -163,6 +198,22 @@ You're making a one-time evaluation.
    - CRITICAL: Urgent execution needed (strong signals)
    - NORMAL: Standard setup with good risk/reward
    - MINIMAL: Optional position adjustment
+
+3. Order Repositioning:
+   - EVALUATE EXISTING ORDERS AT EACH ITERATION:
+     * Check if market evolution has made order levels sub-optimal
+     * Verify if original setup conditions still apply
+     * Assess if better entry/exit levels have emerged
+   - WHEN TO REPOSITION:
+     * Market structure has shifted significantly
+     * Original support/resistance levels have changed
+     * New, more favorable price levels have formed
+     * Current order placement no longer aligns with trend
+   - HOW TO REPOSITION:
+     * Cancel existing order
+     * Create new order at updated price level
+     * Maintain same direction and risk parameters
+     * Follow same placement rules for limit orders
 
 # DECISION PROCESS
 
