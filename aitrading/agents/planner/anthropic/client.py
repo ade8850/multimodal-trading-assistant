@@ -137,8 +137,9 @@ class AnthropicVertexClient(AnthropicBaseClient):
                 project_id=project_id,
                 region=region
             )
-            self.model = "claude-3-5-sonnet-v2@20241022"
-            logfire.info("Anthropic Vertex client initialized", 
+            #self.model = "claude-3-5-sonnet-v2@20241022"
+            self.model = "claude-3-7-sonnet@20250219"
+            logfire.info("Anthropic Vertex client initialized",
                         project_id=project_id, 
                         region=region)
         except KeyError as e:
@@ -148,6 +149,11 @@ class AnthropicVertexClient(AnthropicBaseClient):
         with logfire.span("generate_content"):
             return self.client.messages.create(
                 model=self.model,
+                max_tokens=20000,
+                thinking={
+                    "type": "enabled",
+                    "budget_tokens": 16000
+                },
                 messages=[{
                     "role": "user",
                     "content": formatted_images + [{
@@ -156,6 +162,6 @@ class AnthropicVertexClient(AnthropicBaseClient):
                     }]
                 }],
                 system="You must respond only with a valid JSON object that matches the schema provided in the prompt. Do not include any other text before or after the JSON.",
-                max_tokens=4096,
+                #max_tokens=4096,
                 temperature=0
             )
