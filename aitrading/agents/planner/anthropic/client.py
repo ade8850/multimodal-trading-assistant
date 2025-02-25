@@ -163,5 +163,5 @@ class AnthropicVertexClient(AnthropicBaseClient):
                 }],
                 system="You must respond only with a valid JSON object that matches the schema provided in the prompt. Do not include any other text before or after the JSON.",
                 #max_tokens=4096,
-                temperature=0
+                temperature=1
             )
