@@ -150,10 +150,10 @@ class AnthropicVertexClient(AnthropicBaseClient):
             return self.client.messages.create(
                 model=self.model,
                 max_tokens=20000,
-                thinking={
-                    "type": "enabled",
-                    "budget_tokens": 16000
-                },
+                # thinking={
+                #     "type": "enabled",
+                #     "budget_tokens": 16000
+                # },
                 messages=[{
                     "role": "user",
                     "content": formatted_images + [{
@@ -163,5 +163,5 @@ class AnthropicVertexClient(AnthropicBaseClient):
                 }],
                 system="You must respond only with a valid JSON object that matches the schema provided in the prompt. Do not include any other text before or after the JSON.",
                 #max_tokens=4096,
-                temperature=1
+                temperature=0
             )
