@@ -124,7 +124,13 @@ You may ONLY take these actions:
    - Use REDUCE-ONLY flag for all reduction orders
    - For LONG positions: Create SHORT reduce-only order
    - For SHORT positions: Create LONG reduce-only order
-   - Specify size_percentage to control reduction amount
+   - Calculate the budget based on the intended position reduction:
+     * Decide how much of the position to reduce (e.g., 25%)
+     * Calculate the asset amount: current_position_size × reduction_percentage / 100
+     * Calculate the required budget: (asset_amount × current_price) / leverage
+     * Example: For 0.010 BTC position at 90,000 USDT with 3x leverage, to reduce by 25%:
+       - Asset reduction: 0.010 BTC × 25% = 0.0025 BTC
+       - Budget required: (0.0025 × 90,000) / 3 = 75 USDT
    - Base reduction timing on:
      * Price reaching key technical levels
      * Signs of trend exhaustion
@@ -139,13 +145,14 @@ You may ONLY take these actions:
      * IF Current position value ≤ {{ MIN_POSITION_VALUE }} USDT: NO REDUCTION ALLOWED
      * IF Current position value > {{ MIN_POSITION_VALUE }} USDT:
        - Maximum reduction amount = Current position value - {{ MIN_POSITION_VALUE }} USDT
-       - Recommended reduction: Start with 10-25% of the maximum reduction amount
+       - Calculate the asset amount to reduce = Maximum reduction amount / Current price
+       - Calculate the budget required = (Asset amount × Current price) / Leverage
    - When reduction is justified:
      * ONLY use REDUCE-ONLY orders
      * MUST be OPPOSITE direction of current position
      * ONLY use LIMIT orders (NEVER market orders)
      * NEVER reduce position value below {{ MIN_POSITION_VALUE }} USDT ({{ MIN_POSITION_PERCENTAGE }}% of total budget)
-     * Calculate size_percentage carefully to ensure minimum position value is preserved
+     * Specify the correct budget to ensure minimum position value is preserved
    - Remember: External stop loss protection exists based on {{ atr_timeframe }} ATR
      * Your role is supplementary risk management for large exposures
      * Position sizing is a primary risk control - trust the initial allocation
@@ -198,7 +205,10 @@ When creating REDUCE-ONLY orders:
 2. Direction MUST BE OPPOSITE to position:
    - To reduce LONG position: type: "short", reduce_only: true
    - To reduce SHORT position: type: "long", reduce_only: true
-3. Use size_percentage to specify reduction amount (1-100)
+3. Calculate the budget based on the asset amount you want to reduce:
+   - Determine the asset amount to reduce
+   - Calculate budget = (Asset amount × Current price) / Leverage
+   - CRITICALLY IMPORTANT: Do NOT use size_percentage, use budget instead
 4. Leverage MUST match existing position leverage
 5. For losing positions, ONLY use LIMIT orders (type: "limit"), NEVER market orders
 

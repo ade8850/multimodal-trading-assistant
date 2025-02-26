@@ -13,7 +13,8 @@ def calculate_quantity(
         instrument_info: Dict,
         is_reduce_only: bool = False,
         base_position_size: Optional[float] = None,
-        size_percentage: Optional[float] = None
+        size_percentage: Optional[float] = None,
+        prevent_position_close: bool = True
 ) -> str:
     """Calculate order quantity considering lot size filters and order type.
 
@@ -25,6 +26,7 @@ def calculate_quantity(
         is_reduce_only: Whether this is a reduce-only order
         base_position_size: Base position size for reduce-only orders
         size_percentage: Percentage of base position to use (for partial exits)
+        prevent_position_close: If True, ensures the position is not closed completely
 
     Returns:
         Formatted quantity string that satisfies lot size requirements
@@ -50,16 +52,40 @@ def calculate_quantity(
                 if not base_position_size:
                     raise ValueError("Base position size required for reduce-only orders")
 
-                # Calculate quantity based on percentage of base position
-                if size_percentage:
+                # Usa il budget come fonte primaria per calcolare la quantità
+                if budget > 0:
+                    raw_qty = (budget * leverage) / price
+                # Se il budget non è specificato, usa size_percentage come fallback
+                elif size_percentage:
                     raw_qty = base_position_size * (size_percentage / 100.0)
                 else:
-                    raw_qty = base_position_size
+                    # Se né budget né size_percentage sono specificati, usa l'intera posizione
+                    # ma solo se prevent_position_close è False
+                    if prevent_position_close:
+                        # In questo caso, dovremmo logare un errore ma non modificare arbitrariamente la quantità
+                        logfire.error("No valid budget or size_percentage for reduce-only order",
+                                     base_size=base_position_size)
+                        raise ValueError("Budget or size_percentage required for reduce-only orders with prevent_position_close=True")
+                    else:
+                        raw_qty = base_position_size
+                        logfire.warning("Using entire position size for reduce-only order",
+                                     base_size=base_position_size)
+
+                # Se prevent_position_close è True, verifica che non si chiuda completamente la posizione
+                if prevent_position_close and raw_qty >= base_position_size:
+                    # Riduci leggermente la quantità per evitare la chiusura completa
+                    min_qty = float(lot_size["minOrderQty"])
+                    reserved_qty = max(min_qty, base_position_size * 0.01)  # Mantieni almeno 1% o min_qty
+                    raw_qty = base_position_size - reserved_qty
+                    logfire.warning("Adjusted quantity to prevent full position closure",
+                                  original=base_position_size,
+                                  adjusted=raw_qty,
+                                  reserved=reserved_qty)
 
                 logfire.debug("Reduce-only quantity calculation",
-                              base_size=base_position_size,
-                              percentage=size_percentage,
-                              raw_quantity=raw_qty)
+                            base_size=base_position_size,
+                            budget=budget,
+                            raw_quantity=raw_qty)
             else:
                 # Calculate standard entry quantity
                 base_qty = budget / float(price)

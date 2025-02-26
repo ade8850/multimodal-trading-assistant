@@ -201,7 +201,8 @@ def _prepare_base_order_params(
                 instrument_info=instrument_info,
                 is_reduce_only=is_reduce_only,
                 base_position_size=base_position_size,
-                size_percentage=size_percentage
+                size_percentage=size_percentage,
+                prevent_position_close=True  # Imposta a True di default per maggiore sicurezza
             )
 
             # Base parameters
