@@ -253,6 +253,47 @@ def update_layout(fig: go.Figure, colors: dict, rows: int, title: str = "") -> N
     )
 
     # Update price chart (first subplot)
+    # Get the price range to set appropriate tick intervals
+    price_range = None
+    if hasattr(fig, 'data') and len(fig.data) > 0:
+        y_values = []
+        # Collect all price-related y values from the first subplot
+        for trace in fig.data:
+            if trace.yaxis == 'y' and hasattr(trace, 'y'):
+                # Filter out None values and convert to float
+                valid_y = [float(y) for y in trace.y if y is not None]
+                if valid_y:
+                    y_values.extend(valid_y)
+        
+        if y_values:
+            min_price = min(y_values)
+            max_price = max(y_values)
+            price_range = max_price - min_price
+    
+    # Dynamically adjust tick spacing based on price range
+    dtick = 500  # Default value
+    minor_dtick = 100  # Default value
+    
+    if price_range is not None:
+        if price_range < 1:  # Very small values (like for SOL)
+            dtick = price_range / 10
+            minor_dtick = price_range / 50
+        elif price_range < 10:
+            dtick = 1
+            minor_dtick = 0.2
+        elif price_range < 100:
+            dtick = 10
+            minor_dtick = 2
+        elif price_range < 1000:
+            dtick = 100
+            minor_dtick = 20
+        elif price_range < 10000:
+            dtick = 500
+            minor_dtick = 100
+        else:  # Very large values (like for BTC)
+            dtick = price_range / 10
+            minor_dtick = price_range / 50
+    
     fig.update_yaxes(
         title="Price",
         title_font=dict(size=16),
@@ -261,11 +302,11 @@ def update_layout(fig: go.Figure, colors: dict, rows: int, title: str = "") -> N
         gridwidth=1,
         gridcolor=colors["grid"],
         griddash='dot',           # Griglia punteggiata
-        dtick=500,                # Intervallo della griglia (da adattare al range di prezzi)
+        dtick=dtick,              # Dynamic grid interval
         minor=dict(               # Griglia secondaria
             showgrid=True,
             gridwidth=0.5,
-            dtick=100,            # Intervallo minore
+            dtick=minor_dtick,    # Dynamic minor grid interval
             gridcolor=colors["grid"]
         ),
         row=1,
