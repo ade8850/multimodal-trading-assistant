@@ -27,7 +27,8 @@ class PlanGenerator:
                  volatility_calculator: VolatilityCalculator,
                  order_context: OrderContext,
                  ai_client: Any,
-                 system_template: Template):
+                 system_template: Template,
+                 ai_stream_manager=None):
         """Initialize the plan generator with required components."""
         self.market_analyzer = MarketAnalyzer(
             market_data=market_data,
@@ -37,13 +38,15 @@ class PlanGenerator:
         self.orders = orders
         self.ai_client = ai_client
         self.system_template = system_template
+        self.ai_stream_manager = ai_stream_manager
         
         # Initialize processors
         self.budget_calculator = BudgetCalculator()
         self.order_processor = OrderProcessor(order_context)
         self.template_manager = TemplateManager(
             budget_calculator=self.budget_calculator,
-            order_processor=self.order_processor
+            order_processor=self.order_processor,
+            ai_stream_manager=ai_stream_manager
         )
 
     def generate(self, params: TradingParameters) -> TradingPlan:

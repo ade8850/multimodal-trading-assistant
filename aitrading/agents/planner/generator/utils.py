@@ -1,31 +1,54 @@
 from typing import Dict, Any
+from datetime import datetime, date, time
 from ....tools.volatility.models import TimeframeVolatility
 
 
 def convert_pydantic_to_dict(obj: Any) -> Any:
-    """Convert Pydantic objects to plain dictionaries recursively."""
+    """Convert Pydantic objects to plain dictionaries recursively.
+    
+    Handles special cases like datetime objects for JSON serialization.
+    """
+    # Handle None
+    if obj is None:
+        return None
+        
+    # Handle datetime objects
+    if isinstance(obj, (datetime, date, time)):
+        return obj.isoformat()
+        
     # Special case for TimeframeVolatility: pass it through unchanged
     if isinstance(obj, TimeframeVolatility):
         return obj
 
+    # Handle Pydantic models
     if hasattr(obj, 'model_dump'):
         obj_dict = obj.model_dump()
     elif hasattr(obj, 'dict'):
         obj_dict = obj.dict()
-    else:
+    # Handle basic types
+    elif isinstance(obj, (int, float, str, bool)):
         return obj
+    # Handle non-pydantic objects
+    elif not isinstance(obj, dict):
+        return str(obj)
+    else:
+        obj_dict = obj
 
+    # Process dictionary recursively
+    result = {}
     for key, value in obj_dict.items():
         if isinstance(value, TimeframeVolatility):
-            obj_dict[key] = value
+            result[key] = value
+        elif isinstance(value, (datetime, date, time)):
+            result[key] = value.isoformat()
         elif hasattr(value, 'model_dump') or hasattr(value, 'dict'):
-            obj_dict[key] = convert_pydantic_to_dict(value)
+            result[key] = convert_pydantic_to_dict(value)
         elif isinstance(value, dict):
-            obj_dict[key] = {k: convert_pydantic_to_dict(v) for k, v in value.items()}
+            result[key] = {k: convert_pydantic_to_dict(v) for k, v in value.items()}
         elif isinstance(value, list):
-            obj_dict[key] = [convert_pydantic_to_dict(item) for item in value]
+            result[key] = [convert_pydantic_to_dict(item) for item in value]
         elif isinstance(value, (int, float, str, bool, type(None))):
-            obj_dict[key] = value
+            result[key] = value
         else:
-            obj_dict[key] = str(value)
-    return obj_dict
+            result[key] = str(value)
+    return result

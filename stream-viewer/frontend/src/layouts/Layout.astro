@@ -1,0 +1,92 @@
+---
+import Header from '../components/Header.astro';
+
+interface Props {
+	title: string;
+	current?: string;
+}
+
+const { title, current = 'home' } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en" class="h-full bg-gray-100">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="description" content="AI Stream Viewer for SuperBotAI" />
+		<meta name="viewport" content="width=device-width" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+		<meta name="generator" content={Astro.generator} />
+		<title>{title} | AI Stream Viewer</title>
+		<script>
+			// Fix navigation issues by using History API
+			document.addEventListener('DOMContentLoaded', () => {
+				// Check if we're running with a port in the URL
+				const currentURL = window.location.href;
+				const hasPort = currentURL.match(/:\d+/);
+				
+				// If we don't have a port in our URL, redirect to include port 3000
+				if (!hasPort && !window.location.port && window.location.hostname === 'localhost') {
+					window.location.href = `http://localhost:3000${window.location.pathname}`;
+					return;
+				}
+				
+				// Fix navigation by capturing link clicks
+				document.body.addEventListener('click', (e) => {
+					// Find closest anchor tag
+					const anchor = e.target.closest('a');
+					if (!anchor) return;
+					
+					// Only process internal links
+					const href = anchor.getAttribute('href');
+					if (!href || href.startsWith('http') || href.startsWith('//') || href.startsWith('#')) return;
+					
+					// Prevent default navigation
+					e.preventDefault();
+					
+					// Construct absolute URL
+					const baseUrl = window.location.protocol + '//' + window.location.host;
+					const fullUrl = new URL(href, baseUrl).href;
+					
+					// Navigate using history API
+					window.history.pushState({}, '', fullUrl);
+					window.location.href = fullUrl;
+				});
+			});
+		</script>
+	</head>
+	<body class="h-full">
+		<div class="min-h-full flex flex-col">
+			<Header current={current} />
+			
+			<main class="flex-1 flex flex-col">
+				<slot />
+			</main>
+			
+			<footer class="bg-white border-t py-4 text-center text-sm text-gray-500">
+				<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+					SuperBotAI Stream Viewer &copy; {new Date().getFullYear()}
+				</div>
+			</footer>
+		</div>
+	</body>
+</html>
+
+<style is:global>
+	:root {
+		--accent: 136, 58, 234;
+		--accent-light: 224, 204, 250;
+		--accent-dark: 49, 10, 101;
+		--accent-gradient: linear-gradient(
+			45deg,
+			rgb(var(--accent)),
+			rgb(var(--accent-light)) 30%,
+			white 60%
+		);
+	}
+
+	body {
+		@apply antialiased;
+	}
+</style>

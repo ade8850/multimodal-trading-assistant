@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Dict, Any
 import redis
 from redis.client import Redis
 import logfire
@@ -15,7 +15,8 @@ class RedisProvider:
             db: int = 0,
             password: Optional[str] = None,
             ssl: bool = False,
-            key_prefix: str = "trading:"
+            key_prefix: str = "trading:",
+            max_stream_length: int = 1000
     ):
         """Initialize Redis provider.
 
@@ -27,6 +28,7 @@ class RedisProvider:
             password: Optional Redis password
             ssl: Whether to use SSL
             key_prefix: Prefix for all Redis keys
+            max_stream_length: Default maximum length for Redis streams
         """
         self.enabled = enabled
         self.host = host
@@ -35,6 +37,7 @@ class RedisProvider:
         self.password = password
         self.ssl = ssl
         self.key_prefix = key_prefix
+        self.max_stream_length = max_stream_length
         self._client: Optional[Redis] = None
 
     @property
@@ -70,6 +73,46 @@ class RedisProvider:
     def get_prefixed_key(self, key: str) -> str:
         """Get key with prefix applied."""
         return f"{self.key_prefix}{key}"
+
+    def add_to_stream(self, stream_name: str, data: Dict[str, str], max_len: Optional[int] = None) -> Optional[str]:
+        """Add data to a Redis stream.
+        
+        Args:
+            stream_name: Name of the stream (without prefix)
+            data: Dictionary of field-value pairs to add to the stream
+            max_len: Maximum length of the stream (defaults to self.max_stream_length)
+            
+        Returns:
+            Optional[str]: Message ID if successful, None otherwise
+        """
+        try:
+            if not self.enabled or not self.client:
+                logfire.info("Redis not enabled, stream entry not added", 
+                             stream=stream_name)
+                return None
+                
+            stream_key = self.get_prefixed_key(stream_name)
+            max_length = max_len if max_len is not None else self.max_stream_length
+            
+            # Add to stream with MAXLEN trimming
+            message_id = self.client.xadd(
+                name=stream_key,
+                fields=data,
+                maxlen=max_length,
+                approximate=True
+            )
+            
+            logfire.info("Added entry to Redis stream",
+                         stream=stream_name,
+                         message_id=message_id)
+                         
+            return message_id
+            
+        except Exception as e:
+            logfire.error("Failed to add to Redis stream",
+                          stream=stream_name,
+                          error=str(e))
+            return None
 
     def close(self) -> None:
         """Close Redis connection if open."""

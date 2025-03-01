@@ -12,6 +12,7 @@ from ...tools.charts import ChartGeneratorTool
 from ...tools.stop_loss import StopLossManager
 from ...tools.volatility import VolatilityCalculator
 from ...tools.redis.order_context import OrderContext
+from ...tools.redis.ai_stream import AIStreamManager
 from ...models import TradingParameters, TradingPlan
 
 class TradingPlanner:
@@ -19,14 +20,16 @@ class TradingPlanner:
                 chart_generator: ChartGeneratorTool, provider_name: str,
                 api_key: str, order_context: OrderContext,
                 vertex_params: Optional[Dict] = None,
-                stop_loss_manager: Optional[StopLossManager] = None
+                stop_loss_manager: Optional[StopLossManager] = None,
+                ai_stream_manager: Optional[AIStreamManager] = None
                 ) :
         self.market_data = market_data
         self.orders = orders
         self.chart_generator = chart_generator
         self.volatility_calculator = VolatilityCalculator()
         self.order_context = order_context
-        self.stop_loss_manager = stop_loss_manager,
+        self.stop_loss_manager = stop_loss_manager
+        self.ai_stream_manager = ai_stream_manager
 
         if provider_name.startswith("anthropic"):
             self.ai_client = create_anthropic_client(provider_name, api_key, **(vertex_params or {}))
@@ -46,7 +49,8 @@ class TradingPlanner:
         self.system_template = self.env.get_template("system_prompt.j2")
         logfire.info("Trading planner initialized",
                     ai_provider=provider_name,
-                    redis_enabled=self.order_context.redis.enabled)
+                    redis_enabled=self.order_context.redis.enabled,
+                    ai_streams_enabled=self.ai_stream_manager.enabled if self.ai_stream_manager else False)
 
     def create_plan(self, params: TradingParameters) -> TradingPlan:
         from .generator import PlanGenerator
@@ -57,7 +61,8 @@ class TradingPlanner:
             volatility_calculator=self.volatility_calculator,
             order_context=self.order_context,
             ai_client=self.ai_client,
-            system_template=self.system_template
+            system_template=self.system_template,
+            ai_stream_manager=self.ai_stream_manager
         )
         return generator.generate(params)
 

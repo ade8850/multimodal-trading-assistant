@@ -88,7 +88,11 @@ if [ -n "$REDIS_HOST" ]; then
                 -e REDIS_PORT=${REDIS_PORT:-6379} \
                 -e REDIS_DB=${REDIS_DB:-0} \
                 -e REDIS_PASSWORD=$REDIS_PASSWORD \
-                -e REDIS_SSL=${REDIS_SSL:-False}"
+                -e REDIS_SSL=${REDIS_SSL:-False} \
+                -e REDIS_ENABLED=${REDIS_ENABLED:-true} \
+                -e REDIS_KEY_PREFIX=${REDIS_KEY_PREFIX:-trading:} \
+                -e AI_STREAMS_ENABLED=${AI_STREAMS_ENABLED:-true} \
+                -e AI_STREAM_MAX_LENGTH=${AI_STREAM_MAX_LENGTH:-1000}"
 fi
 
 # Build the container

@@ -1,0 +1,72 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Welcome" current="home">
+	<div class="py-10">
+		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+			<h1 class="text-3xl font-bold text-primary-800 mb-6">Welcome to AI Stream Viewer</h1>
+			
+			<div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+				<div class="px-4 py-5 sm:px-6">
+					<h2 class="text-lg leading-6 font-medium text-gray-900">
+						About the Stream Viewer
+					</h2>
+					<p class="mt-1 max-w-2xl text-sm text-gray-500">
+						Monitor AI-generated content from Redis streams in real-time
+					</p>
+				</div>
+				<div class="border-t border-gray-200 px-4 py-5 sm:p-6">
+					<p class="text-gray-700 mb-4">
+						This application provides a real-time view of AI-generated content stored in Redis streams. It connects directly to Redis and displays content as it's created.
+					</p>
+					
+					<h3 class="text-md font-semibold text-gray-800 mt-4 mb-2">Available Streams:</h3>
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+						<a href="/prompts/" class="block p-6 bg-white border border-gray-200 rounded-lg shadow hover:bg-primary-50 transition-colors">
+							<h3 class="text-xl font-bold text-primary-700 mb-2">Prompts</h3>
+							<p class="text-gray-600">View system prompts sent to AI models</p>
+						</a>
+						<a href="/analysis/" class="block p-6 bg-white border border-gray-200 rounded-lg shadow hover:bg-primary-50 transition-colors">
+							<h3 class="text-xl font-bold text-primary-700 mb-2">Analysis</h3>
+							<p class="text-gray-600">AI-generated market analysis and insights</p>
+						</a>
+						<a href="/plans/" class="block p-6 bg-white border border-gray-200 rounded-lg shadow hover:bg-primary-50 transition-colors">
+							<h3 class="text-xl font-bold text-primary-700 mb-2">Plans</h3>
+							<p class="text-gray-600">Trading plans and strategies</p>
+						</a>
+						<a href="/executions/" class="block p-6 bg-white border border-gray-200 rounded-lg shadow hover:bg-primary-50 transition-colors">
+							<h3 class="text-xl font-bold text-primary-700 mb-2">Executions</h3>
+							<p class="text-gray-600">Order execution details and results</p>
+						</a>
+					</div>
+				</div>
+			</div>
+			
+			<div class="bg-white shadow overflow-hidden sm:rounded-lg">
+				<div class="px-4 py-5 sm:px-6">
+					<h2 class="text-lg leading-6 font-medium text-gray-900">
+						How It Works
+					</h2>
+				</div>
+				<div class="border-t border-gray-200 px-4 py-5 sm:p-6">
+					<div class="prose max-w-none">
+						<p>
+							The Stream Viewer connects to Redis streams where AI content is stored.
+							It provides both historical content and real-time updates as new content is generated.
+						</p>
+						<p class="mt-3">
+							Each stream type contains different AI-generated content:
+						</p>
+						<ul class="list-disc pl-5 mt-2 space-y-1">
+							<li><strong>Prompts:</strong> The system prompts sent to AI models</li>
+							<li><strong>Analysis:</strong> AI-generated market analysis</li>
+							<li><strong>Plans:</strong> Trading plans and strategies</li>
+							<li><strong>Executions:</strong> Order execution details</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</Layout>

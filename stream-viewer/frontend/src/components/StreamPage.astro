@@ -1,0 +1,34 @@
+---
+import Layout from '../layouts/Layout.astro';
+import StreamViewer from './islands/StreamViewer';
+
+interface Props {
+  title: string;
+  description: string;
+  streamType: 'prompts' | 'analysis' | 'plans' | 'executions';
+}
+
+const { title, description, streamType } = Astro.props;
+
+// Get API URL from environment or use default
+const apiUrl = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
+---
+
+<Layout title={title} current={streamType}>
+  <div class="flex-1 flex flex-col">
+    <div class="py-6 bg-white shadow-sm border-b">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h1 class="text-2xl font-semibold text-gray-900">{title}</h1>
+        <p class="mt-1 text-sm text-gray-500">{description}</p>
+      </div>
+    </div>
+    
+    <div class="flex-1 py-6">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
+        <div class="bg-white shadow rounded-lg flex flex-col overflow-hidden h-[calc(100vh-15rem)]">
+          <StreamViewer client:load streamType={streamType} apiUrl={apiUrl} />
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>

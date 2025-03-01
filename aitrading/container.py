@@ -6,6 +6,7 @@ from .tools.bybit.orders import OrdersTool
 from .tools.charts import ChartGeneratorTool
 from .tools.redis.provider import RedisProvider
 from .tools.redis.order_context import OrderContext
+from .tools.redis.ai_stream import AIStreamManager
 from .tools.stop_loss import StopLossManager, StopLossConfig
 from .agents.planner.planner import TradingPlanner
 
@@ -44,6 +45,20 @@ class Container(containers.DeclarativeContainer):
         ),
         key_prefix=providers.Callable(
             lambda config: config.get("redis", {}).get("key_prefix", "trading:"),
+            config
+        ),
+        max_stream_length=providers.Callable(
+            lambda config: config.get("redis", {}).get("max_stream_length", 1000),
+            config
+        )
+    )
+    
+    # AI Stream manager
+    ai_stream_manager = providers.Singleton(
+        AIStreamManager,
+        redis_provider=redis_provider,
+        max_stream_length=providers.Callable(
+            lambda config: config.get("redis", {}).get("max_stream_length", 1000),
             config
         )
     )
@@ -114,4 +129,5 @@ class Container(containers.DeclarativeContainer):
             config
         ),
         stop_loss_manager=stop_loss_manager,
+        ai_stream_manager=ai_stream_manager,
     )

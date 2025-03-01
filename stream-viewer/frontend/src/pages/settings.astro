@@ -1,0 +1,134 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Settings" current="settings">
+  <div class="py-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h1 class="text-3xl font-bold text-primary-800 mb-6">Settings</h1>
+      
+      <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+        <div class="px-4 py-5 sm:px-6">
+          <h2 class="text-lg leading-6 font-medium text-gray-900">
+            API Connection
+          </h2>
+          <p class="mt-1 max-w-2xl text-sm text-gray-500">
+            Configure connection to the backend API
+          </p>
+        </div>
+        <div class="border-t border-gray-200 px-4 py-5 sm:p-6">
+          <div class="max-w-lg">
+            <form id="settings-form" class="space-y-6">
+              <div>
+                <label for="api-url" class="block text-sm font-medium text-gray-700">
+                  API URL
+                </label>
+                <div class="mt-1">
+                  <input type="text" name="api-url" id="api-url" class="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md" placeholder="http://localhost:8000" />
+                </div>
+                <p class="mt-1 text-sm text-gray-500">
+                  The URL of the backend API server. Default is http://localhost:8000
+                </p>
+              </div>
+              
+              <div class="flex items-center justify-between">
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                  Save Settings
+                </button>
+                
+                <button type="button" id="test-connection" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                  Test Connection
+                </button>
+              </div>
+            </form>
+            
+            <div id="connection-status" class="mt-4 hidden">
+              <div class="rounded-md p-4">
+                <div class="flex">
+                  <div id="status-icon" class="flex-shrink-0">
+                    <!-- Icon will be added by JS -->
+                  </div>
+                  <div class="ml-3">
+                    <p id="status-message" class="text-sm font-medium">
+                      <!-- Message will be added by JS -->
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  // Settings functionality
+  document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('settings-form') as HTMLFormElement;
+    const apiUrlInput = document.getElementById('api-url') as HTMLInputElement;
+    const testButton = document.getElementById('test-connection') as HTMLButtonElement;
+    const statusDiv = document.getElementById('connection-status') as HTMLDivElement;
+    const statusIcon = document.getElementById('status-icon') as HTMLDivElement;
+    const statusMessage = document.getElementById('status-message') as HTMLParagraphElement;
+    
+    // Load saved settings
+    const savedApiUrl = localStorage.getItem('api-url') || 'http://localhost:8000';
+    apiUrlInput.value = savedApiUrl;
+    
+    // Test connection
+    testButton.addEventListener('click', async () => {
+      const apiUrl = apiUrlInput.value;
+      statusDiv.classList.remove('hidden');
+      
+      // Set loading state
+      statusIcon.innerHTML = `<svg class="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>`;
+      statusMessage.textContent = 'Testing connection...';
+      statusMessage.className = 'text-sm font-medium text-gray-500';
+      
+      try {
+        const response = await fetch(`${apiUrl}/health`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Success
+          statusIcon.innerHTML = `<svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+          </svg>`;
+          statusMessage.textContent = `Connected successfully! Found ${data.stream_types.length} stream types.`;
+          statusMessage.className = 'text-sm font-medium text-green-800';
+        } else {
+          throw new Error(`Server returned ${response.status}`);
+        }
+      } catch (error) {
+        // Error
+        statusIcon.innerHTML = `<svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+        </svg>`;
+        statusMessage.textContent = `Connection failed: ${error.message}`;
+        statusMessage.className = 'text-sm font-medium text-red-800';
+      }
+    });
+    
+    // Save settings
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const apiUrl = apiUrlInput.value;
+      localStorage.setItem('api-url', apiUrl);
+      
+      // Show saved message
+      statusDiv.classList.remove('hidden');
+      statusIcon.innerHTML = `<svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+      </svg>`;
+      statusMessage.textContent = 'Settings saved successfully! Reload the page for changes to take effect.';
+      statusMessage.className = 'text-sm font-medium text-green-800';
+    });
+  });
+</script>

@@ -14,10 +14,11 @@ from .orders import OrderProcessor
 class TemplateManager:
     """Handles template preparation and variable management."""
 
-    def __init__(self, budget_calculator: BudgetCalculator, order_processor: OrderProcessor):
+    def __init__(self, budget_calculator: BudgetCalculator, order_processor: OrderProcessor, ai_stream_manager=None):
         """Initialize with required processors."""
         self.budget_calculator = budget_calculator
         self.order_processor = order_processor
+        self.ai_stream_manager = ai_stream_manager
 
     def prepare_template_vars(self,
                             params: TradingParameters,
@@ -89,6 +90,9 @@ class TemplateManager:
                     }
                 }
 
+                # Store for later use in save_rendered_prompt
+                self._last_template_vars = template_vars.copy()
+
                 logfire.info("Template variables prepared",
                             template_vars=convert_pydantic_to_dict(template_vars))
 
@@ -99,19 +103,28 @@ class TemplateManager:
             raise
 
     def save_rendered_prompt(self, system_prompt: str) -> None:
-        """Save rendered prompt to file if enabled."""
+        """Save rendered prompt to Redis stream."""
         try:
-            prompt_file = os.environ.get('RENDERED_PROMPT_FILE')
-            if not prompt_file:
-                return
-
-            try:
-                with open(prompt_file, 'w') as f:
-                    f.write(system_prompt)
-                logfire.info(f"Saved rendered prompt to {prompt_file}")
-            except Exception as e:
-                logfire.error(f"Error saving rendered prompt: {str(e)}")
-
+            # Get symbol from template context if available
+            symbol = "unknown"
+            session_id = None
+            
+            # Extract symbol from context variables if available
+            if hasattr(self, "_last_template_vars") and self._last_template_vars:
+                symbol = self._last_template_vars.get("symbol", "unknown")
+                session_id = self._last_template_vars.get("session_id")
+            
+            # Save to Redis stream if enabled
+            if self.ai_stream_manager:
+                self.ai_stream_manager.save_prompt(
+                    symbol=symbol,
+                    prompt=system_prompt,
+                    session_id=session_id,
+                    metadata={"timestamp": datetime.now(timezone.utc).isoformat()}
+                )
+                logfire.info("Saved rendered prompt to Redis stream", 
+                             symbol=symbol, session_id=session_id)
+            
         except Exception as e:
             logfire.error("Error in save_rendered_prompt", error=str(e))
 
@@ -130,4 +143,36 @@ class TemplateManager:
 
             if 'plan' not in response_dict:
                 raise ValueError("AI response missing plan data")
+                
+            # Save analysis to Redis stream if enabled
+            if self.ai_stream_manager and self._last_template_vars:
+                symbol = self._last_template_vars.get("symbol", "unknown")
+                session_id = self._last_template_vars.get("session_id")
+                
+                # Save analysis
+                if "analysis" in response_dict['plan']:
+                    self.ai_stream_manager.save_analysis(
+                        symbol=symbol,
+                        analysis=response_dict['plan']['analysis'],
+                        session_id=session_id,
+                        metadata={"timestamp": datetime.now(timezone.utc).isoformat()}
+                    )
+                
+                # Save plan as JSON
+                # Handle datetime serialization issue
+                try:
+                    from .utils import convert_pydantic_to_dict
+                    plan_dict = convert_pydantic_to_dict(response_dict['plan'])
+                    plan_json = json.dumps(plan_dict)
+                    
+                    self.ai_stream_manager.save_plan(
+                        symbol=symbol,
+                        plan=plan_json,
+                        session_id=session_id,
+                        metadata={"timestamp": datetime.now(timezone.utc).isoformat()}
+                    )
+                except Exception as e:
+                    logfire.error("Failed to save plan to stream", error=str(e))
+                    # Continue execution even if plan saving fails
+            
             return response_dict['plan']

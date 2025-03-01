@@ -1,0 +1,37 @@
+---
+const { current } = Astro.props;
+---
+
+<header class="bg-white shadow">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-16">
+      <div class="flex items-center">
+        <div class="flex-shrink-0">
+          <span class="text-primary-600 font-bold text-xl">AI Stream Viewer</span>
+        </div>
+        <div class="ml-10 flex items-baseline space-x-4">
+          <a href="/" class={`px-3 py-2 rounded-md text-sm font-medium ${current === 'home' ? 'bg-primary-100 text-primary-700' : 'text-gray-700 hover:bg-gray-100'}`}>
+            Home
+          </a>
+          <a href="/prompts/" class={`px-3 py-2 rounded-md text-sm font-medium ${current === 'prompts' ? 'bg-primary-100 text-primary-700' : 'text-gray-700 hover:bg-gray-100'}`}>
+            Prompts
+          </a>
+          <a href="/analysis/" class={`px-3 py-2 rounded-md text-sm font-medium ${current === 'analysis' ? 'bg-primary-100 text-primary-700' : 'text-gray-700 hover:bg-gray-100'}`}>
+            Analysis
+          </a>
+          <a href="/plans/" class={`px-3 py-2 rounded-md text-sm font-medium ${current === 'plans' ? 'bg-primary-100 text-primary-700' : 'text-gray-700 hover:bg-gray-100'}`}>
+            Plans
+          </a>
+          <a href="/executions/" class={`px-3 py-2 rounded-md text-sm font-medium ${current === 'executions' ? 'bg-primary-100 text-primary-700' : 'text-gray-700 hover:bg-gray-100'}`}>
+            Executions
+          </a>
+        </div>
+      </div>
+      <div class="ml-4 flex items-center md:ml-6">
+        <a href="/settings/" class={`px-3 py-2 rounded-md text-sm font-medium ${current === 'settings' ? 'bg-primary-100 text-primary-700' : 'text-gray-700 hover:bg-gray-100'}`}>
+          Settings
+        </a>
+      </div>
+    </div>
+  </div>
+</header>
