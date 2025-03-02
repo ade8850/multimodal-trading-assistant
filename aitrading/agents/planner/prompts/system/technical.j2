@@ -15,18 +15,67 @@ Budget in Positions: {{ positions_budget }} USDT
 Budget in Pending Orders: {{ orders_budget }} USDT
 Available Base Budget: {{ total_budget - positions_budget - orders_budget }} USDT
 
+{# Calcola la soglia minima di posizione #}
+{% set MIN_POSITION_PERCENTAGE = 10 %}
+{% set MIN_POSITION_VALUE = total_budget * (MIN_POSITION_PERCENTAGE / 100) %}
+
 Position-Based Limits:
 {% if current_positions %}
-Available for Reduce-Only Orders:
-  * Long Positions: {{ "%.4f"|format(position_limits.max_long_reduce) }} {{ symbol }} ({{ "%.2f"|format(position_limits.max_long_reduce * current_price) }} USDT)
-  * Short Positions: {{ "%.4f"|format(position_limits.max_short_reduce) }} {{ symbol }} ({{ "%.2f"|format(position_limits.max_short_reduce * current_price) }} USDT)
+{% set long_position_value = position_limits.total_long_size * current_price %}
+{% set short_position_value = position_limits.total_short_size * current_price %}
+{% set long_reducible_value = max(0, long_position_value - MIN_POSITION_VALUE) %}
+{% set short_reducible_value = max(0, short_position_value - MIN_POSITION_VALUE) %}
+{% set long_reducible_size = long_reducible_value / current_price %}
+{% set short_reducible_size = short_reducible_value / current_price %}
 
-Total Position Sizes:
-  * Long: {{ "%.4f"|format(position_limits.total_long_size) }} {{ symbol }}
-  * Short: {{ "%.4f"|format(position_limits.total_short_size) }} {{ symbol }}
+{% if position_limits.total_long_size > 0 %}
+Long Position Information:
+  * Current Size: {{ "%.4f"|format(position_limits.total_long_size) }} {{ symbol }} ({{ "%.2f"|format(long_position_value) }} USDT)
+  * Minimum Required: {{ "%.4f"|format(MIN_POSITION_VALUE / current_price) }} {{ symbol }} ({{ "%.2f"|format(MIN_POSITION_VALUE) }} USDT)
+  * Available for Reduce-Only: {{ "%.4f"|format(long_reducible_size) }} {{ symbol }} ({{ "%.2f"|format(long_reducible_value) }} USDT)
+{% endif %}
+
+{% if position_limits.total_short_size > 0 %}
+Short Position Information:
+  * Current Size: {{ "%.4f"|format(position_limits.total_short_size) }} {{ symbol }} ({{ "%.2f"|format(short_position_value) }} USDT)
+  * Minimum Required: {{ "%.4f"|format(MIN_POSITION_VALUE / current_price) }} {{ symbol }} ({{ "%.2f"|format(MIN_POSITION_VALUE) }} USDT)
+  * Available for Reduce-Only: {{ "%.4f"|format(short_reducible_size) }} {{ symbol }} ({{ "%.2f"|format(short_reducible_value) }} USDT)
+{% endif %}
+
+{% if position_limits.total_long_size == 0 and position_limits.total_short_size == 0 %}
+No Active Positions
+{% endif %}
 
 Note: Reduce-only orders can only be used to reduce existing positions. They require no additional margin
 and must be in the opposite direction of the position being reduced.
+
+# IMPORTANT: EXISTING REDUCE-ONLY ORDERS
+{% set total_pending_reduce_value_long = 0 %}
+{% set total_pending_reduce_value_short = 0 %}
+{% if existing_orders %}
+{% for order in existing_orders %}
+{% if order.reduce_only == true and order.status == "New" %}
+{% if order.side == "Buy" %}
+{% set total_pending_reduce_value_short = total_pending_reduce_value_short + (order.qty * order.price) %}
+{% elif order.side == "Sell" %}
+{% set total_pending_reduce_value_long = total_pending_reduce_value_long + (order.qty * order.price) %}
+{% endif %}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+Pending Reduce-Only Order Value:
+  * For Long Positions: {{ "%.2f"|format(total_pending_reduce_value_long) }} USDT
+  * For Short Positions: {{ "%.2f"|format(total_pending_reduce_value_short) }} USDT
+
+Remaining Reduce Capacity (after pending orders):
+{% if position_limits.total_long_size > 0 %}
+  * Long Positions: {{ "%.2f"|format(max(0, long_reducible_value - total_pending_reduce_value_long)) }} USDT
+{% endif %}
+{% if position_limits.total_short_size > 0 %}
+  * Short Positions: {{ "%.2f"|format(max(0, short_reducible_value - total_pending_reduce_value_short)) }} USDT
+{% endif %}
+
 {% else %}
 No open positions. Reduce-only orders are not available.
 {% endif %}

@@ -101,8 +101,10 @@ Order Management Rules:
 2. Reduce-Only Orders:
    - Must be market or limit type
    - Must have reduce_only flag set to true
+   - Must NOT cause position value to fall below minimum threshold when combined with existing orders
+   - Must verify "Remaining Reduce Capacity" value before planning new reduce orders
    - Independent from entry orders
-   - Not counted in budget calculations
+   - Not counted in position budget calculations
    - Based solely on current analysis
    - Clear trigger conditions required
 
@@ -111,17 +113,21 @@ Guidelines for Plan Creation:
 2. Each new order must have a unique progressive ID starting from 1
 3. Each order must be self-contained with its own rationale based on market analysis
 4. Order Type Selection:
-   - Market Orders (preferred when):
-     * Price is within target entry range (±0.1% of current price)
-     * Quick entry is needed to capture momentum
+   - Market Orders (appropriate uses):
+     * For ENTRIES: When capturing strong momentum or breakouts
+     * For PROFIT-TAKING: When trend shows clear signs of weakening or reversal
+     * For REDUCING PROFITABLE POSITIONS: Acceptable to secure gains
+     * Quick execution needed to lock in profits when market structure changes rapidly
      * Volume supports immediate execution
-     * Risk/reward profile considers current volatility
-   - Limit Orders (preferred when):
-     * Targeting specific support/resistance levels
+     * Risk/reward profile deteriorates rapidly
+   - Limit Orders (appropriate uses):
+     * For ENTRIES: Targeting specific support/resistance levels
+     * For PROFIT-TAKING: Placing at levels between current price and entry price
+     * For REDUCING PROFITABLE POSITIONS: Place between current price and entry price
      * Building positions at predefined levels
      * Price expected to reach target in future
      * Current market structure provides clear invalidation levels
-   Note: Don't avoid market orders if conditions support immediate entry
+   Note: Market orders are acceptable for securing profits, but limit orders placed between current price and entry price should be the default approach for profit-taking
 5. Set clear market-based invalidation conditions
 
 When Evaluating Existing Orders:
