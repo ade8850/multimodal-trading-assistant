@@ -21,12 +21,17 @@ Available Base Budget: {{ total_budget - positions_budget - orders_budget }} USD
 
 Position-Based Limits:
 {% if current_positions %}
+{# Calcola correttamente i valori delle posizioni #}
 {% set long_position_value = position_limits.total_long_size * current_price %}
 {% set short_position_value = position_limits.total_short_size * current_price %}
+
+{# Commentato per produzione #}
+
+{# Calcola quanto può essere ridotto, considerando il minimo richiesto #}
 {% set long_reducible_value = (long_position_value - MIN_POSITION_VALUE) if (long_position_value > MIN_POSITION_VALUE) else 0 %}
 {% set short_reducible_value = (short_position_value - MIN_POSITION_VALUE) if (short_position_value > MIN_POSITION_VALUE) else 0 %}
-{% set long_reducible_size = long_reducible_value / current_price %}
-{% set short_reducible_size = short_reducible_value / current_price %}
+{% set long_reducible_size = long_reducible_value / current_price if current_price > 0 else 0 %}
+{% set short_reducible_size = short_reducible_value / current_price if current_price > 0 else 0 %}
 
 {% if position_limits.total_long_size > 0 %}
 Long Position Information:
@@ -68,14 +73,22 @@ Pending Reduce-Only Order Value:
   * For Long Positions: {{ "%.2f"|format(total_pending_reduce_value_long) }} USDT
   * For Short Positions: {{ "%.2f"|format(total_pending_reduce_value_short) }} USDT
 
+{# Commentato per rimozione debug output #}
+
 Remaining Reduce Capacity (after pending orders):
 {% if position_limits.total_long_size > 0 %}
   {% set long_remaining = long_reducible_value - total_pending_reduce_value_long %}
   * Long Positions: {{ "%.2f"|format(long_remaining if long_remaining > 0 else 0) }} USDT
+  {% if long_position_value <= MIN_POSITION_VALUE %}
+  * WARNING: Position already at minimum size ({{ MIN_POSITION_VALUE }} USDT). Cannot reduce further.
+  {% endif %}
 {% endif %}
 {% if position_limits.total_short_size > 0 %}
   {% set short_remaining = short_reducible_value - total_pending_reduce_value_short %}
   * Short Positions: {{ "%.2f"|format(short_remaining if short_remaining > 0 else 0) }} USDT
+  {% if short_position_value <= MIN_POSITION_VALUE %}
+  * WARNING: Position already at minimum size ({{ MIN_POSITION_VALUE }} USDT). Cannot reduce further.
+  {% endif %}
 {% endif %}
 
 {% else %}
