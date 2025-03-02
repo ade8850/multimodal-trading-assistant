@@ -23,8 +23,8 @@ Position-Based Limits:
 {% if current_positions %}
 {% set long_position_value = position_limits.total_long_size * current_price %}
 {% set short_position_value = position_limits.total_short_size * current_price %}
-{% set long_reducible_value = max(0, long_position_value - MIN_POSITION_VALUE) %}
-{% set short_reducible_value = max(0, short_position_value - MIN_POSITION_VALUE) %}
+{% set long_reducible_value = (long_position_value - MIN_POSITION_VALUE) if (long_position_value > MIN_POSITION_VALUE) else 0 %}
+{% set short_reducible_value = (short_position_value - MIN_POSITION_VALUE) if (short_position_value > MIN_POSITION_VALUE) else 0 %}
 {% set long_reducible_size = long_reducible_value / current_price %}
 {% set short_reducible_size = short_reducible_value / current_price %}
 
@@ -70,10 +70,12 @@ Pending Reduce-Only Order Value:
 
 Remaining Reduce Capacity (after pending orders):
 {% if position_limits.total_long_size > 0 %}
-  * Long Positions: {{ "%.2f"|format(max(0, long_reducible_value - total_pending_reduce_value_long)) }} USDT
+  {% set long_remaining = long_reducible_value - total_pending_reduce_value_long %}
+  * Long Positions: {{ "%.2f"|format(long_remaining if long_remaining > 0 else 0) }} USDT
 {% endif %}
 {% if position_limits.total_short_size > 0 %}
-  * Short Positions: {{ "%.2f"|format(max(0, short_reducible_value - total_pending_reduce_value_short)) }} USDT
+  {% set short_remaining = short_reducible_value - total_pending_reduce_value_short %}
+  * Short Positions: {{ "%.2f"|format(short_remaining if short_remaining > 0 else 0) }} USDT
 {% endif %}
 
 {% else %}
