@@ -31,6 +31,14 @@
    - Oversold conditions in a bearish trend or overbought conditions in a bullish trend
      are NOT sufficient justification to counter-trade the primary trend
 
+5. DO NOT create more than one pending order
+   - SYSTEM-WIDE LIMIT: Only ONE pending order is allowed at any time
+   - If there is already a pending order, you MUST cancel it before creating a new one
+   - This applies to ALL order types (entry orders and reduce-only orders)
+   - Count the number of existing orders in "Current Active Orders" section
+   - If count ≥ 1, you MUST cancel at least one order before creating any new ones
+   - This rule overrides all other considerations - NO EXCEPTIONS
+
 # CRITICAL PROTECTION RULE FOR LOSING POSITIONS
 
 When a position is losing (negative PNL), you have ONLY two options:
@@ -164,9 +172,11 @@ You may ONLY take these actions:
      * The size of reduction should match the strength of reversal signals
      * Calculate the asset amount: current_position_size × reduction_percentage / 100
      * Calculate the required budget: (asset_amount × current_price) / leverage
+     * IMPORTANT: Budget is always expressed WITHOUT leverage (base margin only)
      * Example: For 0.010 BTC position at 90,000 USDT with 3x leverage, to reduce by 25%:
        - Asset reduction: 0.010 BTC × 25% = 0.0025 BTC
        - Budget required: (0.0025 × 90,000) / 3 = 75 USDT
+       - System will automatically apply leverage to calculate the correct quantity
    - Progressive profit protection approach:
      * As trend weakens, progressively reduce exposure toward entry price
      * Goal is to arrive at entry price with reduced position size if trend reverses
@@ -186,6 +196,7 @@ You may ONLY take these actions:
        - Maximum NEW reduction amount = Remaining Reduction Capacity
        - Calculate the asset amount to reduce = Maximum NEW reduction amount / Current price
        - Calculate the budget required = (Asset amount × Current price) / Leverage
+       - BUDGET IS ALWAYS SPECIFIED WITHOUT LEVERAGE (the system will apply leverage)
    
    - EXAMPLE of cumulative calculation:
      * Current position: 300 USDT

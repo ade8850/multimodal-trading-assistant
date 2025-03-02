@@ -39,6 +39,8 @@ Analysis Requirements:
   - Calculate budget requirement for new entry orders
   - Consider execution types in budget allocation
   - Ensure total allocation respects available budget
+  - IMPORTANT: Budget must be specified WITHOUT considering leverage
+  - The system will apply leverage when calculating final order quantity
 
 Order Execution Requirements:
 1. Execution Types:
@@ -95,6 +97,7 @@ Order Management Rules:
    - Each order must have clear invalidation levels
    - Must have valid price for limit orders
    - Must have valid budget > 0
+   - Budget must be specified WITHOUT leverage (base margin only)
    - Based on current market conditions only
    - Independent from other orders
 
@@ -112,7 +115,13 @@ Guidelines for Plan Creation:
 1. Each plan must have a unique ID
 2. Each new order must have a unique progressive ID starting from 1
 3. Each order must be self-contained with its own rationale based on market analysis
-4. Order Type Selection:
+4. CRITICAL ONE-ORDER LIMIT:
+   * Only ONE pending order is allowed in the system at any time
+   * If there are existing orders in "Current Active Orders", you MUST either:
+     - Cancel all existing orders and create a new one, OR
+     - Create no new orders and retain existing ones
+   * This rule has highest priority and CANNOT be ignored under any circumstances
+5. Order Type Selection:
    - Market Orders (appropriate uses):
      * For ENTRIES: When capturing strong momentum or breakouts
      * For PROFIT-TAKING: When trend shows clear signs of weakening or reversal
@@ -128,7 +137,7 @@ Guidelines for Plan Creation:
      * Price expected to reach target in future
      * Current market structure provides clear invalidation levels
    Note: Market orders are acceptable for securing profits, but limit orders placed between current price and entry price should be the default approach for profit-taking
-5. Set clear market-based invalidation conditions
+6. Set clear market-based invalidation conditions
 
 When Evaluating Existing Orders:
 1. Compare current market conditions against original setup
