@@ -40,8 +40,8 @@ class PlanGenerator:
         self.system_template = system_template
         self.ai_stream_manager = ai_stream_manager
         
-        # Initialize processors
-        self.budget_calculator = BudgetCalculator(default_leverage=params.leverage)
+        # Initialize processors with default values
+        self.budget_calculator = BudgetCalculator()  # Default leverage will be 3
         self.order_processor = OrderProcessor(order_context)
         self.template_manager = TemplateManager(
             budget_calculator=self.budget_calculator,
@@ -58,6 +58,10 @@ class PlanGenerator:
                     "budget": params.budget,
                     "leverage": params.leverage,
                 })
+                
+                # Update the BudgetCalculator with the current leverage setting
+                self.budget_calculator.default_leverage = params.leverage
+                logfire.info("Updated BudgetCalculator leverage", leverage=params.leverage)
 
                 # Get market analysis
                 market_data = self._analyze_market(params.symbol)
