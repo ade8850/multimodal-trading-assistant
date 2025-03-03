@@ -15,9 +15,6 @@ Budget in Positions: {{ positions_budget }} USDT
 Budget in Pending Orders: {{ orders_budget }} USDT
 Available Base Budget: {{ total_budget - positions_budget - orders_budget }} USDT
 
-{# Calculate minimum position threshold #}
-{% set MIN_POSITION_PERCENTAGE = 10 %}
-{% set MIN_POSITION_VALUE = total_budget * (MIN_POSITION_PERCENTAGE / 100) %}
 
 Position-Based Limits:
 {% if current_positions %}
@@ -31,35 +28,26 @@ Position-Based Limits:
 
 {# Commented for production #}
 
-{# Compare invested capital with minimum required to determine if reduction is possible #}
-{% set MIN_POSITION_CAPITAL = MIN_POSITION_VALUE / leverage %}  {# Minimum capital without leverage #}
-
-{# Calculate how much can be reduced, considering the minimum required #}
-{% set long_reducible_capital = (long_position_capital - MIN_POSITION_CAPITAL) if (long_position_capital > MIN_POSITION_CAPITAL) else 0 %}
-{% set short_reducible_capital = (short_position_capital - MIN_POSITION_CAPITAL) if (short_position_capital > MIN_POSITION_CAPITAL) else 0 %}
-
-{# Convert to leveraged value for display #}
-{% set long_reducible_value = long_reducible_capital * leverage %}
-{% set short_reducible_value = short_reducible_capital * leverage %}
+{# Calculate total reducible values #}
+{% set long_reducible_value = long_position_value_with_leverage %}
+{% set short_reducible_value = short_position_value_with_leverage %}
 
 {# Convert to asset quantity #}
-{% set long_reducible_size = long_reducible_value / current_price if current_price > 0 else 0 %}
-{% set short_reducible_size = short_reducible_value / current_price if current_price > 0 else 0 %}
+{% set long_reducible_size = position_limits.total_long_size %}
+{% set short_reducible_size = position_limits.total_short_size %}
 
 {% if position_limits.total_long_size > 0 %}
 Long Position Information:
   * Current Size: {{ "%.4f"|format(position_limits.total_long_size) }} {{ symbol }} ({{ "%.2f"|format(long_position_value_with_leverage) }} USDT)
   * Actual Capital: {{ "%.2f"|format(long_position_capital) }} USDT (with {{ leverage }}x leverage)
-  * Minimum Required Capital: {{ "%.2f"|format(MIN_POSITION_CAPITAL) }} USDT ({{ "%.2f"|format(MIN_POSITION_VALUE) }} USDT with leverage)
-  * Available for Reduce-Only: {{ "%.4f"|format(long_reducible_size) }} {{ symbol }} ({{ "%.2f"|format(long_reducible_value) }} USDT)
+  * Available for Reduce-Only: {{ "%.4f"|format(long_reducible_size) }} {{ symbol }} ({{ "%.2f"|format(long_reducible_value) }} USDT) - Full position
 {% endif %}
 
 {% if position_limits.total_short_size > 0 %}
 Short Position Information:
   * Current Size: {{ "%.4f"|format(position_limits.total_short_size) }} {{ symbol }} ({{ "%.2f"|format(short_position_value_with_leverage) }} USDT)
   * Actual Capital: {{ "%.2f"|format(short_position_capital) }} USDT (with {{ leverage }}x leverage)
-  * Minimum Required Capital: {{ "%.2f"|format(MIN_POSITION_CAPITAL) }} USDT ({{ "%.2f"|format(MIN_POSITION_VALUE) }} USDT with leverage)
-  * Available for Reduce-Only: {{ "%.4f"|format(short_reducible_size) }} {{ symbol }} ({{ "%.2f"|format(short_reducible_value) }} USDT)
+  * Available for Reduce-Only: {{ "%.4f"|format(short_reducible_size) }} {{ symbol }} ({{ "%.2f"|format(short_reducible_value) }} USDT) - Full position
 {% endif %}
 
 {% if position_limits.total_long_size == 0 and position_limits.total_short_size == 0 %}
@@ -94,16 +82,10 @@ Remaining Reduce Capacity (after pending orders):
 {% if position_limits.total_long_size > 0 %}
   {% set long_remaining = long_reducible_value - total_pending_reduce_value_long %}
   * Long Positions: {{ "%.2f"|format(long_remaining if long_remaining > 0 else 0) }} USDT
-  {% if long_position_capital <= MIN_POSITION_CAPITAL %}
-  * WARNING: Position capital already at minimum size ({{ "%.2f"|format(MIN_POSITION_CAPITAL) }} USDT). Cannot reduce further.
-  {% endif %}
 {% endif %}
 {% if position_limits.total_short_size > 0 %}
   {% set short_remaining = short_reducible_value - total_pending_reduce_value_short %}
   * Short Positions: {{ "%.2f"|format(short_remaining if short_remaining > 0 else 0) }} USDT
-  {% if short_position_capital <= MIN_POSITION_CAPITAL %}
-  * WARNING: Position capital already at minimum size ({{ "%.2f"|format(MIN_POSITION_CAPITAL) }} USDT). Cannot reduce further.
-  {% endif %}
 {% endif %}
 
 {% else %}
@@ -131,9 +113,7 @@ Current Datetime: {{ current_datetime }}
   Status: {% if position.is_in_profit() %}In Profit{% else %}In Loss{% endif %}
 {% endfor %}
 
-Note: Stop losses are managed automatically by the system based on {{ atr_timeframe }} ATR.
-While you cannot modify these levels, you should consider them in your risk analysis when evaluating positions and market conditions.
-Current stop loss levels provide important context for risk assessment and position management decisions.
+Note: You should actively manage risk through position sizing and reduce-only orders based on market conditions and technical analysis. Consider both price action and market structure when evaluating risk.
 {% endif %}
 
 {% if existing_orders %}

@@ -26,7 +26,7 @@ Analysis Requirements:
 2. Technical indicators - EMAs, RSI, MACD, BB
 3. Position sizing based on:
    - Current volatility regime
-   - ATR-based stop distance
+   - Price volatility assessment
    - Current market phase
    - Setup quality
 4. Entry timing and type selection (market/limit)
@@ -104,8 +104,8 @@ Order Management Rules:
 2. Reduce-Only Orders:
    - Must be market or limit type
    - Must have reduce_only flag set to true
-   - Must NOT cause position value to fall below minimum threshold when combined with existing orders
-   - Must verify "Remaining Reduce Capacity" value before planning new reduce orders
+   - Should consider execution timing and price levels to maximize effectiveness
+   - Consider existing pending reduce orders when planning new ones
    - Independent from entry orders
    - Not counted in position budget calculations
    - Based solely on current analysis
