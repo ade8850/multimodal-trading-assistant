@@ -6,6 +6,14 @@ from ....models.orders import ExistingOrder
 
 class BudgetCalculator:
     """Handles budget calculations and position limits."""
+    
+    def __init__(self, default_leverage: int = 3):
+        """Initialize with default leverage.
+        
+        Args:
+            default_leverage: Default leverage to use when not available from positions
+        """
+        self.default_leverage = default_leverage
 
     def calculate_positions_budget(self, positions: List[Position], current_price: float) -> float:
         """Calculate total budget allocated in open positions."""
@@ -50,19 +58,32 @@ class BudgetCalculator:
         total_budget = 0.0
         for order in orders:
             try:
-                # Per gli oggetti ExistingOrder dobbiamo usare accesso agli attributi
+                # Handle different order object types
                 if isinstance(order, ExistingOrder):
-                    # For market orders use qty directly
+                    # For ExistingOrder objects
                     qty = float(order.qty)
                     price = float(order.price) if order.price is not None else 0
-                    # Nota: ExistingOrder potrebbe non avere leverage, usiamo 1 come default
-                    leverage = 1  # Default leverage if not available
+                    
+                    # Use the default leverage from constructor
+                    leverage = self.default_leverage
+                    
+                    # Calculate budget using the specified leverage
                     order_budget = (qty * price) / leverage if price > 0 else 0
+                    
+                    logfire.debug("Order budget calculated using default leverage",
+                                order_id=order.id,
+                                order_value=qty * price,
+                                leverage=leverage,
+                                order_budget=order_budget)
                 else:
-                    # For limit orders use price * qty
+                    # For dictionary format orders (legacy)
                     qty = float(order["qty"])
                     price = float(order["price"]) if order["price"] is not None else 0
-                    leverage = float(order.get("leverage", 1))  # Default to 1 if not present
+                    
+                    # Use default leverage from constructor
+                    leverage = self.default_leverage
+                    
+                    # Calculate budget
                     order_budget = (qty * price) / leverage if price > 0 else 0
 
                 total_budget += order_budget

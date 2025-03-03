@@ -41,7 +41,7 @@ class PlanGenerator:
         self.ai_stream_manager = ai_stream_manager
         
         # Initialize processors
-        self.budget_calculator = BudgetCalculator()
+        self.budget_calculator = BudgetCalculator(default_leverage=params.leverage)
         self.order_processor = OrderProcessor(order_context)
         self.template_manager = TemplateManager(
             budget_calculator=self.budget_calculator,
