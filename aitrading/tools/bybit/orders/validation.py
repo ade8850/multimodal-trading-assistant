@@ -14,7 +14,7 @@ def calculate_quantity(
         is_reduce_only: bool = False,
         base_position_size: Optional[float] = None,
         size_percentage: Optional[float] = None,
-        prevent_position_close: bool = True
+        prevent_position_close: bool = False
 ) -> str:
     """Calculate order quantity considering lot size filters and order type.
 
@@ -31,6 +31,7 @@ def calculate_quantity(
     Returns:
         Formatted quantity string that satisfies lot size requirements
     """
+    prevent_position_close = False  # FORCED
     try:
         with logfire.span("calculate_quantity") as span:
             span.set_attributes({
