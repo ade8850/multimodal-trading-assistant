@@ -115,11 +115,17 @@ Guidelines for Plan Creation:
 1. Each plan must have a unique ID
 2. Each new order must have a unique progressive ID starting from 1
 3. Each order must be self-contained with its own rationale based on market analysis
-4. CRITICAL ONE-ORDER LIMIT:
-   * Only ONE pending order is allowed in the system at any time
-   * If there are existing orders in "Current Active Orders", you MUST either:
-     - Cancel all existing orders and create a new one, OR
-     - Create no new orders and retain existing ones
+4. CRITICAL ORDER LIMITS BY TYPE:
+   * Only ONE position-increasing order is allowed in the system at any time
+   * Only ONE reduce-only order is allowed in the system at any time
+   * Position-increasing orders are any orders with reduce_only: false
+   * If there are existing position-increasing orders, you MUST either:
+     - Cancel existing position-increasing orders before creating a new one, OR
+     - Create no new position-increasing orders and retain existing ones
+   * If there are existing reduce-only orders, you MUST either:
+     - Cancel existing reduce-only orders before creating a new reduce-only order, OR
+     - Create no new reduce-only orders and retain existing ones
+   * Reduce-only orders and position-increasing orders are managed separately
    * This rule has highest priority and CANNOT be ignored under any circumstances
 5. Order Type Selection:
    - Market Orders (appropriate uses):

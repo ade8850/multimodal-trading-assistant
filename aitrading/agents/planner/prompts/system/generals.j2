@@ -40,12 +40,15 @@ All trading decisions should be based on thorough market analysis and technical 
    - Oversold conditions in a bearish trend or overbought conditions in a bullish trend
      are NOT sufficient justification to counter-trade the primary trend
 
-5. DO NOT create more than one pending order
-   - SYSTEM-WIDE LIMIT: Only ONE pending order is allowed at any time
-   - If there is already a pending order, you MUST cancel it before creating a new one
-   - This applies to ALL order types (entry orders and reduce-only orders)
-   - Count the number of existing orders in "Current Active Orders" section
-   - If count ≥ 1, you MUST cancel at least one order before creating any new ones
+5. DO NOT create more than one order per type
+   - SYSTEM-WIDE LIMIT: Only ONE position-increasing order is allowed at any time
+   - Position-increasing orders include any non-reduce-only orders
+   - ADDITIONALLY: Only ONE reduce-only order is allowed at any time
+   - If a position-increasing order already exists, you MUST cancel it before creating a new one
+   - If a reduce-only order already exists, you MUST cancel it before creating a new reduce-only order
+   - Count orders by type in "Current Active Orders" section
+   - If position-increasing orders count ≥ 1, cancel before creating new position-increasing orders
+   - If reduce-only orders count ≥ 1, cancel before creating new reduce-only orders
    - This rule overrides all other considerations - NO EXCEPTIONS
 
 # CRITICAL PROTECTION RULE FOR LOSING POSITIONS
