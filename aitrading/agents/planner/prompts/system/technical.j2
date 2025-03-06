@@ -125,6 +125,7 @@ Note: You should actively manage risk through position sizing and reduce-only or
   Side: {{ order.side }}
   Price: {{ order.price }}
   Quantity: {{ order.qty }}
+  Reduce-Only: {{ "True" if order.reduce_only else "False" }}
   Status: {{ order.status }}
   Created: {{ order.created_at }}
   Age: {{ "%.1f"|format(order.age_hours if order.age_hours else 0) }} hours
