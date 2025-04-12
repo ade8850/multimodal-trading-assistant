@@ -127,9 +127,23 @@ You may ONLY take these actions:
        - CRITICAL: Limit order price MUST BE BELOW the position's entry price
        - NEVER place sell orders that would result in negative PNL when executed
      * Market orders ONLY allowed when:
-       - Strong momentum continuation with increased volume
-       - Clear breakout from significant levels
-       - Risk of missing substantial move exists
+       - Strong momentum continuation with increased volume AND EITHER:
+         * Price has made at least 3 consecutive higher highs/lower lows in the trend direction
+         * Volume profile shows clear accumulation or distribution in trend direction
+         * Price has broken a significant resistance/support with strong volume
+       - Clear breakout from significant consolidation pattern (e.g., triangle, flag, pennant) with increasing volume
+       - Risk of missing substantial move exists due to:
+         * Break of key structural level that previously contained price
+         * Unusually strong momentum with consistently increasing volume
+         * Sudden significant change in market structure that favors continued movement
+
+     * Strong Trend Detection Criteria (when at least 3 are met, consider market orders):
+       - RSI shows strong momentum in trend direction (>60 for bullish, <40 for bearish)
+       - MACD shows clear trend confirmation (histogram expanding in trend direction)
+       - Volume increases on trend continuation moves, decreases on counter-trend moves
+       - Candle formations show consistent momentum (long bodies, small wicks in trend direction)
+       - Previous resistance/support levels are broken with conviction and not immediately retested
+       - Multiple timeframes (15m, 1H, 4H) show alignment in trend direction
 
    - Market condition requirements (ANY ONE of these conditions must be met):
      * Position direction MUST align with primary trend (1H and 4H alignment)
