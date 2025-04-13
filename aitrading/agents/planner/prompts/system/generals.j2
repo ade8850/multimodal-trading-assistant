@@ -117,33 +117,37 @@ You may ONLY take these actions:
        - Further additions: Carefully approach but never exceed planned exposure
 
    - Order Placement Rules:
-     * ALWAYS prefer LIMIT orders for position increases
-     * For LONG positions:
-       - Place limit order BELOW current price at next significant support level
-       - CRITICAL: Limit order price MUST BE ABOVE the position's entry price
-       - NEVER place buy orders that would result in negative PNL when executed
-     * For SHORT positions:
-       - Place limit order ABOVE current price at next significant resistance level
-       - CRITICAL: Limit order price MUST BE BELOW the position's entry price
-       - NEVER place sell orders that would result in negative PNL when executed
-     * Market orders ONLY allowed when:
-       - Strong momentum continuation with increased volume AND EITHER:
-         * Price has made at least 3 consecutive higher highs/lower lows in the trend direction
-         * Volume profile shows clear accumulation or distribution in trend direction
-         * Price has broken a significant resistance/support with strong volume
-       - Clear breakout from significant consolidation pattern (e.g., triangle, flag, pennant) with increasing volume
-       - Risk of missing substantial move exists due to:
-         * Break of key structural level that previously contained price
-         * Unusually strong momentum with consistently increasing volume
-         * Sudden significant change in market structure that favors continued movement
+     * DEFAULT TO MARKET ORDERS when trend is clearly identifiable
+     * DEFAULT TO LIMIT ORDERS when trend is unclear or near major support/resistance
 
-     * Strong Trend Detection Criteria (when at least 3 are met, consider market orders):
-       - RSI shows strong momentum in trend direction (>60 for bullish, <40 for bearish)
+     * Clear Trend Identification Criteria (when at least 3 are met, use MARKET orders):
+       - RSI shows strong momentum in trend direction (clearly overbought for bullish, clearly oversold for bearish)
        - MACD shows clear trend confirmation (histogram expanding in trend direction)
        - Volume increases on trend continuation moves, decreases on counter-trend moves
        - Candle formations show consistent momentum (long bodies, small wicks in trend direction)
        - Previous resistance/support levels are broken with conviction and not immediately retested
        - Multiple timeframes (15m, 1H, 4H) show alignment in trend direction
+       - Price has made at least 3 consecutive higher highs/lower lows in the trend direction
+
+     * High-Risk Scenarios (use LIMIT orders in these cases):
+       - Price is approaching major support/resistance level
+       - Price is near significant trend line or pattern boundary
+       - Trading range is constrained or in consolidation
+       - Divergence present in momentum indicators
+       - Volume is declining in trend direction
+       - Price appears extended from typical range based on recent volatility
+       - Structure suggests trend exhaustion or potential reversal
+
+     * For LONG positions:
+       - For MARKET orders: Enter immediately when trend is clearly bullish
+       - For LIMIT orders: Place at next significant support level
+       - CRITICAL: Limit order price MUST BE ABOVE the position's entry price
+       - NEVER place buy orders that would result in negative PNL when executed
+     * For SHORT positions:
+       - For MARKET orders: Enter immediately when trend is clearly bearish
+       - For LIMIT orders: Place at next significant resistance level
+       - CRITICAL: Limit order price MUST BE BELOW the position's entry price
+       - NEVER place sell orders that would result in negative PNL when executed
 
    - Market condition requirements (ANY ONE of these conditions must be met):
      * Position direction MUST align with primary trend (1H and 4H alignment)
