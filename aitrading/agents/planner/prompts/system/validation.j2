@@ -21,20 +21,30 @@ Order ID and Link ID Requirements:
   * Order link ID is optional but must be exact if included
   * Do not generate new IDs or modify existing ones
 
-Analysis Requirements:
-1. Support/resistance levels and 24h range
-2. Technical indicators - EMAs, RSI, MACD, BB
+Micro-Swing Analysis Requirements:
+1. Immediate support/resistance levels with focus on recent structures
+2. Technical indicators with emphasis on momentum:
+   - EMAs (primary focus on 9, 21 on 15m chart)
+   - RSI with attention to first signs of flattening/divergence
+   - MACD for early momentum shift detection
+   - Bollinger Bands for volatility contraction/expansion phases
 3. Position sizing based on:
    - Current volatility regime
-   - Price volatility assessment
-   - Current market phase
-   - Setup quality
-4. Entry timing and type selection (market/limit)
+   - Short-term price volatility assessment
+   - 15m chart pattern quality
+   - Proximity to significant levels
+4. Entry timing with precise target identification
 5. Market structure analysis:
-   - Key levels identification
-   - Trend strength assessment
-   - Volume profile validation
-   - Volatility regime analysis
+   - Nearest key levels identification (1-3 hour price targets)
+   - Early exhaustion pattern recognition
+   - Volume profile for confirmation/divergence
+   - Indecision candle formations
+   - First signs of momentum loss
+6. Exit signal recognition:
+   - Candlestick reversal patterns
+   - Waning momentum indicators
+   - Approach to significant levels
+   - Volume profile changes
 6. Budget analysis:
   - Calculate budget requirement for new entry orders
   - Consider execution types in budget allocation
@@ -42,20 +52,20 @@ Analysis Requirements:
   - IMPORTANT: Budget must be specified WITHOUT considering leverage
   - The system will apply leverage when calculating final order quantity
 
-Order Execution Requirements:
+Micro-Swing Order Execution Requirements:
 1. Execution Types:
    - IMMEDIATE: Market orders requiring quick execution
-     * Use when immediate entry needed
-     * When capturing strong momentum moves
-     * Clear invalidation levels identified
+     * Use when momentum is clearly established and continuation is likely
+     * For quick exits when momentum deteriorates rapidly
+     * Clear invalidation levels must be identified
    - PASSIVE: Limit orders at specific levels
-     * For planned entries at support/resistance
-     * When building positions gradually
-     * Clear market structure provides entry zones
+     * Preferred method for entries at identified support/resistance levels
+     * For precise profit-taking at structural targets
+     * Should be set with clear market structure reference points
    - TRIGGER: Conditional execution
-     * For breakout trade entries
-     * When specific price level must be reached
-     * Clear market structure confirmation required
+     * For breakout confirmations in micro-swing setups
+     * When specific price level must be reached to confirm the setup
+     * Should trigger within 1-3 hours to be valid for micro-swing approach
 
 2. Risk Levels:
    - CRITICAL: High priority execution needed
@@ -127,22 +137,20 @@ Guidelines for Plan Creation:
      - Create no new reduce-only orders and retain existing ones
    * Reduce-only orders and position-increasing orders are managed separately
    * This rule has highest priority and CANNOT be ignored under any circumstances
-5. Order Type Selection:
+5. Micro-Swing Order Type Selection:
    - Market Orders (appropriate uses):
-     * For ENTRIES: When capturing strong momentum or breakouts
-     * For PROFIT-TAKING: When trend shows clear signs of weakening or reversal
-     * For REDUCING PROFITABLE POSITIONS: Acceptable to secure gains
-     * Quick execution needed to lock in profits when market structure changes rapidly
-     * Volume supports immediate execution
-     * Risk/reward profile deteriorates rapidly
+     * For ENTRIES: Only when momentum is clearly established with volume confirmation
+     * For PROFIT-TAKING: At first clear sign of momentum loss or structure change
+     * For REDUCING PROFITABLE POSITIONS: When approaching key levels with hesitation
+     * For IMMEDIATE EXITS: When price action shows sudden reversal patterns
+     * When holding through the next 15-minute interval represents excess risk
    - Limit Orders (appropriate uses):
-     * For ENTRIES: Targeting specific support/resistance levels
-     * For PROFIT-TAKING: Placing at levels between current price and entry price
-     * For REDUCING PROFITABLE POSITIONS: Place between current price and entry price
-     * Building positions at predefined levels
-     * Price expected to reach target in future
-     * Current market structure provides clear invalidation levels
-   Note: Market orders are acceptable for securing profits, but limit orders placed between current price and entry price should be the default approach for profit-taking
+     * For ENTRIES: Primary method at key support/resistance levels
+     * For TAKE-PROFIT: Set immediately after entry at realistic structural targets
+     * For REDUCING PROFITABLE POSITIONS: Place at nearby structural targets
+     * For AUTOMATED EXITS: To ensure capturing profits without waiting for next interval
+     * When price is expected to reach specific levels within 1-3 hours
+   Note: For micro-swing trading, establishing immediate take-profit orders is essential. Do not rely on the system's 15-minute intervals for exits when targets can be predefined.
 6. Set clear market-based invalidation conditions
 
 When Evaluating Existing Orders:
