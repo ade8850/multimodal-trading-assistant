@@ -104,14 +104,27 @@ def calculate_quantity(
                 qty = math.floor(raw_qty / qty_step) * qty_step
 
             # Ensure minimum quantity
-            final_qty = str(max(qty, min_qty))
+            final_qty = max(qty, min_qty)
+
+            # Per ordini reduce-only, controlliamo se stiamo tentando di chiudere quasi tutta la posizione
+            if is_reduce_only and raw_qty >= base_position_size * 0.98:
+                # Se il risultato dell'arrotondamento è inferiore alla dimensione della posizione
+                # e la differenza è piccola, usiamo la dimensione esatta della posizione
+                if final_qty < base_position_size and base_position_size - final_qty <= qty_step * 2:
+                    final_qty = base_position_size
+                    logfire.info("Adjusted reduce-only quantity to match position size exactly",
+                                original_qty=qty,
+                                adjusted_qty=final_qty,
+                                base_position_size=base_position_size)
 
             # For reduce-only orders, ensure quantity doesn't exceed position size
-            if is_reduce_only and float(final_qty) > base_position_size:
+            if is_reduce_only and final_qty > base_position_size:
                 logfire.warning("Reduce-only quantity exceeds position size, adjusting",
                               calculated_qty=final_qty,
                               position_size=base_position_size)
-                final_qty = str(base_position_size)
+                final_qty = base_position_size
+            
+            final_qty = str(final_qty)  # Conversione a stringa come richiesto dal resto del codice
 
             logfire.info("Quantity calculation completed",
                          raw_quantity=raw_qty,
