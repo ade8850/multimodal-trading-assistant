@@ -48,6 +48,47 @@ class BaseAIClient(ABC):
             # Add defaults if missing
             if 'created_at' not in plan:
                 plan['created_at'] = datetime.utcnow().isoformat()
+            
+            # Fix orders type field: convert 'buy' to 'long' and 'sell' to 'short'
+            if 'orders' in plan and isinstance(plan['orders'], list):
+                for order in plan['orders']:
+                    if isinstance(order, dict):
+                        # Fix outer type field
+                        if 'type' in order:
+                            # Convert buy/sell to long/short
+                            if order['type'].lower() == 'buy':
+                                order['type'] = 'long'
+                            elif order['type'].lower() == 'sell':
+                                order['type'] = 'short'
+                        
+                        # Ensure reduce_only orders have symbol specified
+                        if order.get('reduce_only', False) and 'symbol' not in order:
+                            # If we have parameters with symbol, use that
+                            if 'parameters' in plan and 'symbol' in plan['parameters']:
+                                order['symbol'] = plan['parameters']['symbol']
+                        
+                        # Check and fix nested order object as well
+                        if 'order' in order and isinstance(order['order'], dict):
+                            nested_order = order['order']
+                            # Fix type in nested order object
+                            if 'type' in nested_order:
+                                # Map invalid order types to valid ones
+                                type_mapping = {
+                                    'buy': 'market',
+                                    'sell': 'market',
+                                    'long': 'market',
+                                    'short': 'market'
+                                }
+                                
+                                if nested_order['type'].lower() in type_mapping:
+                                    nested_order['type'] = type_mapping[nested_order['type'].lower()]
+                                    
+                            # Map side in nested order to make sure it's Buy/Sell (not buy/sell)
+                            if 'side' in nested_order:
+                                if nested_order['side'].lower() == 'buy':
+                                    nested_order['side'] = 'Buy'
+                                elif nested_order['side'].lower() == 'sell':
+                                    nested_order['side'] = 'Sell'
 
             # Validate using Pydantic model
             from ...models import TradingPlan
