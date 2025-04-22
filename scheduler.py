@@ -131,7 +131,8 @@ class TradingScheduler:
                     # Execute the plan
                     result = planner.execute_plan(trading_plan)
 
-                    result["stop_loss_updates"] = stop_loss_manager.update_position_stops(symbol)
+                    if trading_params.stop_loss_config.get("enabled"):
+                        result["stop_loss_updates"] = stop_loss_manager.update_position_stops(symbol)
 
                     logfire.info("Executing results", extra=result)
                     if result.get("cancellations"):
