@@ -1,0 +1,131 @@
+# CONTEXTUALIZED EXAMPLES WITH REAL DATA
+
+{% if current_positions %}
+## MANAGING EXISTING POSITION
+{% for position in current_positions %}
+### Example for {{ position.side }} {{ position.symbol }} position
+
+Current context:
+- Position: {{ position.side }} {{ position.symbol }}
+- Size: {{ position.size }} (value: {{ position.size * current_price }} USDT)
+- Entry price: {{ position.entry_price }} USDT
+- Current price: {{ current_price }} USDT
+- Unrealized PNL: {{ position.unrealized_pnl }}
+- Status: {% if position.is_in_profit() %}In Profit{% else %}In Loss{% endif %}
+- Duration: {{ "%.1f"|format(position.age_hours if position.age_hours else 0) }} hours
+
+{% if position.is_in_profit() %}
+### SCENARIO: MANAGING PROFITABLE POSITION
+
+Chart observations (hypothetical):
+- Price showing signs of slowing momentum after favorable movement
+- Approaching resistance (for LONG) or support (for SHORT) level
+- Price structure indicates potential momentum exhaustion
+
+Decision process:
+1. Is action required? YES - protect profit from position
+2. Action type: REDUCE-ONLY orders to take profit
+3. Order settings:
+   - Type: LIMIT
+   - Direction: {% if position.side == "Buy" %}SELL{% else %}BUY{% endif %} (opposite to position)
+   - Reduce_only flag: true
+   - Multi-tiered approach:
+     * Tier 1 (50% of position): Place at 50-60% of distance to next key level
+     * Tier 2 (30% of position): Place at 70-80% of distance to next key level
+     * Tier 3 (20% of position): Place at 90% of distance to next key level
+   - Rationale: "Strategic profit protection with tiered approach to maximize win rate"
+
+{% else %}
+### SCENARIO: MANAGING LOSING POSITION
+
+Chart observations (hypothetical):
+- Price has moved against our position
+- Original setup may have been invalidated
+- Technical signals indicate continuation of adverse movement
+
+Decision process:
+1. Is action required? YES - manage losing position
+2. Available options:
+   - Wait (if original setup is still valid)
+   - Reduce exposure with REDUCE-ONLY order
+3. If deciding to reduce exposure:
+   - Type: LIMIT or MARKET (depends on urgency)
+   - Direction: {% if position.side == "Buy" %}SELL{% else %}BUY{% endif %} (opposite to position)
+   - Reduce_only flag: true
+   - Budget calculated: ({{ position.size }} * {{ current_price }}) / {{ position.leverage }} USDT (for complete closure)
+   - Rationale: "Exposure reduction after original setup invalidation"
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if existing_orders %}
+## EVALUATING EXISTING ORDERS
+{% for order in existing_orders %}
+### Example for {{ order.side }} {{ order.symbol }} order
+
+Current context:
+- Order: {{ order.side }} {{ order.symbol }}
+- ID: {{ order.id }}
+- Link ID: {{ order.order_link_id }}
+- Price: {{ order.price }} USDT
+- Current price: {{ current_price }} USDT
+- Distance from current price: {{ ((order.price - current_price) / current_price * 100)|round(2) }}%
+- Type: {{ "REDUCE-ONLY" if order.reduce_only else "POSITION-INCREASING" }}
+- Original rationale: {{ order.strategic_context.setup_rationale if order.strategic_context else "Not available" }}
+
+### SCENARIO: REEVALUATING ORDER VALIDITY
+
+Chart observations (hypothetical):
+- Market conditions have changed from original setup
+- Target technical level may have been violated or modified
+- Momentum and market structure may have changed
+
+Decision process:
+1. Is action required? EVALUATE - is the order still valid?
+2. Elements to consider:
+   - Is original rationale still valid?
+   - Have invalidation conditions been met?
+   - Is there a better opportunity?
+3. Possible actions:
+   - Maintain order if still valid
+   - Cancel order if no longer valid:
+     ```json
+     {
+       "id": "{{ order.id }}",
+       "order_link_id": "{{ order.order_link_id }}",
+       "symbol": "{{ order.symbol }}",
+       "reason": "Setup invalidation: [insert specific reason based on charts]"
+     }
+     ```
+   - Reposition order (cancel and create new one) if level has changed
+{% endfor %}
+{% endif %}
+
+{% if not current_positions and not existing_orders %}
+## SCENARIO: MARKET WITH NO ACTIVE POSITIONS OR ORDERS
+
+Current context:
+- No active positions or orders
+- Available budget: {{ available_budget.standard }} USDT
+- Current price {{ symbol }}: {{ current_price }} USDT
+
+### EXAMPLE: EVALUATING NEW OPPORTUNITY
+
+Chart observations (hypothetical):
+- Identified primary trend from 1H and 4H timeframes
+- Interesting setup on 15m/1H timeframe
+- Well-defined support/resistance structure
+
+Decision process:
+1. Is action required? EVALUATE - is there a valid opportunity?
+2. Elements to consider:
+   - Alignment with primary trend
+   - Setup quality on operational timeframe
+   - Favorable risk/reward ratio
+3. If opportunity is valid:
+   - Type: LIMIT or MARKET (based on situation)
+   - Direction: Aligned with primary trend
+   - Budget: Appropriate for setup risk level
+   - Take profit: Preset at significant technical levels
+   - Rationale: Detailed and based on visible technical elements
+{% endif %}

@@ -1,0 +1,42 @@
+# LOSING POSITION MANAGEMENT
+
+{% if current_positions %}
+{% for position in current_positions %}
+{% if not position.is_in_profit() %}
+## STRATEGY FOR {{ position.side }} {{ position.symbol }} POSITION IN LOSS
+
+Position characteristics:
+- Entry price: {{ position.entry_price }} USDT
+- Current price: {{ current_price }} USDT
+- Unrealized loss: {{ position.unrealized_pnl }}
+- Duration: {{ "%.1f"|format(position.age_hours if position.age_hours else 0) }} hours
+
+STRATEGIC CONSIDERATIONS:
+1. Situation assessment:
+   - ⚠️ REMEMBER: NEVER add exposure to losing positions
+   - ⚠️ REMEMBER: For LONG positions, NEVER place BUY orders below entry price
+   - ⚠️ REMEMBER: For SHORT positions, NEVER place SELL orders above entry price
+
+2. Available options:
+   - Wait (if market shows recovery signs and original setup is still valid)
+   - Reduce exposure with reduce-only order if setup is invalidated
+   - Close completely if technical conditions have significantly deteriorated
+
+3. Strategic Reduce-Only:
+   {% set suggested_reduce_size = 1.0 %}
+   {% set reduce_budget = (position.size * suggested_reduce_size * current_price) / position.leverage %}
+   - Suggested size (for complete closure): 100% of position
+   - Required budget: {{ reduce_budget|round(2) }} USDT
+   - Direction: {% if position.side == "Buy" %}SELL{% else %}BUY{% endif %}
+   - Reduce_only flag: true
+
+4. Technical considerations for loss management:
+   - Evaluate if market structure still supports original rationale
+   - Check if important technical levels have been violated
+   - Verify if momentum continues to move against position
+   - If loss exceeds acceptable level, consider immediate exit
+{% endif %}
+{% endfor %}
+{% else %}
+No losing positions to manage currently.
+{% endif %}

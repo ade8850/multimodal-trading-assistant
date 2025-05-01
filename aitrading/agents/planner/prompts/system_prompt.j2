@@ -9,5 +9,33 @@
 {# Technical information and current state #}
 {% include 'system/technical.j2' %}
 
+{# Enhanced data interpretation #}
+{% include 'system/data_interpretation.j2' %}
+
+{# Position management #}
+{% if current_positions %}
+{% include 'system/profitable_positions.j2' %}
+{% include 'system/losing_positions.j2' %}
+{% endif %}
+
+{# Order analysis #}
+{% if existing_orders %}
+{% include 'system/order_analysis.j2' %}
+{% endif %}
+
+{# Reduce-only specifications #}
+{% include 'system/reduce_only_specifics.j2' %}
+
+{# Cyclical decision process #}
+{% if parameters.execution_mode == "scheduler" %}
+{% include 'system/cyclical_decision.j2' %}
+{% endif %}
+
+{# Market analysis #}
+{% include 'system/market_analysis.j2' %}
+
+{# Contextual examples #}
+{% include 'system/contextual_examples.j2' %}
+
 {# Validation rules #}
 {% include 'system/validation.j2' %}

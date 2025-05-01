@@ -1,0 +1,76 @@
+# CONTEXTUALIZED MARKET ANALYSIS
+
+## Current Technical Context
+- Symbol: {{ symbol }}
+- Current price: {{ current_price }} USDT
+- Primary analysis timeframe: {{ atr_timeframe }}
+
+## Volatility Analysis
+{% if volatility_metrics %}
+{% for timeframe, metrics in volatility_metrics.metrics.items() %}
+- Timeframe {{ timeframe }}:
+  * Regime: {{ metrics.regime }}
+  * Direction score: {{ metrics.direction_score }}
+  * Opportunity score: {{ metrics.opportunity_score }}
+  * ATR: {{ metrics.atr }}
+  * ATR percentile: {{ metrics.atr_percentile }}
+{% endfor %}
+
+Interpretation:
+- Overall volatility regime: {{ volatility_metrics.metrics[atr_timeframe].regime if volatility_metrics.metrics[atr_timeframe] else "N/A" }}
+- Direction score: {{ volatility_metrics.metrics[atr_timeframe].direction_score if volatility_metrics.metrics[atr_timeframe] else "N/A" }} (> 0 bullish, < 0 bearish)
+- Opportunity score: {{ volatility_metrics.metrics[atr_timeframe].opportunity_score if volatility_metrics.metrics[atr_timeframe] else "N/A" }} (> 0.5 good opportunity)
+
+Operational implications:
+- Position sizing: Adapt based on volatility regime
+- Direction bias: Align with positive/negative direction score
+- Opportunity evaluation: Consider opportunity score for prioritization
+{% endif %}
+
+## Relationship to Existing Positions
+{% if current_positions %}
+{% for position in current_positions %}
+- {{ position.side }} {{ position.symbol }} Position:
+  * Entry at {{ position.entry_price }} vs current price {{ current_price }}
+  * Current direction bias: {{ volatility_metrics.metrics[atr_timeframe].direction_score if volatility_metrics and volatility_metrics.metrics[atr_timeframe] else "N/A" }}
+  * Bias congruence: {{ "Aligned" if (position.side == "Buy" and volatility_metrics.metrics[atr_timeframe].direction_score > 0) or (position.side == "Sell" and volatility_metrics.metrics[atr_timeframe].direction_score < 0) else "Not aligned" if volatility_metrics and volatility_metrics.metrics[atr_timeframe] else "N/A" }}
+{% endfor %}
+{% else %}
+- No active positions to compare with current market conditions
+{% endif %}
+
+## Micro-Swing Trading Condition Analysis
+- Operational timeframe focus: 15m-1H
+- Target time horizon: 1-5 hours
+- Key elements visible in charts:
+  * Short-term market structure
+  * Significant support/resistance levels
+  * Continuation/reversal patterns
+  * Momentum and volume indicators
+
+# MULTI-TIERED TAKE PROFIT FRAMEWORK
+
+When establishing take profit levels, optimize reduce-only orders using this framework:
+
+1. For profitable positions, consider placing multiple reduce-only orders:
+   - Tier 1 (Conservative): At 50-60% of distance to next major level
+   - Tier 2 (Primary): At 70-80% of distance to next major level
+   - Tier 3 (Extended): At 90% of distance to next major level
+
+2. Size distribution across tiers:
+   - Tier 1: 40-50% of position
+   - Tier 2: 30-40% of position
+   - Tier 3: 10-20% of position
+
+3. Strategic considerations:
+   - Ensure all target levels are visible in chart structure
+   - Adapt spacing based on volatility (tighter in low volatility, wider in high volatility)
+   - Place all targets BEFORE resistance/support levels, never at exact levels
+   - For LONG positions: Place targets below resistance
+   - For SHORT positions: Place targets above support
+
+4. Implementation:
+   - Create reduce-only orders with appropriate sizing
+   - For LONG positions: Create SELL reduce-only orders
+   - For SHORT positions: Create BUY reduce-only orders
+   - Set budget for each order based on portion size and leverage

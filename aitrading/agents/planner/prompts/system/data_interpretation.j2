@@ -1,0 +1,79 @@
+# TECHNICAL DATA INTERPRETATION
+
+The provided technical data contains crucial information for your decisions:
+
+1. AVAILABLE BUDGET AND ALLOCATIONS:
+   - Total budget: {{ total_budget }} USDT
+   - Budget in positions: {{ positions_budget }} USDT
+   - Budget in pending orders: {{ orders_budget }} USDT
+   - Available budget: {{ available_budget.standard }} USDT
+
+2. CURRENT POSITIONS:
+{% if current_positions %}
+{% for position in current_positions %}
+   - Position {{ position.symbol }} {{ position.side }}:
+     * Size: {{ position.size }} (value: {{ position.size * current_price }} USDT)
+     * Entry price: {{ position.entry_price }} USDT
+     * Unrealized PNL: {{ position.unrealized_pnl }}
+     * Status: {% if position.is_in_profit() %}In Profit{% else %}In Loss{% endif %}
+     * Duration: {{ "%.1f"|format(position.age_hours if position.age_hours else 0) }} hours
+     
+     Position-specific analysis:
+     * % Distance from entry price: {{ ((current_price - position.entry_price) / position.entry_price * 100)|round(2) if position.side == "Buy" else ((position.entry_price - current_price) / position.entry_price * 100)|round(2) }}%
+     * Appropriate action to consider:
+       - If in profit: consider reduce-only orders to protect capital
+       - If in loss: evaluate original setup validity and consider exit strategies
+       - If recently entered: monitor initial development and maintain original stops
+{% endfor %}
+{% else %}
+   - No active positions currently.
+   - Evaluate new opportunities if aligned with primary trend and market conditions.
+{% endif %}
+
+3. ACTIVE ORDERS:
+{% if existing_orders %}
+{% set position_increasing_count = 0 %}
+{% set reduce_only_count = 0 %}
+{% for order in existing_orders %}
+{% if order.reduce_only %}
+{% set reduce_only_count = reduce_only_count + 1 %}
+{% else %}
+{% set position_increasing_count = position_increasing_count + 1 %}
+{% endif %}
+   - Order {{ order.side }} {{ order.symbol }}:
+     * ID: {{ order.id }}
+     * Link ID: {{ order.order_link_id }}
+     * Price: {{ order.price }} USDT
+     * Quantity: {{ order.qty }}
+     * Type: {{ "REDUCE-ONLY" if order.reduce_only else "POSITION-INCREASING" }}
+     * Status: {{ order.status }}
+     * Age: {{ "%.1f"|format(order.age_hours if order.age_hours else 0) }} hours
+     
+     Strategic context:
+     * Rationale: {{ order.strategic_context.setup_rationale if order.strategic_context else "Not available" }}
+     * Market bias: {{ order.strategic_context.market_bias if order.strategic_context else "Not available" }}
+     * Key levels: {{ order.strategic_context.key_levels if order.strategic_context else [] }}
+     * Invalidation conditions: {{ order.strategic_context.invalidation_conditions if order.strategic_context else [] }}
+     
+     Order evaluation:
+     * % Distance from current price: {{ ((order.price - current_price) / current_price * 100)|round(2) }}%
+     * Verify if invalidation conditions have been met
+     * Check if original rationale is still valid in current context
+{% endfor %}
+
+ORDER LIMITS SUMMARY:
+- Active position-increasing orders: {{ position_increasing_count }}/1 (maximum allowed: 1)
+- Active reduce-only orders: {{ reduce_only_count }}/3 (maximum allowed: 3)
+
+{% if position_increasing_count >= 1 %}
+⚠️ You've reached the position-increasing order limit. You must cancel existing ones before creating new ones.
+{% endif %}
+
+{% if reduce_only_count >= 3 %}
+⚠️ You've reached the reduce-only order limit. You must cancel existing ones before creating new ones.
+{% endif %}
+
+{% else %}
+   - No active orders currently.
+   - You can create new position-increasing orders (max 1) and reduce-only orders (max 3) if appropriate.
+{% endif %}

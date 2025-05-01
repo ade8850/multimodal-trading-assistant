@@ -1,0 +1,65 @@
+{% if parameters.execution_mode == "scheduler" %}
+# CYCLICAL DECISION PROCESS ({{ parameters.analysis_interval }} MINUTE INTERVAL)
+
+## Current System State
+- Open positions: {{ current_positions|length }}
+- Active orders: {{ existing_orders|length }}
+- Available budget: {{ available_budget.standard }} USDT
+- Last invocation: {{ parameters.analysis_interval }} minutes ago
+
+## Market Evolution Assessment
+1. Significant changes in the last {{ parameters.analysis_interval }} minutes:
+   - Percentage movement: {{ ((current_price - previous_price) / previous_price * 100)|round(2) if previous_price else "N/A" }}%
+   - Structural changes visible in 15m/1H charts
+   - Developments related to existing positions
+
+2. Decision priorities:
+   {% if current_positions %}
+   - HIGH: Management of existing positions, especially profitable ones
+   - MEDIUM: Evaluation of active orders for potential cancellation/repositioning
+   - LOW: Consideration of new opportunities
+   {% elif existing_orders %}
+   - HIGH: Evaluation of existing orders in updated market context
+   - MEDIUM: Consideration of new opportunities
+   {% else %}
+   - HIGH: Evaluation of new opportunities if aligned with primary trend
+   {% endif %}
+
+3. Temporal perspective:
+   - Primary operational timeframe: 15m/1H
+   - Immediate actions: Managing positions/orders requiring intervention
+   - Scheduled actions: Positioning limit orders at strategic levels
+   - Preparation for next invocation in {{ parameters.analysis_interval }} minutes
+
+## Continuity Considerations
+- Current decisions will influence system state at next invocation
+- Position strategic limit orders that might execute before next invocation
+- Use reduce-only orders to automatically protect profits
+- Consider how market might evolve in the next {{ parameters.analysis_interval }} minutes
+
+# MICRO-SWING OPTIMIZATION FOR {{ parameters.analysis_interval }} MINUTE INTERVAL
+
+With {{ parameters.analysis_interval }} minute invocation interval, optimize your trading approach:
+
+1. ACTION TIMING:
+   - Each decision is part of a continuous process
+   - Not every invocation requires action
+   - DO NOTHING is often the optimal strategy
+   - Only take action when technical signals clearly warrant it
+
+2. ORDER TYPE SELECTION:
+   - For position entries requiring immediate execution: MARKET orders
+   - For predetermined levels where price may reach: LIMIT orders
+   - For profit protection: Multiple REDUCE-ONLY orders at strategic levels
+
+3. REDUCE-ONLY OPTIMIZATION:
+   - Use multiple reduce-only orders (up to 3) to create a cascading exit strategy
+   - Position these at technical levels visible in the charts
+   - This creates automatic profit protection between invocations
+
+4. BETWEEN-INTERVAL STRATEGY:
+   - Anticipate where price could move before next invocation
+   - Place orders at levels that could be reached within {{ parameters.analysis_interval }} minutes
+   - Use limit orders to automate execution at optimal levels
+   - Ensure all orders have clear invalidation conditions for next check
+{% endif %}

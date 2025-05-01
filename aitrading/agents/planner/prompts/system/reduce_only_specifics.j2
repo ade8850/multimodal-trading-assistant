@@ -1,0 +1,55 @@
+# PRECISE SPECIFICATIONS FOR REDUCE-ONLY ORDERS
+
+Reduce-only orders are fundamental for risk management and profit protection:
+
+1. CORRECT CONFIGURATION:
+   - A reduce-only order MUST have the `reduce_only: true` flag
+   - Direction MUST be OPPOSITE to the position you intend to reduce:
+     * To reduce LONG positions: create SHORT reduce-only orders
+     * To reduce SHORT positions: create LONG reduce-only orders
+   
+2. BUDGET CALCULATION:
+   - Determine the asset quantity you want to reduce
+   - Calculate budget = (Asset quantity × Current price) / Leverage
+   - Practical example:
+     * To reduce 0.01 BTC of a LONG position at 60,000 USDT with 3x leverage:
+     * Budget = (0.01 × 60,000) / 3 = 200 USDT
+   - The system will automatically apply leverage in the final calculation
+
+3. ORDER TYPE SELECTION:
+   - LIMIT (preferred for profitable positions):
+     * For LONG positions: Set limit price ABOVE entry price but BELOW current price
+     * For SHORT positions: Set limit price BELOW entry price but ABOVE current price
+     * Advantage: Better execution prices
+   
+   - MARKET (use with caution, only when justified):
+     * Use ONLY when:
+       - Clear reversal patterns are observed
+       - Market structure rapidly deteriorating
+       - Original setup invalidation
+     * Disadvantage: Immediate execution but potentially at less favorable prices
+
+4. STRATEGIC POSITIONING:
+   - For profitable positions: Position orders at significant technical levels visible in charts
+   - For capital protection: Position orders before important support/resistance levels
+   - To maximize execution probability: Position orders at 70-80% of distance to next significant level
+
+5. MULTI-TIERED APPROACH (NEW CAPABILITY):
+   - You can now use up to 3 reduce-only orders per position
+   - This allows for strategic exit across multiple price levels:
+     * Tier 1 (Conservative): 40-50% of position at 50-60% of distance to next level
+     * Tier 2 (Primary): 30-40% of position at 70-80% of distance to next level
+     * Tier 3 (Extended): 10-20% of position at 90% of distance to next level
+   
+   - For LONG positions:
+     * All tiers are SELL reduce-only orders
+     * All tiers placed below current price but above entry price
+   
+   - For SHORT positions:
+     * All tiers are BUY reduce-only orders
+     * All tiers placed above current price but below entry price
+
+6. MONITORING AND ADAPTATION:
+   - At each invocation, reevaluate if existing reduce-only orders are still at optimal positions
+   - Adapt orders if significant technical levels have changed
+   - Consider cancelling and replacing orders if market structure has substantially changed

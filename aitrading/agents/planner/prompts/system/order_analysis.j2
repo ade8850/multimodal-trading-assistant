@@ -1,0 +1,82 @@
+# EXISTING ORDERS ANALYSIS AND CANCELLATION
+
+{% if existing_orders %}
+{% set position_increasing_orders = [] %}
+{% set reduce_only_orders = [] %}
+{% for order in existing_orders %}
+{% if order.reduce_only %}
+{% set reduce_only_orders = reduce_only_orders + [order] %}
+{% else %}
+{% set position_increasing_orders = position_increasing_orders + [order] %}
+{% endif %}
+{% endfor %}
+
+## Position-Increasing Orders ({{ position_increasing_orders|length }}/1)
+{% if position_increasing_orders %}
+{% for order in position_increasing_orders %}
+### {{ order.side }} {{ order.symbol }} Order ({{ "%.1f"|format(order.age_hours if order.age_hours else 0) }} hours)
+- ID: {{ order.id }}
+- Link ID: {{ order.order_link_id }}
+- Price: {{ order.price }} USDT ({{ ((order.price - current_price) / current_price * 100)|round(2) }}% from current price)
+- Quantity: {{ order.qty }}
+- Budget: {{ (order.qty * order.price) / leverage }} USDT (base margin)
+
+Evaluation:
+1. Order age: {{ "recent" if order.age_hours < 1 else "medium" if order.age_hours < 3 else "old" }}
+2. Price distance: {{ "near" if abs((order.price - current_price) / current_price * 100) < 1 else "moderate" if abs((order.price - current_price) / current_price * 100) < 3 else "distant" }}
+3. Original rationale: {{ order.strategic_context.setup_rationale if order.strategic_context else "Not available" }}
+4. Consider these invalidation conditions (to verify):
+   {% if order.strategic_context and order.strategic_context.invalidation_conditions %}
+   {% for condition in order.strategic_context.invalidation_conditions %}
+   - {{ condition }}
+   {% endfor %}
+   {% else %}
+   - No invalidation conditions specified
+   {% endif %}
+
+Decision process:
+- If original rationale is no longer valid, consider cancelling the order
+- If market conditions have changed significantly, consider cancelling the order
+- If you want to place a new position-increasing order, you must cancel this order first
+{% endfor %}
+{% else %}
+No active position-increasing orders. You can create a new one if appropriate.
+{% endif %}
+
+## Reduce-Only Orders ({{ reduce_only_orders|length }}/3)
+{% if reduce_only_orders %}
+{% for order in reduce_only_orders %}
+### {{ order.side }} {{ order.symbol }} REDUCE-ONLY Order ({{ "%.1f"|format(order.age_hours if order.age_hours else 0) }} hours)
+- ID: {{ order.id }}
+- Link ID: {{ order.order_link_id }}
+- Price: {{ order.price }} USDT ({{ ((order.price - current_price) / current_price * 100)|round(2) }}% from current price)
+- Quantity: {{ order.qty }}
+- Budget: {{ (order.qty * order.price) / leverage }} USDT (base margin)
+
+Evaluation:
+1. Order age: {{ "recent" if order.age_hours < 1 else "medium" if order.age_hours < 3 else "old" }}
+2. Price distance: {{ "near" if abs((order.price - current_price) / current_price * 100) < 1 else "moderate" if abs((order.price - current_price) / current_price * 100) < 3 else "distant" }}
+3. Optimal placement: Verify if target price is still strategically valid
+
+Decision process:
+- If take profit levels have changed, consider repositioning the order
+- If market structure has changed significantly, evaluate cancellation
+- If you need to create a new set of reduce-only orders, consider cancelling existing ones
+{% endfor %}
+{% else %}
+No active reduce-only orders. You can create up to three if appropriate.
+{% endif %}
+
+## Order Cancellation Template
+To cancel an existing order, use this format:
+```json
+{
+  "id": "ORDER_ID",         // Copy the exact ID from the list above
+  "order_link_id": "LINK_ID", // Copy the exact Link ID from the list above
+  "symbol": "{{ symbol }}",
+  "reason": "Specific technical explanation of why the order is no longer valid"
+}
+```
+{% else %}
+No active orders to analyze or cancel.
+{% endif %}
