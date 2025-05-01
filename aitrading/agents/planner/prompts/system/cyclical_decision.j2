@@ -8,10 +8,10 @@
 - Last invocation: {{ parameters.analysis_interval }} minutes ago
 
 ## Market Evolution Assessment
-1. Significant changes in the last {{ parameters.analysis_interval }} minutes:
-   - Percentage movement: {{ ((current_price - previous_price) / previous_price * 100)|round(2) if previous_price else "N/A" }}%
-   - Structural changes visible in 15m/1H charts
-   - Developments related to existing positions
+1. Significant changes since last invocation:
+   - Examine market structure changes from charts
+   - Evaluate price movements relative to existing positions/orders
+   - Assess trend continuation or potential reversal signs
 
 2. Decision priorities:
    {% if current_positions %}

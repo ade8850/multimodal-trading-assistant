@@ -10,6 +10,7 @@ Position characteristics:
 - Current price: {{ current_price }} USDT
 - Unrealized loss: {{ position.unrealized_pnl }}
 - Duration: {{ "%.1f"|format(position.age_hours if position.age_hours else 0) }} hours
+- Leverage: {{ position.leverage }}x
 
 STRATEGIC CONSIDERATIONS:
 1. Situation assessment:

@@ -19,7 +19,7 @@
 - Link ID: {{ order.order_link_id }}
 - Price: {{ order.price }} USDT ({{ ((order.price - current_price) / current_price * 100)|round(2) }}% from current price)
 - Quantity: {{ order.qty }}
-- Budget: {{ (order.qty * order.price) / leverage }} USDT (base margin)
+- Budget: Estimated base margin
 
 Evaluation:
 1. Order age: {{ "recent" if order.age_hours < 1 else "medium" if order.age_hours < 3 else "old" }}
@@ -51,7 +51,7 @@ No active position-increasing orders. You can create a new one if appropriate.
 - Link ID: {{ order.order_link_id }}
 - Price: {{ order.price }} USDT ({{ ((order.price - current_price) / current_price * 100)|round(2) }}% from current price)
 - Quantity: {{ order.qty }}
-- Budget: {{ (order.qty * order.price) / leverage }} USDT (base margin)
+- Budget: Estimated base margin
 
 Evaluation:
 1. Order age: {{ "recent" if order.age_hours < 1 else "medium" if order.age_hours < 3 else "old" }}

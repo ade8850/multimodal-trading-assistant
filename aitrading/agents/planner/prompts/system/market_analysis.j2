@@ -17,9 +17,13 @@
 {% endfor %}
 
 Interpretation:
-- Overall volatility regime: {{ volatility_metrics.metrics[atr_timeframe].regime if volatility_metrics.metrics[atr_timeframe] else "N/A" }}
-- Direction score: {{ volatility_metrics.metrics[atr_timeframe].direction_score if volatility_metrics.metrics[atr_timeframe] else "N/A" }} (> 0 bullish, < 0 bearish)
-- Opportunity score: {{ volatility_metrics.metrics[atr_timeframe].opportunity_score if volatility_metrics.metrics[atr_timeframe] else "N/A" }} (> 0.5 good opportunity)
+{% if atr_timeframe in volatility_metrics.metrics %}
+- Overall volatility regime: {{ volatility_metrics.metrics[atr_timeframe].regime }}
+- Direction score: {{ volatility_metrics.metrics[atr_timeframe].direction_score }} (> 0 bullish, < 0 bearish)
+- Opportunity score: {{ volatility_metrics.metrics[atr_timeframe].opportunity_score }} (> 0.5 good opportunity)
+{% else %}
+- No specific metrics available for {{ atr_timeframe }} timeframe
+{% endif %}
 
 Operational implications:
 - Position sizing: Adapt based on volatility regime
@@ -32,8 +36,13 @@ Operational implications:
 {% for position in current_positions %}
 - {{ position.side }} {{ position.symbol }} Position:
   * Entry at {{ position.entry_price }} vs current price {{ current_price }}
-  * Current direction bias: {{ volatility_metrics.metrics[atr_timeframe].direction_score if volatility_metrics and volatility_metrics.metrics[atr_timeframe] else "N/A" }}
-  * Bias congruence: {{ "Aligned" if (position.side == "Buy" and volatility_metrics.metrics[atr_timeframe].direction_score > 0) or (position.side == "Sell" and volatility_metrics.metrics[atr_timeframe].direction_score < 0) else "Not aligned" if volatility_metrics and volatility_metrics.metrics[atr_timeframe] else "N/A" }}
+  {% if volatility_metrics and atr_timeframe in volatility_metrics.metrics %}
+  * Current direction bias: {{ volatility_metrics.metrics[atr_timeframe].direction_score }}
+  * Bias congruence: {{ "Aligned" if (position.side == "Buy" and volatility_metrics.metrics[atr_timeframe].direction_score > 0) or (position.side == "Sell" and volatility_metrics.metrics[atr_timeframe].direction_score < 0) else "Not aligned" }}
+  {% else %}
+  * Current direction bias: N/A
+  * Bias congruence: N/A
+  {% endif %}
 {% endfor %}
 {% else %}
 - No active positions to compare with current market conditions
